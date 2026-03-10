@@ -1,5 +1,5 @@
 """
-Geo-IP service — detect country from IP using ip-api.com (free, no key required for dev).
+Geo-IP service - detect country from IP using ip-api.com (free, no key required for dev).
 Falls back to "global" if detection fails.
 """
 

@@ -1,9 +1,9 @@
 """
 Matchmaking routes:
-  POST /match/join    — join the matchmaking queue
-  POST /match/cancel  — leave the queue
-  GET  /match/status  — check if matched yet (polling fallback)
-  GET  /match/ws      — WebSocket for real-time match notification
+  POST /match/join    - join the matchmaking queue
+  POST /match/cancel  - leave the queue
+  GET  /match/status  - check if matched yet (polling fallback)
+  GET  /match/ws      - WebSocket for real-time match notification
 """
 
 import asyncio
@@ -50,7 +50,7 @@ async def cancel_queue(payload: dict = Depends(require_auth)):
 
 @router.get("/status")
 async def match_status(payload: dict = Depends(require_auth)):
-    """Polling fallback — check if user has been matched to a room."""
+    """Polling fallback - check if user has been matched to a room."""
     session_id = payload["sub"]
     room_id = await get_room_id_for_session(session_id)
     if room_id:

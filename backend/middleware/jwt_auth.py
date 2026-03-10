@@ -15,7 +15,7 @@ async def require_auth(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> dict:
     """
-    FastAPI dependency — validates Bearer JWT and returns the decoded payload.
+    FastAPI dependency - validates Bearer JWT and returns the decoded payload.
     Raises 401 if token is missing, expired, or invalid.
     """
     try:

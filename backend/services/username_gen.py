@@ -1,5 +1,5 @@
 """
-Username generator — Adjective + Animal format.
+Username generator - Adjective + Animal format.
 e.g. SilentFox, BravePanda, WildOrca
 """
 

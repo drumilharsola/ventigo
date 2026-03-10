@@ -10,9 +10,11 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # Resend API (https://resend.com) — free tier: 3,000 emails/month
-    RESEND_API_KEY: str = ""  # leave blank in dev; link is logged to console instead
-    SMTP_FROM: str = "Flow <onboarding@resend.dev>"  # change after verifying your domain
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "Varta <noreply@varta.app>"
 
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_HOURS: int = 2
@@ -23,7 +25,8 @@ class Settings(BaseSettings):
 
     GEO_API_URL: str = "http://ip-api.com/json/"
 
-    APP_BASE_URL: str = "http://localhost:3000"  # Public frontend URL — used in email verification links
+    # Turn this on in production once you want to require email verification for anchors
+    REQUIRE_EMAIL_VERIFICATION: bool = False
 
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 

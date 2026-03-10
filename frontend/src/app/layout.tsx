@@ -1,24 +1,23 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Syne } from "next/font/google";
+import { Comfortaa, Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+const comfortaa = Comfortaa({
+  variable: "--font-comfortaa",
   subsets: ["latin"],
-  weight: ["400", "700", "900"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "700"],
 });
 
-const syne = Syne({
-  variable: "--font-syne",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Flow - a safe place to be heard",
-  description: "Vent anonymously to a real person. No fixing. No advice. Just presence.",
+  title: "Unburden - a safe place to be heard",
+  description: "Unburden yourself in 15 minutes. Anonymous, no pressure, just presence.",
 };
 
 export default function RootLayout({
@@ -28,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${playfair.variable} ${syne.variable} antialiased min-h-screen`}>
+      <body className={`${comfortaa.variable} ${inter.variable} antialiased min-h-screen`}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

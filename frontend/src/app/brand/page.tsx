@@ -69,7 +69,7 @@ export default function BrandPage() {
             <p style={{ fontFamily: "var(--font-display)", fontSize: 72, fontWeight: 900, color: "var(--ink)", letterSpacing: "-0.04em", margin: 0, lineHeight: 1 }}>Flow.</p>
             <p style={{ fontFamily: "var(--font-display)", fontSize: 48, fontWeight: 700, fontStyle: "italic", color: "var(--ink)", letterSpacing: "-0.03em", margin: 0 }}>Let it <em style={{ color: "var(--accent)" }}>out.</em></p>
             <p style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 400, color: "var(--charcoal)", margin: 0 }}>A safe place to be heard.</p>
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 300, color: "var(--slate)", margin: 0, maxWidth: 500 }}>Syne is used for UI text — labels, buttons, body copy at small sizes. Clean, geometric, and unobtrusive.</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 300, color: "var(--slate)", margin: 0, maxWidth: 500 }}>Syne is used for UI text - labels, buttons, body copy at small sizes. Clean, geometric, and unobtrusive.</p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <span className="pill pill-accent">pill · accent</span>
               <span className="pill pill-success">pill · success</span>
@@ -139,7 +139,7 @@ export default function BrandPage() {
 
         <footer style={{ paddingTop: 24, borderTop: "1px solid rgba(0,0,0,0.08)" }}>
           <p style={{ fontSize: 11, color: "var(--mist)", fontFamily: "var(--font-ui)" }}>
-            Flow Brand System · Internal reference only
+            Unburden Brand System · Internal reference only
           </p>
         </footer>
       </div>

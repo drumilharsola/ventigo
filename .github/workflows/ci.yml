@@ -14,21 +14,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trivy — filesystem CVE scan
-        uses: aquasecurity/trivy-action@0.28.0
+      - name: Trivy - filesystem CVE scan
+        uses: aquasecurity/trivy-action@v0.29.0
         with:
           scan-type: fs
           scan-ref: .
           severity: CRITICAL,HIGH
           ignore-unfixed: true   # skip upstream issues with no available fix
           exit-code: 1
+          # Pin a supported Trivy engine version to avoid issues around the latest release
+          trivy-version: 0.56.1
 
-      - name: pip-audit — Python dependency scan
+      - name: pip-audit - Python dependency scan
         run: |
           pip install pip-audit --quiet
           pip-audit -r backend/requirements.txt --desc on
 
-      - name: npm audit — frontend dependency scan
+      - name: npm audit - frontend dependency scan
         working-directory: frontend
         run: npm audit --audit-level=critical
 
@@ -71,7 +73,7 @@ jobs:
 
       - run: npm run build
         env:
-          # placeholder — real value set in Vercel dashboard
+          # placeholder - real value set in Vercel dashboard
           NEXT_PUBLIC_API_URL: https://placeholder.example.com
 
   # ── 4. Deploy backend to Render (main branch only, all checks must pass) ─────

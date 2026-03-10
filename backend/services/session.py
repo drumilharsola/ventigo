@@ -1,13 +1,13 @@
 """
-Session service — manage user profile data, chat room state, and matchmaking
+Session service - manage user profile data, chat room state, and matchmaking
 entirely within Redis. Nothing is persisted to a SQL database.
 
 Key schema:
-  profile:{session_id}     HASH  — username, avatar_id, age_verified, created_at, speak_count, listen_count
-  room:{room_id}           HASH  — user_a, user_b, username_a, username_b, avatar_a, avatar_b, started_at, status, extended
-  room:{room_id}:msgs      LIST  — JSON-encoded messages (TTL = 7 days after session end)
-  history:{session_id}     LIST  — room_ids newest-first (7-day TTL)
-  username:{username}      STRING — session_id (active guard)
+  profile:{session_id}     HASH  - username, avatar_id, age_verified, created_at, speak_count, listen_count
+  room:{room_id}           HASH  - user_a, user_b, username_a, username_b, avatar_a, avatar_b, started_at, status, extended
+  room:{room_id}:msgs      LIST  - JSON-encoded messages (TTL = 7 days after session end)
+  history:{session_id}     LIST  - room_ids newest-first (7-day TTL)
+  username:{username}      STRING - session_id (active guard)
 """
 
 import json
@@ -44,7 +44,7 @@ async def save_profile(
     pipe = redis.pipeline(transaction=False)
     for f, v in fields.items():
         pipe.hset(key, f, v)
-    # Only initialise email_verified to "0" if not already set —
+    # Only initialise email_verified to "0" if not already set -
     # user may have clicked the verification link before completing profile setup.
     pipe.hsetnx(key, "email_verified", "0")
     await pipe.execute()

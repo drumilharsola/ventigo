@@ -135,7 +135,7 @@ export default function VerifyPage() {
               whispers the o&apos;er-fraught heart, and bids it break.&rdquo;
             </p>
             <p style={{ fontSize: 12, fontWeight: 300, color: "var(--slate)", letterSpacing: "0.06em" }}>
-              — Shakespeare, <em style={{ fontStyle: "normal" }}>Macbeth</em>, Act IV
+              - Shakespeare, <em style={{ fontStyle: "normal" }}>Macbeth</em>, Act IV
             </p>
           </div>
           <p className="t-label" style={{ color: "var(--graphite)", fontSize: 11 }}>Anonymous by design.</p>

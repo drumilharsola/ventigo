@@ -133,7 +133,7 @@ export default function ProfilePage() {
             fontSize: 14, fontWeight: 300, color: "var(--slate)",
             marginBottom: 36, lineHeight: 1.6, fontFamily: "var(--font-ui)",
           }}>
-            Just a few details — then we can get you into the room.
+            Just a few details - then we can get you into the room.
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 28 }}>

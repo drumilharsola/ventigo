@@ -1,5 +1,5 @@
 """
-JWT session token service — issue and validate short-lived tokens.
+JWT session token service - issue and validate short-lived tokens.
 No user identity is embedded other than a session ID and email hash.
 """
 
@@ -27,7 +27,7 @@ def create_session_token(email_hash: str, session_id: str | None = None) -> tupl
 
     payload = {
         "sub": sid,
-        "eh": email_hash,       # email hash — never plaintext
+        "eh": email_hash,       # email hash - never plaintext
         "iat": now,
         "exp": expire,
     }

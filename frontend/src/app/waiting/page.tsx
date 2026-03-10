@@ -128,7 +128,7 @@ function WaitingInner() {
             maxWidth: 300, lineHeight: 1.6, margin: "0 auto",
             fontFamily: "var(--font-ui)",
           }}>
-            An anchor is on their way.<br />Take a breath — you&apos;re not alone.
+            An anchor is on their way.<br />Take a breath - you&apos;re not alone.
           </p>
         </div>
 

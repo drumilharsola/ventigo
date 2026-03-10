@@ -1,5 +1,5 @@
 """
-OTP service — generate, store, and verify 6-digit one-time passwords via Redis.
+OTP service - generate, store, and verify 6-digit one-time passwords via Redis.
 """
 
 import random
@@ -9,7 +9,7 @@ from config import get_settings
 
 
 def _hash_email(email: str) -> str:
-    """Store only a SHA-256 hash of the email — never plaintext in Redis."""
+    """Store only a SHA-256 hash of the email - never plaintext in Redis."""
     return hashlib.sha256(email.lower().strip().encode()).hexdigest()
 
 

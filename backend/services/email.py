@@ -1,6 +1,6 @@
 """
-Email service — sends transactional emails via the Resend API (https://resend.com).
-Uses httpx (already a project dependency) — no extra packages needed.
+Email service - sends transactional emails via the Resend API (https://resend.com).
+Uses httpx (already a project dependency) - no extra packages needed.
 
 Dev mode: if RESEND_API_KEY is not set, the verification link is printed to the
 console so you can click it directly during local development.
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 async def send_verification_email(to_email: str, verify_url: str) -> None:
     settings = get_settings()
 
-    # ── Dev fallback — no key configured ─────────────────────────────────────
+    # ── Dev fallback - no key configured ─────────────────────────────────────
     if not settings.RESEND_API_KEY:
         logger.warning(
             f"[DEV] RESEND_API_KEY not set. "

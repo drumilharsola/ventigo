@@ -1,4 +1,4 @@
-# Render Blueprint — deploys the FastAPI backend as a free web service.
+# Render Blueprint - deploys the FastAPI backend as a free web service.
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
@@ -13,26 +13,29 @@ services:
     healthCheckPath: /health
 
     envVars:
+      # ── Static values set by this file ───────────────────────────────────
       - key: APP_ENV
         value: production
 
       - key: JWT_EXPIRE_HOURS
-        value: 168
+        value: 168          # 7 days - no refresh tokens yet
 
       - key: SMTP_FROM
-        value: "Flow <onboarding@resend.dev>"
+        value: "Flow <onboarding@resend.dev>"  # change after domain verified
 
+      # ── Auto-generated secrets ────────────────────────────────────────────
       - key: APP_SECRET_KEY
-        generateValue: true
+        generateValue: true  # Render generates a secure random value
 
-      - key: REDIS_URL
-        sync: false
+      # ── Set manually in Render dashboard (sync: false = not stored in git) ─
+      - key: redis://default:AWUVAAIncDFiYzU3MjJkODRkZDM0NzA1OWMwMGNhZTc1NGZmMGQ5Y3AxMjU4Nzc@easy-cockatoo-25877.upstash.io:6379
+        sync: false          # Upstash Redis URL  (rediss://...)
 
-      - key: RESEND_API_KEY
-        sync: false
+      - key: re_TYxA8wbg_LNYUmde6u9GjB84Xo5ox9MHe
+        sync: false          # From resend.com dashboard
 
       - key: APP_BASE_URL
-        sync: false
+        sync: false          # Your Vercel URL, e.g. https://varta.vercel.app
 
       - key: ALLOWED_ORIGINS
-        sync: false
+        sync: false          # Same Vercel URL (comma-separated if multiple)

@@ -62,7 +62,7 @@ export function FlowLogo({ dark = false, href = "/" }: FlowLogoProps) {
           color: dark ? "var(--ink)" : "var(--white)",
         }}
       >
-        Fl<em style={{ fontStyle: "italic", color: "var(--accent)" }}>o</em>w
+        Unb<em style={{ fontStyle: "italic", color: "var(--accent)" }}>ur</em>den
       </span>
     </Link>
   );

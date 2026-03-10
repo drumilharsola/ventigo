@@ -1,5 +1,5 @@
 """
-Varta — Anonymous Timed Chat
+Varta - Anonymous Timed Chat
 FastAPI application entrypoint.
 """
 
@@ -22,7 +22,7 @@ from routes.report import router as report_router
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s — %(message)s",
+    format="%(asctime)s | %(levelname)-8s | %(name)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="Varta",
-    description="Anonymous timed chat — ephemeral, private, and fun.",
+    description="Anonymous timed chat - ephemeral, private, and fun.",
     version="0.1.0",
     lifespan=lifespan,
     docs_url="/docs" if settings.APP_ENV == "development" else None,

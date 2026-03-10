@@ -1,5 +1,5 @@
 """
-Chat WebSocket — main real-time hub for a session room.
+Chat WebSocket - main real-time hub for a session room.
 
 Client connects: ws://host/chat/ws?token=<jwt>&room_id=<uuid>
 
@@ -7,9 +7,9 @@ Message format (client → server):
   {"type": "message",       "text": "..."}
   {"type": "typing_start"}
   {"type": "typing_stop"}
-  {"type": "extend"}         — request to extend session
-  {"type": "rematch"}        — request new match after session end
-  {"type": "leave"}          — disconnect from session
+  {"type": "extend"}         - request to extend session
+  {"type": "rematch"}        - request new match after session end
+  {"type": "leave"}          - disconnect from session
 
 Message format (server → client):
   {"type": "message",       "from": username, "text": "...", "ts": epoch}
@@ -189,7 +189,7 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
                 break
 
     except (WebSocketDisconnect, asyncio.CancelledError):
-        # User navigated away — notify peer but keep the room alive
+        # User navigated away - notify peer but keep the room alive
         await _publish(redis, peer_id, {"type": "peer_left"})
     finally:
         ticker_task.cancel()

@@ -1,5 +1,5 @@
 """
-Report route — anonymous abuse reporting.
+Report route - anonymous abuse reporting.
 No user PII is stored; only session IDs and reason.
 Reports expire after 7 days.
 """

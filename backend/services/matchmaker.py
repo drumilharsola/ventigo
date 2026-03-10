@@ -1,9 +1,9 @@
 """
-Matchmaking engine — country-keyed queues in Redis.
+Matchmaking engine - country-keyed queues in Redis.
 
 Queue keys:
-  queue:global         — users who chose "global"
-  queue:{COUNTRY}      — e.g. queue:IN, queue:US
+  queue:global         - users who chose "global"
+  queue:{COUNTRY}      - e.g. queue:IN, queue:US
 
 Each entry is a JSON blob: {"session_id": ..., "enqueued_at": ...}
 

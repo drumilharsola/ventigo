@@ -5,16 +5,15 @@ import { useAuthStore } from "@/store/authStore";
 import { FlowLogo } from "@/components/FlowLogo";
 
 const MARQUEE_ITEMS = [
-  "Completely anonymous", "No stored messages", "Real humans only",
-  "15 minute sessions", "18+ verified", "No advice, just presence",
-  "Disappears in 7 days",
+  "Unburden in 15 minutes", "Completely anonymous", "No stored messages",
+  "Real humans only", "No advice, just presence", "Disappears in 7 days",
 ];
 
 const FEATURES = [
-  { num: "01", title: "Vent freely", desc: "Say the thing you've been holding. No identity, no judgment, no consequences." },
-  { num: "02", title: "Be an anchor", desc: "Offer your presence to a stranger who needs it. No fixing, just witnessing." },
-  { num: "03", title: "15 minutes", desc: "Long enough to matter. Brief enough to stay safe. The timer keeps it bounded." },
-  { num: "04", title: "No trace", desc: "Everything dissolves. Words, sessions, identity — gone in 7 days. By design." },
+  { num: "01", title: "Unburden yourself", desc: "Say what’s weighing on you without names, judgment, or consequences." },
+  { num: "02", title: "Be a steady presence", desc: "Show up for someone with calm attention. No advice needed." },
+  { num: "03", title: "15 minutes", desc: "Still enough to matter. Short enough to stay safe. The timer keeps it bounded." },
+  { num: "04", title: "No trace", desc: "Sessions disappear. Words fade. Identity vanishes after 7 days." },
 ];
 
 const doubled = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
@@ -73,14 +72,14 @@ export default function HomePage() {
             color: "var(--white)",
             marginBottom: 36,
           }}>
-            Let it<br />
+            Unburden<br />
             <em style={{
               fontStyle: "italic",
               background: "linear-gradient(135deg, var(--flow-1), var(--flow-2))",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
-            }}>all out.</em>
+            }}>yourself.</em>
           </h1>
           <p style={{
             fontSize: 18, fontWeight: 300,
@@ -88,7 +87,7 @@ export default function HomePage() {
             maxWidth: 480, marginBottom: 52,
             fontFamily: "var(--font-ui)",
           }}>
-            Find a real human who will sit with you — no names, no records, no advice unless you want it.
+            Find a real human who will sit with you - no names, no records, no advice unless you want it.
             Just fifteen minutes of honest presence.
           </p>
           <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>

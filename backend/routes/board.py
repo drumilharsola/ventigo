@@ -1,11 +1,11 @@
 """
 Speaker Board routes.
 
-POST   /board/speak              — post a speaker request (appear on the board)
-DELETE /board/speak              — cancel own speaker request
-GET    /board/requests           — REST snapshot of the board
-POST   /board/accept/{id}        — accept a speaker (become listener) → creates room
-WS     /board/ws?token=...       — real-time board + match notifications
+POST   /board/speak              - post a speaker request (appear on the board)
+DELETE /board/speak              - cancel own speaker request
+GET    /board/requests           - REST snapshot of the board
+POST   /board/accept/{id}        - accept a speaker (become listener) → creates room
+WS     /board/ws?token=...       - real-time board + match notifications
 """
 
 import json
@@ -22,6 +22,7 @@ from services.speaker_board import (
     accept_request,
     get_request_for_session,
 )
+from config import get_settings
 from services.session import get_profile, increment_speak_count, increment_listen_count
 from services.session_token import decode_session_token
 from db.redis_client import get_redis
@@ -65,13 +66,16 @@ async def list_requests(session=Depends(require_auth)):
 
 @router.post("/accept/{request_id}")
 async def accept(request_id: str, session=Depends(require_auth)):
-    """Accept a speaker request. Requires verified email — creates a chat room."""
+    """Accept a speaker request. Requires verified email - creates a chat room."""
+    settings = get_settings()
+
     profile = await get_profile(session["sub"])
-    if not profile or profile.get("email_verified") != "1":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please verify your email before becoming an anchor",
-        )
+    if settings.REQUIRE_EMAIL_VERIFICATION:
+        if not profile or profile.get("email_verified") != "1":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Please verify your email to accept requests",
+            )
     room_id = await accept_request(request_id, session["sub"])
     if room_id is None:
         raise HTTPException(status_code=409, detail="Request already taken")
@@ -87,11 +91,11 @@ async def board_ws(websocket: WebSocket, token: str = ""):
     Real-time board updates + personal match notification.
 
     Subscribes to:
-      board:updates          — new/removed speaker cards (for everyone)
-      session:{session_id}   — matched event (personal)
+      board:updates          - new/removed speaker cards (for everyone)
+      session:{session_id}   - matched event (personal)
 
     Protocol (server → client JSON):
-      {"event": "board_state",     "requests": [...]}   — sent immediately on connect
+      {"event": "board_state",     "requests": [...]}   - sent immediately on connect
       {"event": "new_request",     "request_id": ..., "username": ..., "gender": ..., "posted_at": ...}
       {"event": "removed_request", "request_id": ...}
       {"event": "matched",         "room_id": ...}
@@ -135,7 +139,7 @@ async def board_ws(websocket: WebSocket, token: str = ""):
     pump_task = asyncio.create_task(pump())
 
     try:
-        # Keep alive — client sends nothing, we relay pubsub
+        # Keep alive - client sends nothing, we relay pubsub
         while True:
             try:
                 await asyncio.wait_for(websocket.receive_text(), timeout=30)

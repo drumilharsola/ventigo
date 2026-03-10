@@ -55,13 +55,12 @@ function VentCard({ req, onAccept, accepting, emailVerified }: {
         </p>
       </div>
       <button
-        onClick={() => emailVerified && onAccept(req.request_id)}
-        disabled={accepting || !emailVerified}
+        onClick={() => onAccept(req.request_id)}
+        disabled={accepting}
         className="btn btn-sm btn-primary"
-        title={!emailVerified ? "Verify your email to to accept the request" : undefined}
-        style={{ flexShrink: 0, opacity: accepting || !emailVerified ? 0.5 : 1 }}
+        style={{ flexShrink: 0, opacity: accepting ? 0.5 : 1 }}
       >
-        {accepting ? "…" : emailVerified ? "Show up" : "🔒 Verify"}
+        {accepting ? "…" : "Show up"}
       </button>
     </div>
   );
@@ -157,7 +156,7 @@ export default function LobbyPage() {
       const res = await api.acceptSpeaker(token, requestId);
       router.push(`/chat?room_id=${encodeURIComponent(res.room_id)}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Couldn't connect — try someone else");
+      setError(err instanceof Error ? err.message : "Couldn't connect - try someone else");
       setAccepting(null);
     }
   };
@@ -467,7 +466,7 @@ function EditProfileModal({ currentAvatarId, currentUsername, token, onClose, on
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--white)", fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>Your identity</h2>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--slate)", fontFamily: "var(--font-ui)" }}>Anonymous — just how you appear here</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--slate)", fontFamily: "var(--font-ui)" }}>Anonymous - just how you appear here</p>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "var(--slate)", cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>

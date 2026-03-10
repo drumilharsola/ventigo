@@ -1,5 +1,5 @@
 """
-Backend smoke tests — pure unit tests, no running server or Redis required.
+Backend smoke tests - pure unit tests, no running server or Redis required.
 These run in CI on every push to catch regressions in core service logic.
 """
 

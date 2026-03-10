@@ -9,13 +9,13 @@ const STEPS = [
     num: "01",
     icon: "💬",
     title: "Vent freely.",
-    body: "There are no wrong words here. Say exactly what you're feeling — without judgment, without consequences.",
+    body: "There are no wrong words here. Say exactly what you're feeling - without judgment, without consequences.",
   },
   {
     num: "02",
     icon: "🫂",
     title: "Be an anchor.",
-    body: "You can choose to support someone instead. Your only job? Listen. No advice needed — just presence.",
+    body: "You can choose to support someone instead. Your only job? Listen. No advice needed - just presence.",
   },
   {
     num: "03",

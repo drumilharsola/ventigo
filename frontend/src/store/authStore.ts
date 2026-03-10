@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "varta-auth",
-      // Only persist token + profile — not email (sensitive)
+      // Only persist token + profile - not email (sensitive)
       partialize: (state) => ({
         token: state.token,
         sessionId: state.sessionId,

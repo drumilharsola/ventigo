@@ -1,10 +1,10 @@
 """
-Speaker Board — Redis-backed list of active speaker requests.
+Speaker Board - Redis-backed list of active speaker requests.
 
 Schema:
-  speak:req:{request_id}      HASH  — session_id, username, avatar_id, posted_at, request_id
-  speak:board                 ZSET  — request_id scored by posted_at (oldest first)
-  speak:by_session:{sid}      STRING — request_id for this session (for cancel lookup)
+  speak:req:{request_id}      HASH  - session_id, username, avatar_id, posted_at, request_id
+  speak:board                 ZSET  - request_id scored by posted_at (oldest first)
+  speak:by_session:{sid}      STRING - request_id for this session (for cancel lookup)
 """
 
 import json
@@ -99,12 +99,12 @@ async def get_board() -> list[dict]:
 async def accept_request(request_id: str, listener_session_id: str) -> Optional[str]:
     """
     Listener accepts a speaker request.
-    Atomically removes from board — only one listener can win.
+    Atomically removes from board - only one listener can win.
     Returns room_id on success, None if already taken.
     """
     redis = await get_redis()
 
-    # zrem returns number of removed elements — 1 = we got it, 0 = someone else did
+    # zrem returns number of removed elements - 1 = we got it, 0 = someone else did
     removed = await redis.zrem("speak:board", request_id)
     if not removed:
         return None

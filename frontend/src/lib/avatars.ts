@@ -3,7 +3,7 @@
  * ids 0-7  → "Glow" group (adventurer style, warm tones)
  * ids 8-15 → "Cool" group (adventurer-neutral style, cool tones)
  *
- * Users pick the avatar that feels like them — this IS their identity.
+ * Users pick the avatar that feels like them - this IS their identity.
  */
 
 export interface AvatarDef {

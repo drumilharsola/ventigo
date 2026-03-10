@@ -1,13 +1,13 @@
 """
 Auth routes:
-  POST  /auth/register          — create account (email + password)
-  POST  /auth/login             — sign in, get JWT
-  POST  /auth/send-verification — (re)send email verification link
-  GET   /auth/verify-email      — verify email via link token (returns fresh JWT)
-  POST  /auth/profile           — save DoB + avatar after first login
-  PATCH /auth/profile           — update username or avatar
-  GET   /auth/me                — return current session profile
-  GET   /auth/user/{u}          — public stats for a username
+  POST  /auth/register          - create account (email + password)
+  POST  /auth/login             - sign in, get JWT
+  POST  /auth/send-verification - (re)send email verification link
+  GET   /auth/verify-email      - verify email via link token (returns fresh JWT)
+  POST  /auth/profile           - save DoB + avatar after first login
+  PATCH /auth/profile           - update username or avatar
+  GET   /auth/me                - return current session profile
+  GET   /auth/user/{u}          - public stats for a username
 """
 
 import secrets
