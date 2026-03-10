@@ -126,16 +126,6 @@ async def register(body: RegisterRequest):
     pipe.set(f"session_ehash:{session_id}", email_hash)  # for issuing JWT after verify
     await pipe.execute()
 
-    try:
-        await _send_verify_link(email, session_id, redis)
-    except Exception as exc:
-        logger.error(f"Failed to send verification email to {email}: {exc}")
-        await _delete_registration_state(redis, email_hash, session_id)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="We could not send your verification email. Please try again.",
-        )
-
     return {
         "token": token,
         "session_id": session_id,

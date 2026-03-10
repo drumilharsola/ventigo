@@ -50,7 +50,6 @@ async def speak(session=Depends(require_auth)):
         username=profile["username"],
         avatar_id=profile.get("avatar_id", "0"),
     )
-    await increment_speak_count(session_id)
     return {"request_id": request_id, "status": "posted"}
 
 

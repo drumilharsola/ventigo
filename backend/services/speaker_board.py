@@ -151,8 +151,9 @@ async def accept_request(request_id: str, listener_session_id: str) -> Optional[
     await redis.delete(f"speak:by_session:{speaker_session_id}")
 
     # Create the chat room
-    from services.session import create_room
+    from services.session import create_room, increment_speak_count
     room_id = await create_room(speaker_session_id, listener_session_id)
+    await increment_speak_count(speaker_session_id)
     pipe = redis.pipeline(transaction=False)
     pipe.hset(f"speak:result:{request_id}", "room_id", room_id)
     pipe.hset(f"speak:result:{request_id}", "session_id", speaker_session_id)
