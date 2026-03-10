@@ -22,7 +22,6 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true   # skip upstream issues with no available fix
           exit-code: 1
-          version: v0.56.1
 
       - name: pip-audit - Python dependency scan
         run: |
