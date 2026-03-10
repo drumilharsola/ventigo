@@ -461,45 +461,46 @@ function ChatContent() {
       }}>
         <div className="chat-meta" style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <FlowLogo />
-          {peerUsername && (
-            <div className="chat-peer" style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 8 }}>
+        </div>
+
+        {peerUsername && (
+          <div className="chat-peer" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              onClick={() => peerUsername && setShowPeerProfile(true)}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              <img
+                src={avatarUrl(peerAvatarId, 72)}
+                alt="peer avatar"
+                width={36} height={36}
+                style={{ borderRadius: "50%", border: "2px solid rgba(184,160,232,0.3)" }}
+              />
+            </button>
+            <div>
               <button
                 onClick={() => peerUsername && setShowPeerProfile(true)}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                style={{
+                  background: "none", border: "none", cursor: peerUsername ? "pointer" : "default",
+                  fontWeight: 600, fontSize: 14, color: "var(--white)",
+                  fontFamily: "var(--font-ui)", padding: 0, display: "block",
+                }}
               >
-                <img
-                  src={avatarUrl(peerAvatarId, 72)}
-                  alt="peer avatar"
-                  width={36} height={36}
-                  style={{ borderRadius: "50%", border: "2px solid rgba(184,160,232,0.3)" }}
-                />
+                {peerUsername}
               </button>
-              <div>
-                <button
-                  onClick={() => peerUsername && setShowPeerProfile(true)}
-                  style={{
-                    background: "none", border: "none", cursor: peerUsername ? "pointer" : "default",
-                    fontWeight: 600, fontSize: 14, color: "var(--white)",
-                    fontFamily: "var(--font-ui)", padding: 0, display: "block",
-                  }}
-                >
-                  {peerUsername}
-                </button>
-                <p style={{ margin: 0, fontSize: 11, color: "var(--slate)", fontFamily: "var(--font-ui)" }}>
-                  {mode === "readonly" ? "Past conversations" : connected ? "Live · anonymous" : "Connecting…"}
-                </p>
-              </div>
-              {peerLeft && (
-                <span style={{ fontSize: 11, color: "var(--danger)", fontFamily: "var(--font-ui)" }}>disconnected</span>
-              )}
+              <p style={{ margin: 0, fontSize: 11, color: "var(--slate)", fontFamily: "var(--font-ui)" }}>
+                {mode === "readonly" ? "Past conversations" : connected ? "Live · anonymous" : "Connecting…"}
+              </p>
             </div>
-          )}
-          {!peerUsername && (
-            <span style={{ fontSize: 13, color: "var(--slate)", fontFamily: "var(--font-ui)", marginLeft: 8 }}>
-              {mode === "checking" ? "Loading…" : "Waiting for someone…"}
-            </span>
-          )}
-        </div>
+            {peerLeft && (
+              <span style={{ fontSize: 11, color: "var(--danger)", fontFamily: "var(--font-ui)" }}>disconnected</span>
+            )}
+          </div>
+        )}
+        {!peerUsername && (
+          <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", fontSize: 13, color: "var(--slate)", fontFamily: "var(--font-ui)" }}>
+            {mode === "checking" ? "Loading…" : "Waiting for someone…"}
+          </span>
+        )}
 
         <div className="chat-header-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {mode === "live" && (<>

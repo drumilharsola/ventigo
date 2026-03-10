@@ -449,7 +449,7 @@ function VerifyContent() {
               <p style={{ fontSize: 14, fontWeight: 300, color: "var(--slate)", marginBottom: 12, lineHeight: 1.7, fontFamily: "var(--font-ui)" }}>
                 We sent a verification link to{" "}
                 <span style={{ color: "var(--fog)" }}>{email}</span>.
-                Click it to unlock the keeper role.
+                Click it to unlock the listner role.
               </p>
               <p style={{ fontSize: 13, fontWeight: 300, color: "var(--slate)", marginBottom: 40, lineHeight: 1.6, fontFamily: "var(--font-ui)" }}>
                 You can still set up your profile and start venting in the meantime.

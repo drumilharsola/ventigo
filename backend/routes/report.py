@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from middleware.jwt_auth import require_auth
-from services.session import get_active_room_id_for_session, get_room
+from services.session import get_active_room_id_for_session, get_room, get_room_history
 from db.redis_client import get_redis
 
 router = APIRouter(prefix="/report", tags=["report"])
@@ -46,11 +46,16 @@ async def submit_report(body: ReportRequest, payload: dict = Depends(require_aut
         )
 
     session_id = payload["sub"]
-    room_id = body.room_id or await get_active_room_id_for_session(session_id)
+    room_id = body.room_id
+    if not room_id:
+        room_id = await get_active_room_id_for_session(session_id)
+    if not room_id:
+        history = await get_room_history(session_id)
+        room_id = history[0] if history else None
     if not room_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You must be in an active session or provide a recent room_id to report",
+            detail="Please provide a room_id to report",
         )
 
     room = await get_room(room_id)
