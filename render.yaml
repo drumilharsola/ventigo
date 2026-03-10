@@ -6,7 +6,6 @@ services:
     name: UNBurDEN-backend
     runtime: python
     rootDir: backend
-    pythonVersion: "3.12.12"
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     plan: free
