@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = "UNBurDEN <noreply@UNBurDEN.app>"
+    SMTP_FROM: str = ""
 
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_HOURS: int = 168
@@ -25,10 +25,11 @@ class Settings(BaseSettings):
     HISTORY_TTL_HOURS: int = 1
     OTP_EXPIRE_MINUTES: int = 10
 
-    GEO_API_URL: str = "http://ip-api.com/json/"
-
     # Turn this on in production once you want to require email verification for anchors
     REQUIRE_EMAIL_VERIFICATION: bool = False
+
+    # Admin API key for tenant management endpoints
+    ADMIN_API_KEY: str = ""
 
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 

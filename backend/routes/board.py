@@ -27,7 +27,8 @@ from config import get_settings
 from services.matchmaker import is_queued
 from services.session import get_profile, increment_speak_count, increment_listen_count, get_blocked_set
 from services.session_token import decode_session_token
-from db.redis_client import get_redis
+from db.redis_client import get_redis, tenant_key
+from services.analytics import track_board_post
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/board", tags=["board"])
@@ -39,24 +40,28 @@ router = APIRouter(prefix="/board", tags=["board"])
 async def speak(session=Depends(require_auth)):
     """Post a speaker request to the public board."""
     session_id = session["sub"]
-    profile = await get_profile(session_id)
+    tid = session.get("tid", "default")
+    profile = await get_profile(session_id, tid=tid)
     if not profile:
         raise HTTPException(status_code=400, detail="Complete your profile first")
-    if await is_queued(session_id):
+    if await is_queued(session_id, tid=tid):
         raise HTTPException(status_code=409, detail="Leave the matchmaking queue before posting")
 
     request_id = await post_request(
         session_id=session_id,
         username=profile["username"],
         avatar_id=profile.get("avatar_id", "0"),
+        tid=tid,
     )
+    await track_board_post(tid=tid)
     return {"request_id": request_id, "status": "posted"}
 
 
 @router.delete("/speak")
 async def cancel_speak(session=Depends(require_auth)):
     """Cancel own active speaker request."""
-    await cancel_request(session["sub"])
+    tid = session.get("tid", "default")
+    await cancel_request(session["sub"], tid=tid)
     return {"status": "cancelled"}
 
 
@@ -64,9 +69,10 @@ async def cancel_speak(session=Depends(require_auth)):
 async def list_requests(session=Depends(require_auth)):
     """Return the current speaker board (REST fallback)."""
     session_id = session["sub"]
-    own_request_id = await get_request_for_session(session_id)
-    blocked = await get_blocked_set(session_id)
-    board = await get_board()
+    tid = session.get("tid", "default")
+    own_request_id = await get_request_for_session(session_id, tid=tid)
+    blocked = await get_blocked_set(session_id, tid=tid)
+    board = await get_board(tid=tid)
     board = [
         r for r in board
         if r.get("request_id") != own_request_id
@@ -78,7 +84,8 @@ async def list_requests(session=Depends(require_auth)):
 @router.get("/request/{request_id}")
 async def get_request_status(request_id: str, session=Depends(require_auth)):
     """Return the caller's active speaker request metadata."""
-    data = await get_request(request_id)
+    tid = session.get("tid", "default")
+    data = await get_request(request_id, tid=tid)
     if not data:
         raise HTTPException(status_code=404, detail="Request not found or has expired")
     request_owner = data.get("session_id")
@@ -92,11 +99,12 @@ async def accept(request_id: str, session=Depends(require_auth)):
     """Accept a speaker request. Requires verified email - creates a chat room."""
     settings = get_settings()
     session_id = session["sub"]
+    tid = session.get("tid", "default")
 
-    profile = await get_profile(session_id)
+    profile = await get_profile(session_id, tid=tid)
     if not profile:
         raise HTTPException(status_code=400, detail="Complete your profile first")
-    if await is_queued(session_id):
+    if await is_queued(session_id, tid=tid):
         raise HTTPException(status_code=409, detail="Leave the matchmaking queue before accepting")
     if settings.REQUIRE_EMAIL_VERIFICATION:
         if profile.get("email_verified") != "1":
@@ -105,20 +113,19 @@ async def accept(request_id: str, session=Depends(require_auth)):
                 detail="Please verify your email to accept requests",
             )
 
-    # Check mutual block status before creating room
-    req_data = await get_request(request_id)
+    req_data = await get_request(request_id, tid=tid)
     if req_data:
         speaker_session_id = req_data.get("session_id", "")
         if speaker_session_id:
-            my_blocked = await get_blocked_set(session_id)
-            their_blocked = await get_blocked_set(speaker_session_id)
+            my_blocked = await get_blocked_set(session_id, tid=tid)
+            their_blocked = await get_blocked_set(speaker_session_id, tid=tid)
             if speaker_session_id in my_blocked or session_id in their_blocked:
                 raise HTTPException(status_code=403, detail="Cannot connect with this user")
 
-    room_id = await accept_request(request_id, session_id)
+    room_id = await accept_request(request_id, session_id, tid=tid)
     if room_id is None:
         raise HTTPException(status_code=409, detail="Request already taken")
-    await increment_listen_count(session_id)
+    await increment_listen_count(session_id, tid=tid)
     return {"room_id": room_id}
 
 
@@ -150,14 +157,15 @@ async def board_ws(websocket: WebSocket, token: str = ""):
         return
 
     session_id = claims["sub"]
+    tid = claims.get("tid", "default")
 
     redis = await get_redis()
     pubsub = redis.pubsub()
-    await pubsub.subscribe("board:updates", f"session:{session_id}")
+    await pubsub.subscribe(tenant_key(tid, "board:updates"), tenant_key(tid, f"session:{session_id}"))
 
     # Send current board state immediately
-    board = await get_board()
-    own_request_id = await get_request_for_session(session_id)
+    board = await get_board(tid=tid)
+    own_request_id = await get_request_for_session(session_id, tid=tid)
     await websocket.send_json({
         "event": "board_state",
         "requests": [request for request in board if request.get("request_id") != own_request_id],
@@ -192,7 +200,7 @@ async def board_ws(websocket: WebSocket, token: str = ""):
     finally:
         pump_task.cancel()
         try:
-            await pubsub.unsubscribe("board:updates", f"session:{session_id}")
+            await pubsub.unsubscribe(tenant_key(tid, "board:updates"), tenant_key(tid, f"session:{session_id}"))
             await pubsub.reset()
         except Exception:
             pass

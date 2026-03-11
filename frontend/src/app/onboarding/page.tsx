@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FlowLogo } from "@/components/FlowLogo";
 import { parseIntent, intentHeading, intentBody } from "@/lib/intent";
+import { brand } from "@/lib/brand";
 
 const STEPS = [
   {
@@ -72,7 +73,7 @@ function OnboardingContent() {
 
         <div style={{ marginBottom: 22, textAlign: "center", maxWidth: 540 }}>
           <span className="pill pill-accent" style={{ marginBottom: 14 }}>
-            {intent === "support" ? "Keeper path" : intent === "speak" ? "Sharer path" : "How Unburden works"}
+            {intent === "support" ? "Keeper path" : intent === "speak" ? "Sharer path" : `How ${brand.appNamePlain} works`}
           </span>
           <h1 style={{
             fontFamily: "var(--font-display)",

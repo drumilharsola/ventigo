@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { AVATARS, avatarUrl } from "@/lib/avatars";
@@ -31,6 +32,9 @@ function ProfileContent() {
   const [rerollName, setRerollName] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!_hasHydrated) return;
@@ -80,6 +84,37 @@ function ProfileContent() {
       setSaving(false);
     }
   };
+
+  const handleExportData = useCallback(async () => {
+    if (!token) return;
+    setExporting(true);
+    try {
+      const data = await api.exportData(token);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "my-data.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* ignore */
+    } finally {
+      setExporting(false);
+    }
+  }, [token]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (!token) return;
+    setDeleting(true);
+    try {
+      await api.deleteAccount(token);
+      useAuthStore.getState().clear();
+      router.push("/");
+    } catch {
+      setDeleting(false);
+    }
+  }, [token, router]);
 
   // ══════════════════════════════════════════════════
   // VIEW MODE — profile already set up
@@ -202,6 +237,70 @@ function ProfileContent() {
                 >
                   Edit profile
                 </button>
+
+                {/* GDPR & Legal */}
+                <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+                    <button
+                      onClick={handleExportData}
+                      disabled={exporting}
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: 12, opacity: exporting ? 0.5 : 1 }}
+                    >
+                      {exporting ? "Exporting…" : "Export my data"}
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: 12, color: "var(--danger)" }}
+                    >
+                      Delete my account
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, fontSize: 12, fontFamily: "var(--font-ui)" }}>
+                    <Link href="/privacy" style={{ color: "var(--slate)", textDecoration: "underline" }}>Privacy Policy</Link>
+                    <Link href="/terms" style={{ color: "var(--slate)", textDecoration: "underline" }}>Terms of Service</Link>
+                  </div>
+                </div>
+
+                {showDeleteConfirm && (
+                  <div style={{
+                    position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+                    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100,
+                  }}>
+                    <div style={{
+                      background: "var(--ink)", border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: "var(--r-lg)", padding: 32, maxWidth: 400, width: "90%",
+                    }}>
+                      <h3 style={{ color: "var(--white)", fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
+                        Delete your account?
+                      </h3>
+                      <p style={{ color: "var(--slate)", fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+                        This will permanently delete your profile, chat history, and all associated data. This action cannot be undone.
+                      </p>
+                      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                        <button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="btn btn-ghost btn-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleDeleteAccount}
+                          disabled={deleting}
+                          style={{
+                            padding: "8px 20px", borderRadius: 8, border: "none",
+                            background: "var(--danger)", color: "white",
+                            fontSize: 13, fontWeight: 600, cursor: "pointer",
+                            opacity: deleting ? 0.5 : 1,
+                          }}
+                        >
+                          {deleting ? "Deleting…" : "Yes, delete everything"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <>

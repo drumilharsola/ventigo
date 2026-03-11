@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, AuthError } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { brand } from "@/lib/brand";
 
 const REASONS = [
   { value: "harassment",            label: "Harassment" },
@@ -61,7 +62,7 @@ export function ReportModal({ onClose, roomId }: ReportModalProps) {
             <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
             <h3 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "var(--white)", marginBottom: 6 }}>Report submitted</h3>
             <p style={{ fontSize: 13, color: "var(--slate)", fontWeight: 300, marginBottom: 20, lineHeight: 1.6, fontFamily: "var(--font-ui)" }}>
-              Thank you for helping keep UNBurDEN safe.
+              Thank you for helping keep {brand.appName} safe.
             </p>
             <button onClick={onClose} className="btn btn-accent btn-md" style={{ width: "100%" }}>Close</button>
           </div>

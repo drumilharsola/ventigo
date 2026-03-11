@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════
-   UNBURDEN BRAND TOKENS
+   BRAND TOKENS
+   Default values — overridden at runtime by
+   layout.tsx injecting brand.config.json values.
 ═══════════════════════════════════════════ */
 :root {
   --ink:         #0b2f2a;           /* deep teal */

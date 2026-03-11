@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { brand } from "@/lib/brand";
 
 interface FlowLogoProps {
   dark?: boolean;
@@ -62,7 +63,7 @@ export function FlowLogo({ dark = false, href = "/" }: FlowLogoProps) {
           color: dark ? "var(--ink)" : "var(--white)",
         }}
       >
-        Unb<em style={{ fontStyle: "italic", color: "var(--accent)" }}>ur</em>den
+        {brand.logo.prefix}<em style={{ fontStyle: "italic", color: "var(--accent)" }}>{brand.logo.emphasis}</em>{brand.logo.suffix}
       </span>
     </Link>
   );

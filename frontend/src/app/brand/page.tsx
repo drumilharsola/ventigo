@@ -1,6 +1,7 @@
 "use client";
 
 import { FlowLogo } from "@/components/FlowLogo";
+import { brand } from "@/lib/brand";
 
 const COLORS = [
   { name: "--ink", value: "#0d0d0f", label: "Ink" },
@@ -139,7 +140,7 @@ export default function BrandPage() {
 
         <footer style={{ paddingTop: 24, borderTop: "1px solid rgba(0,0,0,0.08)" }}>
           <p style={{ fontSize: 11, color: "var(--mist)", fontFamily: "var(--font-ui)" }}>
-            UNBurDEN Brand System · Internal reference only
+            {brand.appName} Brand System · Internal reference only
           </p>
         </footer>
       </div>

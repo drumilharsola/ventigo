@@ -16,7 +16,8 @@ def _settings():
     return get_settings()
 
 
-def create_session_token(email_hash: str, session_id: str | None = None) -> tuple[str, str]:
+def create_session_token(email_hash: str, session_id: str | None = None,
+                         tenant_id: str = "default") -> tuple[str, str]:
     """
     Issue a JWT.
     Returns (token, session_id).
@@ -29,6 +30,7 @@ def create_session_token(email_hash: str, session_id: str | None = None) -> tupl
     payload = {
         "sub": sid,
         "eh": email_hash,       # email hash - never plaintext
+        "tid": tenant_id,       # tenant isolation
         "iat": now,
         "exp": expire,
     }

@@ -1,13 +1,13 @@
 """
-Matchmaking engine - country-keyed queues in Redis.
+Matchmaking engine - country-keyed queues in Redis, tenant-scoped.
 
 Queue keys:
-  queue:global         - users who chose "global"
-  queue:{COUNTRY}      - e.g. queue:IN, queue:US
+  t:{tid}:queue:global         - users who chose "global"
+  t:{tid}:queue:{COUNTRY}      - e.g. t:default:queue:IN
 
-Each entry is a JSON blob: {"session_id": ..., "enqueued_at": ...}
+Each entry is a JSON blob: {"session_id": ..., "enqueued_at": ..., "tid": ...}
 
-The matchmaker background task runs every second and pairs users.
+The matchmaker background task runs every second and pairs users within the same tenant.
 """
 
 import asyncio
@@ -16,69 +16,67 @@ import time
 import logging
 from typing import Optional
 
-from db.redis_client import get_redis
+from db.redis_client import get_redis, tenant_key
 from services.session import create_room
+from services.analytics import track_session_created
 
 logger = logging.getLogger(__name__)
 
 _matchmaker_task: Optional[asyncio.Task] = None
 
 
-def _queue_key(country: str) -> str:
-    return f"queue:{country.upper()}"
+def _queue_key(country: str, tid: str = "default") -> str:
+    return tenant_key(tid, f"queue:{country.upper()}")
 
 
-async def enqueue(session_id: str, country: str) -> None:
+async def enqueue(session_id: str, country: str, tid: str = "default") -> None:
     """Add a user to the appropriate matchmaking queue."""
     redis = await get_redis()
-    entry = json.dumps({"session_id": session_id, "enqueued_at": int(time.time())})
-    key = _queue_key(country)
+    entry = json.dumps({"session_id": session_id, "enqueued_at": int(time.time()), "tid": tid})
+    key = _queue_key(country, tid)
     await redis.rpush(key, entry)
-    # Store which queue this session is in (for dequeue on cancel)
-    await redis.setex(f"queued:{session_id}", 300, key)
+    await redis.setex(tenant_key(tid, f"queued:{session_id}"), 300, key)
 
 
-async def dequeue(session_id: str) -> None:
+async def dequeue(session_id: str, tid: str = "default") -> None:
     """Remove a user from their queue (on cancel or disconnect)."""
     redis = await get_redis()
-    queue_key = await redis.get(f"queued:{session_id}")
-    if not queue_key:
+    queue_key_val = await redis.get(tenant_key(tid, f"queued:{session_id}"))
+    if not queue_key_val:
         return
-    # Scan list and remove all entries matching this session_id
-    items = await redis.lrange(queue_key, 0, -1)
+    items = await redis.lrange(queue_key_val, 0, -1)
     for item in items:
         try:
             data = json.loads(item)
             if data.get("session_id") == session_id:
-                await redis.lrem(queue_key, 1, item)
+                await redis.lrem(queue_key_val, 1, item)
                 break
         except (json.JSONDecodeError, KeyError):
             continue
-    await redis.delete(f"queued:{session_id}")
+    await redis.delete(tenant_key(tid, f"queued:{session_id}"))
 
 
-async def is_queued(session_id: str) -> bool:
+async def is_queued(session_id: str, tid: str = "default") -> bool:
     redis = await get_redis()
-    return bool(await redis.get(f"queued:{session_id}"))
+    return bool(await redis.get(tenant_key(tid, f"queued:{session_id}")))
 
 
-async def _try_match_queue(queue_key: str) -> Optional[tuple[str, str]]:
+async def _try_match_queue(queue_key_val: str, tid: str = "default") -> Optional[tuple[str, str]]:
     """
     Atomically pop two users from a queue.
     Returns (session_a, session_b) or None.
     """
     redis = await get_redis()
-    count = await redis.llen(queue_key)
+    count = await redis.llen(queue_key_val)
     if count < 2:
         return None
 
-    raw_a = await redis.lpop(queue_key)
-    raw_b = await redis.lpop(queue_key)
+    raw_a = await redis.lpop(queue_key_val)
+    raw_b = await redis.lpop(queue_key_val)
 
     if raw_a is None or raw_b is None:
-        # Put back if only one was popped
         if raw_a:
-            await redis.lpush(queue_key, raw_a)
+            await redis.lpush(queue_key_val, raw_a)
         return None
 
     try:
@@ -87,31 +85,36 @@ async def _try_match_queue(queue_key: str) -> Optional[tuple[str, str]]:
     except (json.JSONDecodeError, KeyError):
         return None
 
-    # Clean up queued markers
-    await redis.delete(f"queued:{sid_a}", f"queued:{sid_b}")
+    await redis.delete(tenant_key(tid, f"queued:{sid_a}"), tenant_key(tid, f"queued:{sid_b}"))
     return sid_a, sid_b
 
 
 async def _matchmaker_loop() -> None:
-    """Background loop that pairs users from queues."""
+    """Background loop that pairs users from queues, per-tenant."""
     redis = await get_redis()
     logger.info("Matchmaker started")
 
     while True:
         try:
-            # Get all queue keys
-            keys = await redis.keys("queue:*")
+            # Scan all tenant-scoped queue keys: t:*:queue:*
+            keys = await redis.keys("t:*:queue:*")
 
             for key in keys:
-                result = await _try_match_queue(key)
+                # Extract tenant_id from key: t:{tid}:queue:{country}
+                parts = key.split(":", 3)
+                if len(parts) < 4:
+                    continue
+                tid = parts[1]
+
+                result = await _try_match_queue(key, tid)
                 if result:
                     sid_a, sid_b = result
-                    room_id = await create_room(sid_a, sid_b)
-                    # Signal both users via Redis Pub/Sub
+                    room_id = await create_room(sid_a, sid_b, tid=tid)
+                    await track_session_created(tid=tid)
                     payload = json.dumps({"event": "matched", "room_id": room_id})
-                    await redis.publish(f"session:{sid_a}", payload)
-                    await redis.publish(f"session:{sid_b}", payload)
-                    logger.info(f"Matched {sid_a} <-> {sid_b} → room {room_id}")
+                    await redis.publish(tenant_key(tid, f"session:{sid_a}"), payload)
+                    await redis.publish(tenant_key(tid, f"session:{sid_b}"), payload)
+                    logger.info(f"Matched {sid_a} <-> {sid_b} → room {room_id} (tenant={tid})")
 
         except Exception as exc:
             logger.exception(f"Matchmaker error: {exc}")

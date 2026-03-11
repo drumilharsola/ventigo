@@ -9,6 +9,7 @@ console so you can click it directly during local development.
 import logging
 import httpx
 from config import get_settings
+from brand_config import brand
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ async def send_verification_email(to_email: str, verify_url: str) -> None:
     <html>
     <body style="font-family:sans-serif;background:#0f0c1a;color:#f5f5f5;padding:40px;">
       <div style="max-width:480px;margin:auto;background:#1d1829;border-radius:16px;padding:40px;">
-        <h2 style="color:#b8a4f4;margin-top:0;font-size:22px;letter-spacing:-0.02em;">Unburden</h2>
+        <h2 style="color:#b8a4f4;margin-top:0;font-size:22px;letter-spacing:-0.02em;">{brand.app_name_plain}</h2>
         <p style="font-size:15px;color:#c8c4e2;margin:0 0 24px;">One click to verify your email address:</p>
         <a href="{verify_url}"
            style="display:inline-block;padding:14px 28px;background:#b8a4f4;color:#0f0c1a;
@@ -39,7 +40,7 @@ async def send_verification_email(to_email: str, verify_url: str) -> None:
           This link expires in <strong style="color:#9e9ab8;">24 hours</strong>.
         </p>
         <hr style="border:none;border-top:1px solid #2f2a42;margin:24px 0;"/>
-        <p style="font-size:11px;color:#615c80;">If you didn't create an Unburden account, ignore this email.</p>
+        <p style="font-size:11px;color:#615c80;">If you didn&rsquo;t create a {brand.app_name_plain} account, ignore this email.</p>
       </div>
     </body>
     </html>
@@ -53,12 +54,12 @@ async def send_verification_email(to_email: str, verify_url: str) -> None:
                 "Content-Type": "application/json",
             },
             json={
-                "sender": {"name": "Unburden", "email": settings.SMTP_FROM},
+                "sender": {"name": brand.sender_name, "email": settings.SMTP_FROM or brand.sender_email},
                 "to": [{"email": to_email}],
-                "subject": "Verify your Unburden email",
+                "subject": f"Verify your {brand.app_name_plain} email",
                 "htmlContent": html,
                 "textContent": (
-                    f"Verify your Unburden account:\n{verify_url}\n\n"
+                    f"Verify your {brand.app_name_plain} account:\n{verify_url}\n\n"
                     "This link expires in 24 hours."
                 ),
             },

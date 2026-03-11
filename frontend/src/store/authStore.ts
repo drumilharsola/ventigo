@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { brand } from "@/lib/brand";
+
 interface AuthState {
   token: string | null;
   sessionId: string | null;
@@ -54,7 +56,7 @@ export const useAuthStore = create<AuthState>()(
         }),
     }),
     {
-      name: "UNBurDEN-auth",
+      name: `${brand.appName}-auth`,
       // Only persist token + profile - not email (sensitive)
       partialize: (state) => ({
         token: state.token,

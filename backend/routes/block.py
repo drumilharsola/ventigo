@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from middleware.jwt_auth import require_auth
-from db.redis_client import get_redis
+from db.redis_client import get_redis, tenant_key
 
 router = APIRouter(prefix="/block", tags=["block"])
 
@@ -29,16 +29,18 @@ class BlockRequest(BaseModel):
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def block_user(body: BlockRequest, session: dict = Depends(require_auth)):
     session_id = session["sub"]
+    tid = session.get("tid", "default")
 
     if not body.peer_session_id or body.peer_session_id == session_id:
         raise HTTPException(status_code=400, detail="Invalid peer")
 
     redis = await get_redis()
 
-    await redis.sadd(f"blocked:{session_id}", body.peer_session_id)
-    await redis.expire(f"blocked:{session_id}", BLOCK_TTL)
+    blocked_key = tenant_key(tid, f"blocked:{session_id}")
+    await redis.sadd(blocked_key, body.peer_session_id)
+    await redis.expire(blocked_key, BLOCK_TTL)
 
-    info_key = f"block_info:{session_id}:{body.peer_session_id}"
+    info_key = tenant_key(tid, f"block_info:{session_id}:{body.peer_session_id}")
     pipe = redis.pipeline()
     pipe.hset(info_key, "username", body.username[:64])
     pipe.hset(info_key, "avatar_id", str(max(0, body.avatar_id)))
@@ -52,22 +54,24 @@ async def block_user(body: BlockRequest, session: dict = Depends(require_auth)):
 @router.delete("/{peer_session_id}", status_code=status.HTTP_200_OK)
 async def unblock_user(peer_session_id: str, session: dict = Depends(require_auth)):
     session_id = session["sub"]
+    tid = session.get("tid", "default")
     redis = await get_redis()
-    await redis.srem(f"blocked:{session_id}", peer_session_id)
-    await redis.delete(f"block_info:{session_id}:{peer_session_id}")
+    await redis.srem(tenant_key(tid, f"blocked:{session_id}"), peer_session_id)
+    await redis.delete(tenant_key(tid, f"block_info:{session_id}:{peer_session_id}"))
     return {"message": "User unblocked"}
 
 
 @router.get("")
 async def get_blocked_users(session: dict = Depends(require_auth)):
     session_id = session["sub"]
+    tid = session.get("tid", "default")
     redis = await get_redis()
 
-    peer_ids = await redis.smembers(f"blocked:{session_id}")
+    peer_ids = await redis.smembers(tenant_key(tid, f"blocked:{session_id}"))
 
     blocked = []
     for peer_id in peer_ids:
-        info = await redis.hgetall(f"block_info:{session_id}:{peer_id}") or {}
+        info = await redis.hgetall(tenant_key(tid, f"block_info:{session_id}:{peer_id}")) or {}
         blocked.append({
             "peer_session_id": peer_id,
             "username": info.get("username", "Unknown"),

@@ -8,6 +8,7 @@ from jwt.exceptions import PyJWTError
 from typing import Optional
 
 from services.session_token import decode_session_token
+from db.redis_client import get_redis, tenant_key
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -29,6 +30,18 @@ async def require_auth(
         payload = decode_session_token(credentials.credentials)
         if not payload.get("sub"):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        # Ensure tenant_id is always present in the auth payload
+        if "tid" not in payload:
+            payload["tid"] = "default"
+        # Check if user is suspended
+        redis = await get_redis()
+        tid = payload["tid"]
+        suspended = await redis.hget(tenant_key(tid, f"profile:{payload['sub']}"), "suspended")
+        if suspended == "1":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account suspended",
+            )
         return payload
     except PyJWTError:
         raise HTTPException(

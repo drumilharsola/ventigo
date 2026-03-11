@@ -1,0 +1,25 @@
+{
+  "appName": "UNBurDEN",
+  "appNamePlain": "Unburden",
+  "tagline": "a safe place to be heard",
+  "description": "Anonymous peer support in 15-minute sessions.",
+  "supportEmail": "support@unburden.app",
+  "senderName": "Unburden",
+  "senderEmail": "noreply@unburden.app",
+  "logo": {
+    "text": "Unburden",
+    "prefix": "Unb",
+    "emphasis": "ur",
+    "suffix": "den"
+  },
+  "theme": {
+    "ink": "#0B2F2A",
+    "charcoal": "#1D3D35",
+    "accent": "#62B49C",
+    "accentHover": "#7BD1B2",
+    "danger": "#E88888",
+    "success": "#7ECAA0",
+    "fontDisplay": "Comfortaa",
+    "fontUI": "Inter"
+  }
+}

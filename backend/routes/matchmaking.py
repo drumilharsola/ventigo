@@ -16,7 +16,7 @@ from middleware.jwt_auth import require_auth
 from services.matchmaker import enqueue, dequeue, is_queued
 from services.session import get_profile, get_active_room_id_for_session
 from services.speaker_board import get_request_for_session
-from db.redis_client import get_redis
+from db.redis_client import get_redis, tenant_key
 
 router = APIRouter(prefix="/match", tags=["matchmaking"])
 
@@ -28,24 +28,26 @@ class JoinRequest(BaseModel):
 @router.post("/join", status_code=status.HTTP_202_ACCEPTED)
 async def join_queue(body: JoinRequest, payload: dict = Depends(require_auth)):
     session_id = payload["sub"]
-    profile = await get_profile(session_id)
+    tid = payload.get("tid", "default")
+    profile = await get_profile(session_id, tid=tid)
     if not profile:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Complete profile setup first")
 
-    if await is_queued(session_id):
+    if await is_queued(session_id, tid=tid):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already in the matchmaking queue")
-    if await get_request_for_session(session_id):
+    if await get_request_for_session(session_id, tid=tid):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cancel your speaker request before joining the queue")
 
     country = body.country.upper() if body.country != "global" else "global"
-    await enqueue(session_id, country)
+    await enqueue(session_id, country, tid=tid)
     return {"message": "Joined queue", "country": country}
 
 
 @router.post("/cancel")
 async def cancel_queue(payload: dict = Depends(require_auth)):
     session_id = payload["sub"]
-    await dequeue(session_id)
+    tid = payload.get("tid", "default")
+    await dequeue(session_id, tid=tid)
     return {"message": "Left queue"}
 
 
@@ -53,7 +55,8 @@ async def cancel_queue(payload: dict = Depends(require_auth)):
 async def match_status(payload: dict = Depends(require_auth)):
     """Polling fallback - check if user has been matched to a room."""
     session_id = payload["sub"]
-    room_id = await get_active_room_id_for_session(session_id)
+    tid = payload.get("tid", "default")
+    room_id = await get_active_room_id_for_session(session_id, tid=tid)
     if room_id:
         return {"matched": True, "room_id": room_id}
     return {"matched": False}
@@ -72,6 +75,7 @@ async def matchmaking_ws(websocket: WebSocket, token: str = ""):
     try:
         payload = decode_session_token(token)
         session_id = payload["sub"]
+        tid = payload.get("tid", "default")
     except (PyJWTError, KeyError):
         await websocket.close(code=4001, reason="Unauthorized")
         return
@@ -81,7 +85,7 @@ async def matchmaking_ws(websocket: WebSocket, token: str = ""):
 
     # Subscribe to personal channel
     pubsub = redis.pubsub()
-    await pubsub.subscribe(f"session:{session_id}")
+    await pubsub.subscribe(tenant_key(tid, f"session:{session_id}"))
 
     try:
         async for message in pubsub.listen():
@@ -93,5 +97,5 @@ async def matchmaking_ws(websocket: WebSocket, token: str = ""):
     except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     finally:
-        await pubsub.unsubscribe(f"session:{session_id}")
+        await pubsub.unsubscribe(tenant_key(tid, f"session:{session_id}"))
         await pubsub.aclose()

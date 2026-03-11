@@ -41,7 +41,7 @@ from services.session import (
     mark_room_message_started,
 )
 from middleware.jwt_auth import require_auth
-from db.redis_client import get_redis
+from db.redis_client import get_redis, tenant_key
 from config import get_settings
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -63,8 +63,8 @@ def _sanitize(text: str) -> str:
     return bleach.clean(text, tags=[], strip=True)[:MAX_MESSAGE_LENGTH]
 
 
-async def _publish(redis, session_id: str, payload: dict) -> None:
-    await redis.publish(f"chat:{session_id}", json.dumps(payload))
+async def _publish(redis, session_id: str, payload: dict, tid: str = "default") -> None:
+    await redis.publish(tenant_key(tid, f"chat:{session_id}"), json.dumps(payload))
 
 
 def _room_event(room_id: str, payload: dict) -> dict:
@@ -90,12 +90,13 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
     try:
         payload = decode_session_token(token)
         session_id = payload["sub"]
+        tid = payload.get("tid", "default")
     except (PyJWTError, KeyError):
         await websocket.close(code=4001, reason="Unauthorized")
         return
 
     # ── Validate room membership via room hash ─────────────────────────────────
-    room = await get_room(room_id)
+    room = await get_room(room_id, tid=tid)
     if not room:
         await websocket.close(code=4004, reason="Room expired")
         return
@@ -109,7 +110,7 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
         await websocket.close(code=4010, reason="Room ended")
         return
 
-    profile = await get_profile(session_id)
+    profile = await get_profile(session_id, tid=tid)
     if not profile:
         await websocket.close(code=4002, reason="Profile missing")
         return
@@ -120,19 +121,19 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
 
     # ── Subscribe to own channel ───────────────────────────────────────────────
     pubsub = redis.pubsub()
-    await pubsub.subscribe(f"chat:{session_id}")
+    await pubsub.subscribe(tenant_key(tid, f"chat:{session_id}"))
 
     # ── Send history ──────────────────────────────────────────────────────────
-    history = await get_messages(room_id)
+    history = await get_messages(room_id, tid=tid)
     if history:
         await websocket.send_json({"type": "history", "messages": history})
     await websocket.send_json(_room_event(room_id, _timer_status_payload(room)))
 
     async def _send_ticks():
         """Emit countdown ticks every 5 seconds; fire session_end at T=0."""
-        tick_lock_key = f"room:{room_id}:tick_lock"
+        tick_lock_key = tenant_key(tid, f"room:{room_id}:tick_lock")
         while True:
-            room_now = await get_room(room_id)
+            room_now = await get_room(room_id, tid=tid)
             if not room_now or room_now.get("status") != "active":
                 break
 
@@ -157,14 +158,14 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
             remaining = max(0, duration - elapsed)
 
             tick = _room_event(room_id, {"type": "tick", "remaining": remaining})
-            await _publish(redis, session_id, tick)
-            await _publish(redis, peer_id, tick)
+            await _publish(redis, session_id, tick, tid=tid)
+            await _publish(redis, peer_id, tick, tid=tid)
 
             if remaining == 0:
                 end_event = _room_event(room_id, {"type": "session_end"})
-                await _publish(redis, session_id, end_event)
-                await _publish(redis, peer_id, end_event)
-                await close_room(room_id)
+                await _publish(redis, session_id, end_event, tid=tid)
+                await _publish(redis, peer_id, end_event, tid=tid)
+                await close_room(room_id, tid=tid)
                 break
 
             await asyncio.sleep(5)
@@ -207,49 +208,47 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
                 }
                 if client_id:
                     record["client_id"] = client_id
-                await append_message(room_id, record)
-                room_now = await mark_room_message_started(room_id, session_id)
+                await append_message(room_id, record, tid=tid)
+                room_now = await mark_room_message_started(room_id, session_id, tid=tid)
                 message_event = _room_event(room_id, record)
-                # Relay to both sides via pubsub
-                await _publish(redis, session_id, message_event)
-                await _publish(redis, peer_id, message_event)
+                await _publish(redis, session_id, message_event, tid=tid)
+                await _publish(redis, peer_id, message_event, tid=tid)
                 if room_now:
                     timer_status = _room_event(room_id, _timer_status_payload(room_now))
-                    await _publish(redis, session_id, timer_status)
-                    await _publish(redis, peer_id, timer_status)
+                    await _publish(redis, session_id, timer_status, tid=tid)
+                    await _publish(redis, peer_id, timer_status, tid=tid)
 
             elif msg_type == "typing_start":
-                await _publish(redis, peer_id, _room_event(room_id, {"type": "typing_start", "from": username}))
+                await _publish(redis, peer_id, _room_event(room_id, {"type": "typing_start", "from": username}), tid=tid)
 
             elif msg_type == "typing_stop":
-                await _publish(redis, peer_id, _room_event(room_id, {"type": "typing_stop", "from": username}))
+                await _publish(redis, peer_id, _room_event(room_id, {"type": "typing_stop", "from": username}), tid=tid)
 
             elif msg_type == "extend":
-                room_now = await get_room(room_id)
+                room_now = await get_room(room_id, tid=tid)
                 if room_now and room_now.get("extended") == "0":
-                    await extend_room(room_id)
-                    updated_room = await get_room(room_id)
+                    await extend_room(room_id, tid=tid)
+                    updated_room = await get_room(room_id, tid=tid)
                     if not updated_room:
                         continue
                     timer_status = _room_event(room_id, _timer_status_payload(updated_room))
                     new_remaining = timer_status["remaining"]
                     extended_event = _room_event(room_id, {"type": "extended", "remaining": new_remaining})
-                    await _publish(redis, session_id, extended_event)
-                    await _publish(redis, peer_id, extended_event)
+                    await _publish(redis, session_id, extended_event, tid=tid)
+                    await _publish(redis, peer_id, extended_event, tid=tid)
 
             elif msg_type == "leave":
-                await _publish(redis, peer_id, _room_event(room_id, {"type": "peer_left"}))
-                await close_room(room_id)
+                await _publish(redis, peer_id, _room_event(room_id, {"type": "peer_left"}), tid=tid)
+                await close_room(room_id, tid=tid)
                 break
 
     except (WebSocketDisconnect, asyncio.CancelledError):
-        # User navigated away - notify peer but keep the room alive
-        await _publish(redis, peer_id, _room_event(room_id, {"type": "peer_left"}))
+        await _publish(redis, peer_id, _room_event(room_id, {"type": "peer_left"}), tid=tid)
     finally:
         ticker_task.cancel()
         relay_task.cancel()
         try:
-            await pubsub.unsubscribe(f"chat:{session_id}")
+            await pubsub.unsubscribe(tenant_key(tid, f"chat:{session_id}"))
             await pubsub.reset()
         except Exception:
             pass
@@ -261,7 +260,8 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
 async def get_active_room(session: dict = Depends(require_auth)):
     """Return the current active room_id for this session, or null."""
     session_id = session["sub"]
-    room_id = await get_active_room_id_for_session(session_id)
+    tid = session.get("tid", "default")
+    room_id = await get_active_room_id_for_session(session_id, tid=tid)
     if room_id:
         return {"room_id": room_id}
     return {"room_id": None}
@@ -271,17 +271,18 @@ async def get_active_room(session: dict = Depends(require_auth)):
 async def list_chat_rooms(session: dict = Depends(require_auth)):
     """Return all rooms this session participated in, newest first, excluding blocked peers."""
     session_id = session["sub"]
+    tid = session.get("tid", "default")
     redis = await get_redis()
-    room_ids = await get_room_history(session_id)
-    blocked_ids = await redis.smembers(f"blocked:{session_id}")
+    room_ids = await get_room_history(session_id, tid=tid)
+    blocked_ids = await redis.smembers(tenant_key(tid, f"blocked:{session_id}"))
     rooms = []
     for rid in room_ids:
-        room = await get_room(rid)
+        room = await get_room(rid, tid=tid)
         if room:
             peer_session_id, stored_username, stored_avatar_id = _peer_context(room, session_id)
             if peer_session_id and peer_session_id in blocked_ids:
                 continue
-            peer_profile = await get_profile(peer_session_id) if peer_session_id else None
+            peer_profile = await get_profile(peer_session_id, tid=tid) if peer_session_id else None
             rooms.append({
                 "room_id": rid,
                 "status": room.get("status", "ended"),
@@ -303,7 +304,8 @@ async def get_room_messages_endpoint(
 ):
     """Return messages for any room this session participated in."""
     session_id = session["sub"]
-    room = await get_room(room_id)
+    tid = session.get("tid", "default")
+    room = await get_room(room_id, tid=tid)
     if not room:
         raise HTTPException(status_code=404, detail="Conversation not found or has expired")
 
@@ -311,9 +313,9 @@ async def get_room_messages_endpoint(
     if not is_member:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    messages = await get_messages(room_id)
+    messages = await get_messages(room_id, tid=tid)
     peer_session_id, stored_username, stored_avatar_id = _peer_context(room, session_id)
-    peer_profile = await get_profile(peer_session_id) if peer_session_id else None
+    peer_profile = await get_profile(peer_session_id, tid=tid) if peer_session_id else None
     return {
         "room_id": room_id,
         "status": room.get("status"),

@@ -99,15 +99,15 @@ class DummyRedis:
     def __init__(self):
         self.values = {}
         self.hashes = {
-            "room:room-1": {
+            "t:default:room:room-1": {
                 "user_a": "user-a",
                 "user_b": "user-b",
                 "status": "active",
             }
         }
         self.sets = {
-            "active_rooms:user-a": {"room-1"},
-            "active_rooms:user-b": {"room-1"},
+            "t:default:active_rooms:user-a": {"room-1"},
+            "t:default:active_rooms:user-b": {"room-1"},
         }
         self.deleted = []
 
@@ -147,15 +147,15 @@ def test_close_room_clears_active_session_mapping(monkeypatch):
 
     asyncio.run(session.close_room("room-1"))
 
-    assert "room-1" not in redis.sets.get("active_rooms:user-a", set())
-    assert "room-1" not in redis.sets.get("active_rooms:user-b", set())
+    assert "room-1" not in redis.sets.get("t:default:active_rooms:user-a", set())
+    assert "room-1" not in redis.sets.get("t:default:active_rooms:user-b", set())
 
 
 def test_get_active_room_id_for_session_clears_stale_mapping(monkeypatch):
     from services import session
 
     redis = DummyRedis()
-    redis.hashes["room:room-1"]["status"] = "ended"
+    redis.hashes["t:default:room:room-1"]["status"] = "ended"
 
     async def fake_get_redis():
         return redis
@@ -165,4 +165,4 @@ def test_get_active_room_id_for_session_clears_stale_mapping(monkeypatch):
     room_id = asyncio.run(session.get_active_room_id_for_session("user-a"))
 
     assert room_id is None
-    assert "room-1" not in redis.sets.get("active_rooms:user-a", set())
+    assert "room-1" not in redis.sets.get("t:default:active_rooms:user-a", set())

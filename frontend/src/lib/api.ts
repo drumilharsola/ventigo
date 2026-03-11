@@ -1,5 +1,6 @@
 const HTTP_API = "/api";
 const SOCKET_API = process.env.NEXT_PUBLIC_WS_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID ?? "";
 const REQUEST_TIMEOUT_MS = 8000;
 
 export class AuthError extends Error {
@@ -19,6 +20,7 @@ async function request<T>(
     ...(options.headers as Record<string, string>),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (TENANT_ID) headers["X-Tenant-ID"] = TENANT_ID;
 
   let res: Response;
   const controller = new AbortController();
@@ -188,6 +190,87 @@ export const api = {
       `/chat/rooms/${encodeURIComponent(roomId)}/messages`,
       {},
       token
+    ),
+
+  // ── GDPR ─────────────────────────────────────────────────────────────────
+  exportData: (token: string) =>
+    request<Record<string, unknown>>("/auth/export", {}, token),
+
+  deleteAccount: (token: string) =>
+    request<void>("/auth/account", { method: "DELETE" }, token),
+
+  // ── Admin ────────────────────────────────────────────────────────────────
+  adminStats: (token: string) =>
+    request<{ active_rooms: number; queued_users: number; board_requests: number; total_reports: number }>(
+      "/admin/stats", {}, token
+    ),
+
+  adminListReports: (token: string, offset = 0, limit = 50) =>
+    request<{ reports: Record<string, string>[]; total: number }>(
+      `/admin/reports?offset=${offset}&limit=${limit}`, {}, token
+    ),
+
+  adminGetReport: (token: string, reportId: string) =>
+    request<Record<string, string>>(`/admin/reports/${encodeURIComponent(reportId)}`, {}, token),
+
+  adminGetUser: (token: string, sessionId: string) =>
+    request<Record<string, string> & { report_count: number }>(
+      `/admin/users/${encodeURIComponent(sessionId)}`, {}, token
+    ),
+
+  adminSuspendUser: (token: string, sessionId: string) =>
+    request<{ message: string }>(
+      `/admin/users/${encodeURIComponent(sessionId)}/suspend`, { method: "POST" }, token
+    ),
+
+  adminUnsuspendUser: (token: string, sessionId: string) =>
+    request<{ message: string }>(
+      `/admin/users/${encodeURIComponent(sessionId)}/suspend`, { method: "DELETE" }, token
+    ),
+
+  adminActiveRooms: (token: string) =>
+    request<{ rooms: Record<string, string>[] }>("/admin/rooms/active", {}, token),
+
+  adminGrantModerator: (token: string, sessionId: string) =>
+    request<{ message: string }>(
+      "/admin/moderators", { method: "POST", body: JSON.stringify({ session_id: sessionId }) }, token
+    ),
+
+  adminRevokeModerator: (token: string, sessionId: string) =>
+    request<{ message: string }>(
+      `/admin/moderators/${encodeURIComponent(sessionId)}`, { method: "DELETE" }, token
+    ),
+
+  // ── Analytics ────────────────────────────────────────────────────────────
+  adminAnalyticsOverview: (token: string) =>
+    request<{
+      dau: number; mau: number; sessions_today: number;
+      registrations_today: number; reports_today: number;
+      board_posts_today: number; avg_session_duration: number;
+    }>("/admin/analytics/overview", {}, token),
+
+  adminAnalyticsTimeseries: (
+    token: string, metric: string, fromDate: string, toDate: string
+  ) =>
+    request<{ metric: string; from: string; to: string; data: { date: string; value: number }[] }>(
+      `/admin/analytics/timeseries?metric=${encodeURIComponent(metric)}&from_date=${encodeURIComponent(fromDate)}&to_date=${encodeURIComponent(toDate)}`,
+      {}, token
+    ),
+
+  // ── Tenant Admin ─────────────────────────────────────────────────────────
+  adminListTenants: (adminKey: string) =>
+    request<{ tenants: Record<string, unknown>[] }>(
+      "/admin/tenants", { headers: { "X-Admin-Key": adminKey } }
+    ),
+
+  adminCreateTenant: (adminKey: string, data: { tenant_id: string; name: string; domain?: string; config?: Record<string, unknown> }) =>
+    request<Record<string, unknown>>(
+      "/admin/tenants", { method: "POST", body: JSON.stringify(data), headers: { "X-Admin-Key": adminKey } }
+    ),
+
+  adminUpdateTenant: (adminKey: string, tenantId: string, data: Record<string, unknown>) =>
+    request<Record<string, unknown>>(
+      `/admin/tenants/${encodeURIComponent(tenantId)}`, { method: "PATCH", body: JSON.stringify(data), headers: { "X-Admin-Key": adminKey } }
     ),
 
 };

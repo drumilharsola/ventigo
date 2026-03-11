@@ -3,17 +3,34 @@
 backend/.env
 frontend/.env.local
 
-# ── Dependencies ─────────────────────────────────────────────────────────────
-frontend/node_modules/
-
-# ── Build outputs ─────────────────────────────────────────────────────────────
-frontend/.next/
-
 # ── Python ────────────────────────────────────────────────────────────────────
+.venv/
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+
+# ── Node / Frontend ──────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+
+# ── Flutter / Android build ──────────────────────────────────────────────────
+unburden_app/build/
+unburden_app/.dart_tool/
+unburden_app/.flutter-plugins
+unburden_app/.flutter-plugins-dependencies
+unburden_app/.pub-cache/
+
+# ── Generated PDFs (regenerate with make_pdfs.py) ────────────────────────────
+docs/*.pdf
+
+# ── IDE / Machine-specific ────────────────────────────────────────────────────
+*.iml
+.idea/
+unburden_app/android/local.properties
 
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+*.swp

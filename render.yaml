@@ -21,7 +21,7 @@ services:
         value: 168          # 7 days - no refresh tokens yet
 
       - key: SMTP_FROM
-        value: "Flow <onboarding@resend.dev>"  # change after domain verified
+        sync: false  # set to "BrandName <email>" after domain verified
 
       # ── Auto-generated secrets ────────────────────────────────────────────
       - key: APP_SECRET_KEY

@@ -6,6 +6,13 @@ from config import get_settings
 _redis_client: aioredis.Redis | None = None
 REDIS_SOCKET_TIMEOUT_SECONDS = 2
 
+DEFAULT_TENANT_ID = "default"
+
+
+def tenant_key(tenant_id: str, key: str) -> str:
+    """Prefix a Redis key with the tenant namespace: ``t:{tenant_id}:{key}``."""
+    return f"t:{tenant_id}:{key}"
+
 
 async def get_redis() -> aioredis.Redis:
     global _redis_client

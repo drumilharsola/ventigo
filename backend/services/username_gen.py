@@ -5,6 +5,8 @@ e.g. SilentFox, BravePanda, WildOrca
 
 import random
 
+from db.redis_client import tenant_key
+
 ADJECTIVES = [
     "Silent", "Brave", "Wild", "Swift", "Calm",
     "Bold", "Keen", "Dark", "Bright", "Lone",
@@ -38,25 +40,23 @@ def generate_username() -> str:
     return f"{adjective}{animal}"
 
 
-async def generate_unique_username(redis) -> str:
+async def generate_unique_username(redis, tid: str = "default") -> str:
     """Generate a username not currently in use by an active session."""
     for _ in range(20):
         username = generate_username()
-        # Check if username is active in Redis
-        key = f"username:{username}"
+        key = tenant_key(tid, f"username:{username}")
         if not await redis.exists(key):
             return username
-    # Fallback: append a random number if all checked are taken
     username = generate_username()
     suffix = random.randint(10, 99)
     return f"{username}{suffix}"
 
 
-async def reserve_username(redis, username: str, session_id: str) -> None:
+async def reserve_username(redis, username: str, session_id: str, tid: str = "default") -> None:
     """Persist the username -> session mapping for stable profile lookups."""
-    await redis.set(f"username:{username}", session_id)
+    await redis.set(tenant_key(tid, f"username:{username}"), session_id)
 
 
-async def release_username(redis, username: str) -> None:
+async def release_username(redis, username: str, tid: str = "default") -> None:
     """Free username when session ends."""
-    await redis.delete(f"username:{username}")
+    await redis.delete(tenant_key(tid, f"username:{username}"))

@@ -1,0 +1,25 @@
+{
+  "appName": "ClientDemo",
+  "appNamePlain": "Client Demo",
+  "tagline": "your safe space to talk",
+  "description": "Anonymous peer support sessions.",
+  "supportEmail": "support@clientdemo.com",
+  "senderName": "Client Demo",
+  "senderEmail": "noreply@clientdemo.com",
+  "logo": {
+    "text": "ClientDemo",
+    "prefix": "Client",
+    "emphasis": "De",
+    "suffix": "mo"
+  },
+  "theme": {
+    "ink": "#1A1A2E",
+    "charcoal": "#16213E",
+    "accent": "#0F3460",
+    "accentHover": "#533483",
+    "danger": "#E94560",
+    "success": "#7ECAA0",
+    "fontDisplay": "Poppins",
+    "fontUI": "Roboto"
+  }
+}
