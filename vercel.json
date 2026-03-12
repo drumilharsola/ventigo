@@ -1,6 +1,6 @@
 {
-  "installCommand": "git clone --depth 1 --branch stable https://github.com/flutter/flutter.git flutter-sdk && flutter-sdk/bin/flutter precache --web",
-  "buildCommand": "ls -la && flutter-sdk/bin/flutter pub get --directory=unburden_app && flutter-sdk/bin/flutter build web --release --directory=unburden_app --dart-define=API_BASE_URL=$API_BASE_URL",
+  "installCommand": "echo '=== DEBUG ===' && pwd && ls -la && git clone --depth 1 --branch stable https://github.com/flutter/flutter.git /vercel/.flutter-sdk && export PATH=/vercel/.flutter-sdk/bin:$PATH && flutter --version && cd unburden_app && flutter pub get",
+  "buildCommand": "export PATH=/vercel/.flutter-sdk/bin:$PATH && cd unburden_app && flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL",
   "outputDirectory": "unburden_app/build/web",
   "framework": null,
   "rewrites": [
