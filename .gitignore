@@ -1,7 +1,6 @@
 # ── Secrets ─────────────────────────────────────────────────────────────────
 .env
 backend/.env
-frontend/.env.local
 
 # ── Python ────────────────────────────────────────────────────────────────────
 .venv/
@@ -10,12 +9,7 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
-# ── Node / Frontend ──────────────────────────────────────────────────────────
-frontend/node_modules/
-frontend/.next/
-frontend/tsconfig.tsbuildinfo
-
-# ── Flutter / Android build ──────────────────────────────────────────────────
+# ── Flutter / Dart ───────────────────────────────────────────────────────────
 unburden_app/build/
 unburden_app/.dart_tool/
 unburden_app/.flutter-plugins

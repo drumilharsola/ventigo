@@ -236,7 +236,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildMessageList(ChatState chat, AuthState auth) {
     if (chat.mode == 'checking' && chat.transcript.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+      return Center(child: CircularProgressIndicator(color: AppColors.accent));
     }
 
     if (chat.mode == 'expired') {

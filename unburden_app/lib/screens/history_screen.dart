@@ -132,7 +132,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> with SingleTicker
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+          ? Center(child: CircularProgressIndicator(color: AppColors.accent))
           : TabBarView(
               controller: _tabCtrl,
               children: [

@@ -73,7 +73,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: AppColors.accent),
+            CircularProgressIndicator(color: AppColors.accent),
             const SizedBox(height: 20),
             Text('Verifying your email…', style: AppTypography.body()),
           ],
@@ -82,7 +82,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('✓', style: TextStyle(fontSize: 40, color: AppColors.success)),
+            Text('✓', style: TextStyle(fontSize: 40, color: AppColors.success)),
             const SizedBox(height: 16),
             Text('Email verified.', style: AppTypography.heading(fontSize: 22)),
           ],
@@ -91,7 +91,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('✕', style: TextStyle(fontSize: 40, color: AppColors.danger)),
+            Text('✕', style: TextStyle(fontSize: 40, color: AppColors.danger)),
             const SizedBox(height: 16),
             Text('Link expired.', style: AppTypography.heading(fontSize: 22)),
             if (_errorMsg != null) ...[

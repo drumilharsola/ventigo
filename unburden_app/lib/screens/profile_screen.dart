@@ -214,7 +214,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         const SizedBox(height: 24),
 
         if (_error != null) ...[
-          Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+          Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
           const SizedBox(height: 12),
         ],
 
@@ -300,7 +300,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             if (_saveError != null) ...[
               const SizedBox(height: 8),
-              Text(_saveError!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+              Text(_saveError!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
             ],
             const SizedBox(height: 16),
             FlowButton(label: 'Save changes', onPressed: _handleSave, loading: _saving, expand: true),

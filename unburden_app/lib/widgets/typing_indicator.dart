@@ -92,7 +92,7 @@ class _Dot extends StatelessWidget {
         child: Container(
           width: 6,
           height: 6,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.fog,
             shape: BoxShape.circle,
           ),

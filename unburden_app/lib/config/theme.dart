@@ -106,12 +106,12 @@ class AppTypography {
   // ------ UI scale ------
 
   /// .t-body — 15px weight 300
-  static TextStyle body({double fontSize = 15, Color color = AppColors.fog}) =>
-      _ui.copyWith(fontSize: fontSize, fontWeight: FontWeight.w300, height: 1.65, color: color);
+  static TextStyle body({double fontSize = 15, Color? color}) =>
+      _ui.copyWith(fontSize: fontSize, fontWeight: FontWeight.w300, height: 1.65, color: color ?? AppColors.fog);
 
   /// .t-label — 11px weight 600 uppercase tracking
-  static TextStyle label({double fontSize = 11, Color color = AppColors.slate}) =>
-      _ui.copyWith(fontSize: fontSize, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: color);
+  static TextStyle label({double fontSize = 11, Color? color}) =>
+      _ui.copyWith(fontSize: fontSize, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: color ?? AppColors.slate);
 
   /// General ui text.
   static TextStyle ui({double fontSize = 14, FontWeight fontWeight = FontWeight.w400, Color color = AppColors.white}) =>

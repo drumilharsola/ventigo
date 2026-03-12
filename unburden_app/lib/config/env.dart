@@ -1,19 +1,34 @@
-/// Environment configuration — equivalent to NEXT_PUBLIC_* env vars.
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+/// Environment configuration for API and WebSocket endpoints.
 class Env {
   Env._();
 
-  /// Base URL for REST API calls (no trailing slash).
-  /// On web, requests go through the same origin via `/api` prefix.
-  /// On mobile, point to the actual backend host.
-  static const String apiBaseUrl = String.fromEnvironment(
+  static const String _envApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000', // Android emulator → host
+    defaultValue: '',
   );
+
+  /// Base URL for REST API calls (no trailing slash).
+  /// On web, defaults to same origin (empty string = relative paths).
+  /// On mobile, defaults to Android emulator localhost proxy.
+  static String get apiBaseUrl {
+    if (_envApiBaseUrl.isNotEmpty) return _envApiBaseUrl;
+    if (kIsWeb) return ''; // same-origin; requests use relative paths
+    return 'http://10.0.2.2:8000'; // Android emulator → host
+  }
 
   /// WebSocket base URL (ws:// or wss://).
   static String get wsBaseUrl {
     final override = const String.fromEnvironment('WS_BASE_URL');
     if (override.isNotEmpty) return override;
+    if (kIsWeb && apiBaseUrl.isEmpty) {
+      // Same-origin WebSocket: derive from window.location
+      // Uri.base is 'http://host:port/' in Flutter web
+      final base = Uri.base;
+      final scheme = base.scheme == 'https' ? 'wss' : 'ws';
+      return '$scheme://${base.host}${base.hasPort ? ':${base.port}' : ''}';
+    }
     return apiBaseUrl.replaceFirst('http', 'ws');
   }
 

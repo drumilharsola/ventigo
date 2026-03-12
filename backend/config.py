@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     # Admin API key for tenant management endpoints
     ADMIN_API_KEY: str = ""
 
-    ALLOWED_ORIGINS: str = "http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080"
 
     @property
     def allowed_origins_list(self) -> list[str]:

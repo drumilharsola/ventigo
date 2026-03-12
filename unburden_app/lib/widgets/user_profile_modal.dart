@@ -86,7 +86,7 @@ class _UserProfileModalState extends ConsumerState<UserProfileModal> {
               border: Border.all(color: AppColors.border),
             ),
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+                ? Center(child: CircularProgressIndicator(color: AppColors.accent))
                 : _profile == null
                     ? Text(_error ?? 'Could not load profile', style: AppTypography.body(color: AppColors.danger))
                     : _buildContent(),
@@ -157,7 +157,7 @@ class _UserProfileModalState extends ConsumerState<UserProfileModal> {
         ],
         if (_error != null && !_loading) ...[
           const SizedBox(height: 8),
-          Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+          Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 12)),
         ],
         const SizedBox(height: 16),
         FlowButton(label: 'Close', variant: FlowButtonVariant.ghost, size: FlowButtonSize.sm, onPressed: widget.onClose),

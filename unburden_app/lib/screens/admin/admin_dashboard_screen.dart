@@ -48,6 +48,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       _NavButton(label: 'View Reports', onTap: () => Navigator.pushNamed(context, '/admin/reports')),
                       const SizedBox(height: 8),
                       _NavButton(label: 'User Lookup', onTap: () => Navigator.pushNamed(context, '/admin/users')),
+                      const SizedBox(height: 8),
+                      _NavButton(label: 'Tenants', onTap: () => Navigator.pushNamed(context, '/admin/tenants')),
                     ],
                   ),
                 ),

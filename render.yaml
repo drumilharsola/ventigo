@@ -1,4 +1,4 @@
-# Render Blueprint - deploys the FastAPI backend as a free web service.
+# Render Blueprint - deploys the FastAPI backend + Flutter web frontend.
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
@@ -38,4 +38,17 @@ services:
         sync: false          
 
       - key: ALLOWED_ORIGINS
-        sync: false          # Same Vercel URL (comma-separated if multiple)
+        sync: false          # Flutter web URL (comma-separated if multiple)
+
+  # ── Flutter Web Frontend ──────────────────────────────────────────────────
+  - type: web
+    name: UNBurDEN-web
+    runtime: docker
+    rootDir: unburden_app
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+
+    envVars:
+      - key: API_BASE_URL
+        sync: false          # Set to backend URL (e.g. https://unburden-backend.onrender.com)

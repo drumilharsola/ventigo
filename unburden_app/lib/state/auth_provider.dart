@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_storage.dart';
 import '../services/api_client.dart';
 
-/// Auth state — mirrors authStore.ts from the Next.js app.
+/// Auth state — token, session, profile, and hydration flag.
 class AuthState {
   final String? token;
   final String? sessionId;

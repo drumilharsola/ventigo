@@ -55,7 +55,7 @@ class LandingScreen extends ConsumerWidget {
                           style: TextStyle(
                             fontStyle: FontStyle.italic,
                             foreground: Paint()
-                              ..shader = const LinearGradient(
+                              ..shader = LinearGradient(
                                 colors: [AppColors.accent, AppColors.flow3],
                               ).createShader(const Rect.fromLTWH(0, 0, 300, 80)),
                           ),

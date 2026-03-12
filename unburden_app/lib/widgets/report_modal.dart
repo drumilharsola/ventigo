@@ -88,7 +88,7 @@ class _ReportModalState extends ConsumerState<ReportModal> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('✓', style: TextStyle(fontSize: 32, color: AppColors.success)),
+        Text('✓', style: TextStyle(fontSize: 32, color: AppColors.success)),
         const SizedBox(height: 12),
         Text('Report submitted', style: AppTypography.heading(fontSize: 22)),
         const SizedBox(height: 8),
@@ -134,7 +134,7 @@ class _ReportModalState extends ConsumerState<ReportModal> {
         ),
         if (_error != null) ...[
           const SizedBox(height: 8),
-          Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+          Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
         ],
         const SizedBox(height: 16),
         Row(

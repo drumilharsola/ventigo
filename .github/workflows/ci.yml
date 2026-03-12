@@ -2,7 +2,7 @@ name: CI / CD
 
 on:
   push:
-    branches: [main]
+    branches: [main, dhrumil-dev]
   pull_request:
     branches: [main]
 
@@ -29,10 +29,6 @@ jobs:
           pip install pip-audit --quiet
           pip-audit -r backend/requirements.txt --desc on
 
-      - name: npm audit - frontend dependency scan
-        working-directory: frontend
-        run: npm audit --audit-level=critical
-
   # ── 2. Backend unit tests ────────────────────────────────────────────────────
   test-backend:
     name: Backend Tests
@@ -52,34 +48,30 @@ jobs:
 
       - run: pytest tests/ -v --tb=short
 
-  # ── 3. Frontend type-check & build ──────────────────────────────────────────
-  build-frontend:
-    name: Frontend Build
+  # ── 3. Flutter web build ────────────────────────────────────────────────────
+  build-flutter-web:
+    name: Flutter Web Build
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: unburden_app
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          channel: stable
+          cache: true
 
-      - run: npm ci
+      - run: flutter pub get
 
-      - run: npm run build
-        env:
-          # placeholder - real value set in Vercel dashboard
-          NEXT_PUBLIC_API_URL: https://placeholder.example.com
+      - run: flutter build web --release
 
-  # ── 4. Deploy backend to Render (main branch only, all checks must pass) ─────
-  deploy-backend:
+  # ── 4. Deploy to Render (main or dhrumil-dev, all checks must pass) ─────
+  deploy:
     name: Deploy → Render
-    needs: [security, test-backend, build-frontend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [security, test-backend, build-flutter-web]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dhrumil-dev')
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy hook

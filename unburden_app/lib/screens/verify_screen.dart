@@ -280,7 +280,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         border: Border.all(color: AppColors.danger.withValues(alpha: 0.2)),
         borderRadius: AppRadii.mdAll,
       ),
-      child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+      child: Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
     );
   }
 

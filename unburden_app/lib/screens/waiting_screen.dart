@@ -292,7 +292,7 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen> with SingleTicker
           const SizedBox(height: 10),
           Text('Most connections happen sooner than 5 minutes.', style: AppTypography.body(fontSize: 12, color: AppColors.mist), textAlign: TextAlign.center),
         ] else
-          const CircularProgressIndicator(color: AppColors.accent),
+          CircularProgressIndicator(color: AppColors.accent),
       ],
     );
   }

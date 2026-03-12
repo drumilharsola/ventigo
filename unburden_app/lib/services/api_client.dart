@@ -327,6 +327,51 @@ class ApiClient {
       return list.map((e) => TimeseriesPoint.fromJson(e)).toList();
     } catch (e) { _rethrow(e); rethrow; }
   }
+
+  // ────────────────────────── TENANT MANAGEMENT ──────────────────────────
+
+  Map<String, String> _adminKeyHeader(String adminKey) =>
+      {'X-Admin-Key': adminKey};
+
+  Future<List<Tenant>> adminListTenants(String adminKey) async {
+    try {
+      final res = await _dio.get('/admin/tenants',
+          options: Options(headers: _adminKeyHeader(adminKey)));
+      return (res.data['tenants'] as List)
+          .map((j) => Tenant.fromJson(j as Map<String, dynamic>))
+          .toList();
+    } catch (e) { _rethrow(e); rethrow; }
+  }
+
+  Future<Tenant> adminCreateTenant(String adminKey, {
+    required String tenantId,
+    required String name,
+    String domain = '',
+  }) async {
+    try {
+      final res = await _dio.post('/admin/tenants',
+          data: {'tenant_id': tenantId, 'name': name, 'domain': domain},
+          options: Options(headers: _adminKeyHeader(adminKey)));
+      return Tenant.fromJson(res.data);
+    } catch (e) { _rethrow(e); rethrow; }
+  }
+
+  Future<Tenant> adminUpdateTenant(String adminKey, String tenantId, {
+    bool? active,
+    String? name,
+    String? domain,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (active != null) body['active'] = active;
+      if (name != null) body['name'] = name;
+      if (domain != null) body['domain'] = domain;
+      final res = await _dio.patch('/admin/tenants/${Uri.encodeComponent(tenantId)}',
+          data: body,
+          options: Options(headers: _adminKeyHeader(adminKey)));
+      return Tenant.fromJson(res.data);
+    } catch (e) { _rethrow(e); rethrow; }
+  }
 }
 
 // ────────────────────────── Response DTOs ──────────────────────────
@@ -533,5 +578,29 @@ class TimeseriesPoint {
       TimeseriesPoint(
         date: json['date'] as String? ?? '',
         value: (json['value'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class Tenant {
+  final String tenantId;
+  final String name;
+  final String domain;
+  final bool active;
+  final double createdAt;
+
+  const Tenant({
+    required this.tenantId,
+    required this.name,
+    required this.domain,
+    required this.active,
+    required this.createdAt,
+  });
+
+  factory Tenant.fromJson(Map<String, dynamic> json) => Tenant(
+        tenantId: json['tenant_id'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        domain: json['domain'] as String? ?? '',
+        active: json['active'] as bool? ?? true,
+        createdAt: (json['created_at'] as num?)?.toDouble() ?? 0,
       );
 }

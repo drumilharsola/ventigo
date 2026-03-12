@@ -16,6 +16,7 @@ import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/admin_reports_screen.dart';
 import '../screens/admin/admin_user_detail_screen.dart';
 import '../screens/admin/admin_analytics_screen.dart';
+import '../screens/admin/admin_tenants_screen.dart';
 import '../screens/privacy_screen.dart';
 import '../screens/terms_screen.dart';
 
@@ -78,6 +79,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/analytics', builder: (_, __) => const AdminAnalyticsScreen()),
       GoRoute(path: '/admin/reports', builder: (_, __) => const AdminReportsScreen()),
       GoRoute(path: '/admin/users', builder: (_, __) => const AdminUserDetailScreen()),
+      GoRoute(path: '/admin/tenants', builder: (_, __) => const AdminTenantsScreen()),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyScreen()),
       GoRoute(path: '/terms', builder: (_, __) => const TermsScreen()),
     ],
