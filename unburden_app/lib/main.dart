@@ -19,21 +19,40 @@ class UnburdenApp extends ConsumerStatefulWidget {
 }
 
 class _UnburdenAppState extends ConsumerState<UnburdenApp> {
+  bool _ready = false;
+
   @override
   void initState() {
     super.initState();
-    // Hydrate auth state from secure storage so the router can proceed.
-    Future.microtask(() => ref.read(authProvider.notifier).hydrate());
+    _init();
+  }
+
+  Future<void> _init() async {
+    await ref.read(authProvider.notifier).hydrate();
+    if (mounted) setState(() => _ready = true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = buildAppTheme();
+
+    if (!_ready) {
+      return MaterialApp(
+        title: Brand.appName,
+        debugShowCheckedModeBanner: false,
+        theme: theme,
+        home: const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
       title: Brand.appName,
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
+      theme: theme,
       routerConfig: router,
     );
   }

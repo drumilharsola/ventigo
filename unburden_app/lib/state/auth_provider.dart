@@ -49,20 +49,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Read persisted values on app start (replaces Zustand onRehydrateStorage).
   Future<void> hydrate() async {
-    final token = await _storage.readToken();
-    final sessionId = await _storage.readSessionId();
-    final username = await _storage.readUsername();
-    final avatarId = await _storage.readAvatarId();
-    final emailVerified = await _storage.readEmailVerified();
+    try {
+      final token = await _storage.readToken();
+      final sessionId = await _storage.readSessionId();
+      final username = await _storage.readUsername();
+      final avatarId = await _storage.readAvatarId();
+      final emailVerified = await _storage.readEmailVerified();
 
-    state = AuthState(
-      token: token,
-      sessionId: sessionId,
-      username: username,
-      avatarId: avatarId,
-      emailVerified: emailVerified,
-      hasHydrated: true,
-    );
+      state = AuthState(
+        token: token,
+        sessionId: sessionId,
+        username: username,
+        avatarId: avatarId,
+        emailVerified: emailVerified,
+        hasHydrated: true,
+      );
+    } catch (_) {
+      // If secure storage fails, proceed without persisted state
+      state = const AuthState(hasHydrated: true);
+    }
   }
 
   Future<void> setAuth(String token, String sessionId) async {
