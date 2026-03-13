@@ -221,7 +221,7 @@ class _ChatTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                room.role == 'venter' ? '🎤' : '👂',
+                room.role == 'venter' ? '🎤' : '🤝',
                 style: const TextStyle(fontSize: 14),
               ),
             ),

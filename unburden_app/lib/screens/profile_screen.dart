@@ -34,7 +34,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int _speakCount = 0;
   int _listenCount = 0;
   String _memberSince = '';
-  bool _exporting = false;
   bool _showDeleteConfirm = false;
   bool _deleting = false;
   bool? _emailVerified;
@@ -106,28 +105,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       setState(() => _saveError = e.toString());
     } finally {
       if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  Future<void> _handleExport() async {
-    final token = ref.read(authProvider).token;
-    if (token == null) return;
-    setState(() => _exporting = true);
-    try {
-      final data = await ref.read(apiClientProvider).exportData(token);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Data exported: ${data.keys.length} sections')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to export data')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _exporting = false);
     }
   }
 
@@ -318,7 +295,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       VerticalDivider(color: AppColors.border, thickness: 1, width: 1),
                       _stat('Vent 🎤', _speakCount),
                       VerticalDivider(color: AppColors.border, thickness: 1, width: 1),
-                      _stat('Listen 👂', _listenCount),
+                      _stat('Support 🤝', _listenCount),
                     ],
                   ),
                 ),
@@ -356,28 +333,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ] else ...[
             Center(child: FlowButton(label: 'Edit profile', variant: FlowButtonVariant.ghost, onPressed: () => setState(() => _editing = true))),
             const SizedBox(height: 24),
+            Center(
+              child: FlowButton(
+                label: 'Blocked users',
+                variant: FlowButtonVariant.ghost,
+                icon: Icons.block_outlined,
+                onPressed: () => context.push('/blocked-users'),
+              ),
+            ),
+            const SizedBox(height: 16),
             Divider(color: AppColors.border),
             const SizedBox(height: 16),
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _exporting ? null : _handleExport,
-                        child: Text(_exporting ? 'Exporting…' : 'Export my data'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => setState(() => _showDeleteConfirm = true),
-                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
-                        child: const Text('Delete account'),
-                      ),
-                    ),
-                  ],
+                constraints: const BoxConstraints(maxWidth: 220),
+                child: OutlinedButton(
+                  onPressed: () => setState(() => _showDeleteConfirm = true),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                  child: const Text('Delete account'),
                 ),
               ),
             ),

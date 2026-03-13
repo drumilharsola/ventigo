@@ -32,9 +32,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _inputFocus = FocusNode();
   bool _showReport = false;
   bool _showPeerProfile = false;
-  bool _confirmingBlock = false;
-  bool _blocking = false;
-  bool _blocked = false;
   bool _safetyShown = false;
   TranscriptMessage? _replyTo;
 
@@ -73,39 +70,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   String _formatRemaining(int secs) {
     return '${(secs ~/ 60).toString().padLeft(2, '0')}:${(secs % 60).toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _handleBlock() async {
-    final token = ref.read(authProvider).token;
-    final chat = ref.read(chatProvider(widget.roomId));
-    if (token == null || _blocking || _blocked) return;
-    if (chat.peerSessionId == null || chat.peerSessionId!.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cannot block: peer information missing')),
-        );
-      }
-      return;
-    }
-    setState(() => _blocking = true);
-    try {
-      await ref.read(apiClientProvider).blockUser(token, chat.peerSessionId!, chat.peerUsername ?? '', chat.peerAvatarId);
-      setState(() => _blocked = true);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User blocked')),
-        );
-        context.go('/home');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to block: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _blocking = false);
-    }
   }
 
   void _showSafetyDialogIfNeeded(ChatState chat) {
@@ -221,7 +185,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               peerSessionId: chat.peerSessionId,
               roomId: widget.roomId,
               onClose: () => setState(() => _showPeerProfile = false),
-              onBlocked: () { setState(() => _showPeerProfile = false); _goBack(); },
             ),
         ],
       ),
@@ -588,23 +551,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (_confirmingBlock) ...[
-              Text('Block this person?', style: AppTypography.body(fontSize: 12, color: AppColors.danger)),
-              const SizedBox(width: 8),
-              FlowButton(label: 'Yes', variant: FlowButtonVariant.ghost, size: FlowButtonSize.sm, onPressed: () { setState(() => _confirmingBlock = false); _handleBlock(); }),
-              FlowButton(label: 'No', variant: FlowButtonVariant.ghost, size: FlowButtonSize.sm, onPressed: () => setState(() => _confirmingBlock = false)),
-            ] else ...[
-              FlowButton(
-                label: _blocked ? 'Blocked' : _blocking ? 'Blocking…' : 'Block',
-                variant: FlowButtonVariant.ghost,
-                size: FlowButtonSize.sm,
-                onPressed: _blocking || _blocked || chat.peerSessionId == null ? null : () => setState(() => _confirmingBlock = true),
-              ),
-              const SizedBox(width: 8),
-              FlowButton(label: '← Back', variant: FlowButtonVariant.ghost, size: FlowButtonSize.sm, onPressed: () => _goBack()),
-              const SizedBox(width: 8),
-              FlowButton(label: 'Report', variant: FlowButtonVariant.ghost, size: FlowButtonSize.sm, onPressed: () => setState(() => _showReport = true)),
-            ],
+            FlowButton(label: '← Back', variant: FlowButtonVariant.ghost, size: FlowButtonSize.sm, onPressed: () => _goBack()),
+            const SizedBox(width: 8),
+            FlowButton(label: 'Report', variant: FlowButtonVariant.ghost, size: FlowButtonSize.sm, onPressed: () => setState(() => _showReport = true)),
           ],
         ),
       ),

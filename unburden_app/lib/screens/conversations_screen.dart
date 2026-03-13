@@ -219,6 +219,21 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     return list.where((r) => r.sessionId != sid).toList();
   }
 
+  Future<void> _toggleSheet(
+    DraggableScrollableController controller, {
+    required double collapsed,
+    required double expanded,
+  }) async {
+    if (!controller.isAttached) return;
+    final midpoint = (collapsed + expanded) / 2;
+    final target = controller.size > midpoint ? collapsed : expanded;
+    await controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   Future<void> _handleVent() async {
     final wait = ref.read(pendingWaitProvider);
     // Already waiting - just expand the sheet
@@ -305,7 +320,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('👂', style: TextStyle(fontSize: 16)),
+                        const Text('🤝', style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 6),
                         const Text('Listener'),
                         if (_board.isNotEmpty) ...[
@@ -417,13 +432,24 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                   // Grab handle
                   SliverToBoxAdapter(
                     child: Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        margin: const EdgeInsets.only(top: 10, bottom: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.mist,
-                          borderRadius: BorderRadius.circular(2),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onDoubleTap: () => _toggleSheet(
+                          _venterSheetCtrl,
+                          collapsed: 0.12,
+                          expanded: 0.55,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.mist,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -574,7 +600,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                 itemCount: groups.length,
                 itemBuilder: (_, i) => _PeerTile(
                   group: groups[i],
-                  roleBadge: '👂',
+                  roleBadge: '🤝',
                   onTap: () => context.push(
                     '/unified-chat?peer_session_id=${Uri.encodeComponent(groups[i].peerSessionId)}&peer_username=${Uri.encodeComponent(groups[i].peerUsername)}',
                   ),
@@ -602,13 +628,24 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                   children: [
                     // Grab handle
                     Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        margin: const EdgeInsets.only(top: 10, bottom: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.mist,
-                          borderRadius: BorderRadius.circular(2),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onDoubleTap: () => _toggleSheet(
+                          _listenerSheetCtrl,
+                          collapsed: 0.12,
+                          expanded: 0.6,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.mist,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -618,7 +655,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         children: [
-                          const Text('👂', style: TextStyle(fontSize: 20)),
+                          const Text('🤝', style: TextStyle(fontSize: 20)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(

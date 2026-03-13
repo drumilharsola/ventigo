@@ -12,7 +12,7 @@ extension CharacterRoleX on CharacterRole {
 
   String get emoji => switch (this) {
     CharacterRole.venter => '🎤',
-    CharacterRole.listener => '👂',
+    CharacterRole.listener => '🤝',
   };
 
   String get description => switch (this) {

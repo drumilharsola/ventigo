@@ -441,7 +441,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                 color: AppColors.accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Text('👂', style: TextStyle(fontSize: 22)),
+              child: const Text('🤝', style: TextStyle(fontSize: 22)),
             ),
             const SizedBox(width: 16),
             Expanded(child: Column(

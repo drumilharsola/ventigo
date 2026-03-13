@@ -197,7 +197,7 @@ class ApiClient {
 
   Future<void> blockUser(String token, String peerSessionId, String username, int avatarId) async {
     try {
-      await _dio.post('/block/', data: {
+      await _dio.post('/block', data: {
         'peer_session_id': peerSessionId,
         'username': username,
         'avatar_id': avatarId,
@@ -214,7 +214,7 @@ class ApiClient {
 
   Future<List<BlockedUser>> getBlockedUsers(String token) async {
     try {
-      final res = await _dio.get('/block/', options: Options(headers: _authHeader(token)));
+      final res = await _dio.get('/block', options: Options(headers: _authHeader(token)));
       return (res.data['blocked'] as List)
           .map((j) => BlockedUser.fromJson(j as Map<String, dynamic>))
           .toList();

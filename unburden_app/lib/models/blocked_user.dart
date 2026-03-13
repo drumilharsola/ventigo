@@ -13,7 +13,7 @@ class BlockedUser {
 
   factory BlockedUser.fromJson(Map<String, dynamic> json) {
     return BlockedUser(
-      sessionId: json['session_id'] as String? ?? '',
+      sessionId: json['peer_session_id'] as String? ?? json['session_id'] as String? ?? '',
       username: json['username'] as String? ?? '',
       avatarId: (json['avatar_id'] as num?)?.toInt() ?? 0,
       blockedAt: json['blocked_at'] as String? ?? '',

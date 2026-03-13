@@ -27,6 +27,7 @@ class BlockRequest(BaseModel):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def block_user(body: BlockRequest, session: dict = Depends(require_auth)):
     session_id = session["sub"]
 
@@ -59,6 +60,7 @@ async def unblock_user(peer_session_id: str, session: dict = Depends(require_aut
 
 
 @router.get("")
+@router.get("/", include_in_schema=False)
 async def get_blocked_users(session: dict = Depends(require_auth)):
     session_id = session["sub"]
     redis = await get_redis()

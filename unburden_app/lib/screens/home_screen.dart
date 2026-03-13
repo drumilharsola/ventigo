@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../config/theme.dart';
 import '../data/quotes.dart';
 import '../state/auth_provider.dart';
@@ -114,8 +115,9 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          'Unburden is a safe, anonymous space where you can speak freely '
-                          'and be heard - no judgement, no identity, just honest human connection.',
+                          'Unburden is a calm space for emotional release, reflection, and '
+                          'support. It is designed to help you slow down, let heavy thoughts '
+                          'out, and feel a little less alone.',
                           style: AppTypography.body(
                             fontSize: 14,
                             color: AppColors.graphite,
@@ -123,7 +125,8 @@ class HomeScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Whether you need to vent or you want to listen, this is your space.',
+                          'Use it when you need a gentle outlet, a grounding pause, or a quiet '
+                          'way to show up for someone else.',
                           style: AppTypography.body(
                             fontSize: 14,
                             color: AppColors.graphite,
@@ -156,9 +159,23 @@ class HomeScreen extends ConsumerWidget {
                         const SizedBox(height: 10),
                         _howStep('2', 'Listen',
                             'Be there for someone who needs to be heard.'),
-                        const SizedBox(height: 10),
-                        _howStep('3', 'Connect',
-                            'Real conversations. No names. No pressure.'),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => context.go('/chats'),
+                            icon: const Icon(Icons.chat_bubble_outline_rounded),
+                            label: const Text('Open chat space'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.accent,
+                              foregroundColor: AppColors.ink,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),

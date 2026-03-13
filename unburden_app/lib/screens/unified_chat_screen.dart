@@ -45,9 +45,6 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
 
   bool _showReport = false;
   bool _showPeerProfile = false;
-  bool _confirmingBlock = false;
-  bool _blocking = false;
-  bool _blocked = false;
   TranscriptMessage? _replyTo;
 
   void _goBack() {
@@ -195,42 +192,6 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     });
   }
 
-  Future<void> _handleBlock() async {
-    final token = ref.read(authProvider).token;
-    if (token == null || widget.peerSessionId.isEmpty || _blocking || _blocked) {
-      if (mounted && widget.peerSessionId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cannot block: peer information missing')),
-        );
-      }
-      return;
-    }
-    setState(() => _blocking = true);
-    try {
-      await ref.read(apiClientProvider).blockUser(
-        token,
-        widget.peerSessionId,
-        widget.peerUsername,
-        _peerRooms.isNotEmpty ? _peerRooms.first.peerAvatarId : 0,
-      );
-      setState(() => _blocked = true);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User blocked')),
-        );
-        _goBack();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to block: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _blocking = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
@@ -321,10 +282,6 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
               peerSessionId: widget.peerSessionId,
               roomId: _activeRoomId ?? (_peerRooms.isNotEmpty ? _peerRooms.last.roomId : ''),
               onClose: () => setState(() => _showPeerProfile = false),
-              onBlocked: () {
-                setState(() => _showPeerProfile = false);
-                _goBack();
-              },
             ),
         ],
       ),
@@ -400,25 +357,6 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
                 icon: Text('⚑', style: TextStyle(fontSize: 14, color: AppColors.slate)),
                 onPressed: () => setState(() => _showReport = true),
               ),
-              // Block
-              if (_confirmingBlock) ...[
-                Text('Block?', style: AppTypography.body(fontSize: 11, color: AppColors.danger)),
-                IconButton(
-                  icon: Text('✓', style: TextStyle(color: AppColors.danger)),
-                  onPressed: () {
-                    setState(() => _confirmingBlock = false);
-                    _handleBlock();
-                  },
-                ),
-                IconButton(
-                  icon: Text('✗', style: TextStyle(color: AppColors.slate)),
-                  onPressed: () => setState(() => _confirmingBlock = false),
-                ),
-              ] else
-                IconButton(
-                  icon: Text('⛔', style: TextStyle(fontSize: 14, color: _blocked ? AppColors.mist : AppColors.slate)),
-                  onPressed: _blocking || _blocked ? null : () => setState(() => _confirmingBlock = true),
-                ),
               FlowButton(
                 label: 'Leave',
                 variant: FlowButtonVariant.danger,
@@ -704,48 +642,19 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (_confirmingBlock) ...[
-              Text('Block this person?', style: AppTypography.body(fontSize: 12, color: AppColors.danger)),
-              const SizedBox(width: 8),
-              FlowButton(
-                label: 'Yes',
-                variant: FlowButtonVariant.ghost,
-                size: FlowButtonSize.sm,
-                onPressed: () {
-                  setState(() => _confirmingBlock = false);
-                  _handleBlock();
-                },
-              ),
-              FlowButton(
-                label: 'No',
-                variant: FlowButtonVariant.ghost,
-                size: FlowButtonSize.sm,
-                onPressed: () => setState(() => _confirmingBlock = false),
-              ),
-            ] else ...[
-              FlowButton(
-                label: _blocked ? 'Blocked' : _blocking ? 'Blocking…' : 'Block',
-                variant: FlowButtonVariant.ghost,
-                size: FlowButtonSize.sm,
-                onPressed: _blocking || _blocked || widget.peerSessionId.isEmpty
-                    ? null
-                    : () => setState(() => _confirmingBlock = true),
-              ),
-              const SizedBox(width: 8),
-              FlowButton(
-                label: '← Back',
-                variant: FlowButtonVariant.ghost,
-                size: FlowButtonSize.sm,
-                onPressed: () => _goBack(),
-              ),
-              const SizedBox(width: 8),
-              FlowButton(
-                label: 'Report',
-                variant: FlowButtonVariant.ghost,
-                size: FlowButtonSize.sm,
-                onPressed: () => setState(() => _showReport = true),
-              ),
-            ],
+            FlowButton(
+              label: '← Back',
+              variant: FlowButtonVariant.ghost,
+              size: FlowButtonSize.sm,
+              onPressed: () => _goBack(),
+            ),
+            const SizedBox(width: 8),
+            FlowButton(
+              label: 'Report',
+              variant: FlowButtonVariant.ghost,
+              size: FlowButtonSize.sm,
+              onPressed: () => setState(() => _showReport = true),
+            ),
           ],
         ),
       ),

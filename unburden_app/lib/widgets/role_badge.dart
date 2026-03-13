@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/character_role.dart';
 
-/// A pill badge showing "Venter 🎤" or "Listener 👂" with role-specific colors.
+/// A pill badge showing "Venter 🎤" or "Listener 🤝" with role-specific colors.
 class RoleBadge extends StatelessWidget {
   final CharacterRole role;
   final double fontSize;

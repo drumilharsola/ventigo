@@ -15,7 +15,6 @@ class UserProfileModal extends ConsumerStatefulWidget {
   final String? peerSessionId;
   final String? roomId;
   final VoidCallback onClose;
-  final VoidCallback? onBlocked;
 
   const UserProfileModal({
     super.key,
@@ -23,7 +22,6 @@ class UserProfileModal extends ConsumerStatefulWidget {
     this.peerSessionId,
     this.roomId,
     required this.onClose,
-    this.onBlocked,
   });
 
   @override
@@ -55,17 +53,35 @@ class _UserProfileModalState extends ConsumerState<UserProfileModal> {
   }
 
   Future<void> _block() async {
-    if (widget.peerSessionId == null || _profile == null) return;
-    setState(() => _blocking = true);
+    if (widget.peerSessionId == null || widget.peerSessionId!.isEmpty || _profile == null) {
+      return;
+    }
+    setState(() {
+      _blocking = true;
+      _error = null;
+    });
     try {
       final token = ref.read(authProvider).token!;
       await ref.read(apiClientProvider).blockUser(
-        token, widget.peerSessionId!, _profile!.username, _profile!.avatarId,
+        token,
+        widget.peerSessionId!,
+        _profile!.username,
+        _profile!.avatarId,
       );
-      setState(() { _blocked = true; _blocking = false; });
-      widget.onBlocked?.call();
+      if (mounted) {
+        setState(() {
+          _blocked = true;
+          _blocking = false;
+          _confirmingBlock = false;
+        });
+      }
     } catch (e) {
-      setState(() { _blocking = false; _error = e.toString(); });
+      if (mounted) {
+        setState(() {
+          _blocking = false;
+          _error = e.toString();
+        });
+      }
     }
   }
 
@@ -124,38 +140,48 @@ class _UserProfileModalState extends ConsumerState<UserProfileModal> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _stat('Vent 🎤', p.speakCount),
-            _stat('Listen 👂', p.listenCount),
+            _stat('Support 🤝', p.listenCount),
             _stat('Total', p.speakCount + p.listenCount),
           ],
         ),
-        if (widget.peerSessionId != null && !_blocked) ...[
-          const SizedBox(height: 24),
-          if (_confirmingBlock)
+        if (widget.peerSessionId != null && widget.peerSessionId!.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          if (_confirmingBlock && !_blocked)
             Column(
               children: [
-                Text('Block ${p.username}?', style: AppTypography.ui(color: AppColors.danger)),
-                const SizedBox(height: 8),
+                Text(
+                  'Block ${p.username}?',
+                  style: AppTypography.ui(color: AppColors.danger),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    FlowButton(label: 'Cancel', variant: FlowButtonVariant.ghost, size: FlowButtonSize.sm, onPressed: () => setState(() => _confirmingBlock = false)),
+                    FlowButton(
+                      label: 'Cancel',
+                      variant: FlowButtonVariant.ghost,
+                      size: FlowButtonSize.sm,
+                      onPressed: () => setState(() => _confirmingBlock = false),
+                    ),
                     const SizedBox(width: 8),
-                    FlowButton(label: 'Confirm block', variant: FlowButtonVariant.danger, size: FlowButtonSize.sm, onPressed: _block, loading: _blocking),
+                    FlowButton(
+                      label: 'Block',
+                      variant: FlowButtonVariant.danger,
+                      size: FlowButtonSize.sm,
+                      onPressed: _block,
+                      loading: _blocking,
+                    ),
                   ],
                 ),
               ],
             )
           else
             FlowButton(
-              label: 'Block user',
-              variant: FlowButtonVariant.danger,
+              label: _blocked ? 'Blocked' : 'Block this person',
+              variant: _blocked ? FlowButtonVariant.ghost : FlowButtonVariant.danger,
               size: FlowButtonSize.sm,
-              onPressed: () => setState(() => _confirmingBlock = true),
+              onPressed: _blocked ? null : () => setState(() => _confirmingBlock = true),
             ),
-        ],
-        if (_blocked) ...[
-          const SizedBox(height: 16),
-          Text('User blocked ✓', style: AppTypography.ui(color: AppColors.success)),
         ],
         if (_error != null && !_loading) ...[
           const SizedBox(height: 8),
