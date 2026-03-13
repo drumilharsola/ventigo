@@ -89,8 +89,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return VerifyScreen(resetToken: resetToken);
       }),
       GoRoute(path: '/verify-email', builder: (_, state) {
-        final token = state.uri.queryParameters['token'] ?? '';
-        return VerifyEmailScreen(token: token);
+        final status = state.uri.queryParameters['status'] ?? '';
+        return VerifyEmailScreen(status: status);
       }),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
       GoRoute(path: '/blocked-users', builder: (_, __) => const BlockedUsersScreen()),

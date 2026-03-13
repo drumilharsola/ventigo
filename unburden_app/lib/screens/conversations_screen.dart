@@ -115,7 +115,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
       _syncBoard();
       _connectBoardWs();
       _refreshEmailVerified();
-      _roomSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) => _syncRooms());
+      _roomSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+        _syncRooms();
+        _refreshEmailVerified();
+      });
     });
   }
 

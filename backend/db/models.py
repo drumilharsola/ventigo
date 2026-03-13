@@ -25,7 +25,8 @@ class User(Base):
     password_hash = Column(String(128), nullable=False)
     created_at = Column(BigInteger, default=lambda: int(time.time()), nullable=False)
 
-    profile = relationship("Profile", back_populates="user", uselist=False, lazy="joined")
+    profile = relationship("Profile", back_populates="user", uselist=False, lazy="joined",
+                            cascade="all, delete-orphan", passive_deletes=True)
 
 
 class Profile(Base):

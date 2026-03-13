@@ -7,7 +7,8 @@ class Settings(BaseSettings):
 
     APP_SECRET_KEY: str = "dev_secret_change_me"
     APP_ENV: str = "development"
-    APP_BASE_URL: str = "http://localhost:3000"
+    APP_BASE_URL: str = "http://localhost:8000"   # Backend's own public URL
+    FRONTEND_URL: str = "http://localhost:3000"    # Flutter web app (Vercel)
 
     REDIS_URL: str = "redis://localhost:6379/0"
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/unburden"

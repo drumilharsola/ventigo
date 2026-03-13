@@ -15,6 +15,7 @@ import logging
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, field_validator
 from passlib.context import CryptContext
 from sqlalchemy import select, update, delete as sa_delete
@@ -101,7 +102,8 @@ async def _send_verify_link(email: str, session_id: str, redis) -> None:
     token = secrets.token_urlsafe(32)
     await redis.setex(f"email_verify_token:{token}", 86400, session_id)
 
-    verify_url = f"{settings.APP_BASE_URL.rstrip('/')}/verify-email?token={token}"
+    # Link goes directly to the backend endpoint which verifies + redirects
+    verify_url = f"{settings.APP_BASE_URL.rstrip('/')}/auth/verify-email?token={token}"
 
     try:
         await send_verification_email(email, verify_url)
@@ -232,33 +234,18 @@ async def send_verification(payload: dict = Depends(require_auth)):
 
 @router.get("/verify-email")
 async def verify_email_route(token: str):
-    """Verify email via link token. Returns a fresh JWT with email_verified=True."""
+    """Verify email via link token. Redirects to the frontend app with status."""
+    settings = get_settings()
+    frontend_url = settings.FRONTEND_URL.rstrip('/')
     redis = await get_redis()
     session_id = await redis.get(f"email_verify_token:{token}")
     if not session_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification link is invalid or has expired",
-        )
+        return RedirectResponse(f"{frontend_url}/verify-email?status=error")
 
     await redis.delete(f"email_verify_token:{token}")
     await set_email_verified(session_id)
 
-    profile = await get_profile(session_id)
-    has_profile = bool(profile and profile.get("username"))
-
-    factory = get_session_factory()
-    async with factory() as db:
-        user = await db.get(User, session_id)
-    email_hash = user.email_hash if user else ""
-    fresh_token, _ = create_session_token(email_hash, session_id)
-
-    return {
-        "token": fresh_token,
-        "session_id": session_id,
-        "has_profile": has_profile,
-        "email_verified": True,
-    }
+    return RedirectResponse(f"{frontend_url}/verify-email?status=success")
 
 
 @router.post("/profile")
@@ -423,7 +410,7 @@ async def forgot_password(body: ForgotPasswordRequest):
     await redis.setex(f"pwd_reset_token:{token}", 3600, session_id)  # 1 hour
 
     settings = get_settings()
-    reset_url = f"{settings.APP_BASE_URL.rstrip('/')}/verify?reset_token={token}"
+    reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify?reset_token={token}"
 
     try:
         from services.email import send_password_reset_email

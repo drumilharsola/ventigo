@@ -73,7 +73,10 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       _syncRooms();
       _connectWs();
       _refreshEmailVerified();
-      _roomSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) => _syncRooms());
+      _roomSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+        _syncRooms();
+        _refreshEmailVerified();
+      });
       // If there's a pending request from the route, start global waiting
       if (widget.requestId != null) {
         ref.read(pendingWaitProvider.notifier).startWaiting(widget.requestId!);
