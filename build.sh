@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+export FLUTTER_ALLOW_ROOT=true
+
 echo "==> Cloning Flutter SDK..."
 git clone --depth 1 --branch stable https://github.com/flutter/flutter.git /tmp/flutter-sdk
 FLUTTER=/tmp/flutter-sdk/bin/flutter

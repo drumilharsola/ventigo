@@ -212,6 +212,14 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         }
       case _Mode.checkEmail:
         break;
+      case _Mode.forgotPassword:
+        if (_emailCtrl.text.contains('@')) {
+          _handleForgotPassword();
+        }
+      case _Mode.resetPassword:
+        if (_passCtrl.text.length >= 8 && _confirmCtrl.text.isNotEmpty) {
+          _handleResetPassword();
+        }
     }
   }
 
