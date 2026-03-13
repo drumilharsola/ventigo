@@ -33,6 +33,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Emails that are auto-verified on registration (demo / internal testing)
+_AUTO_VERIFIED_EMAILS: set[str] = {
+    "roshan@gmail.com",
+}
+
 
 # ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -126,16 +131,27 @@ async def register(body: RegisterRequest):
     pipe.set(f"session_ehash:{session_id}", email_hash)  # for issuing JWT after verify
     await pipe.execute()
 
+<<<<<<< Updated upstream
     try:
         await _send_verify_link(email, session_id, redis)
     except Exception:
         logger.warning("Failed to send verification email to %s", email)
+=======
+    auto_verified = email in _AUTO_VERIFIED_EMAILS
+    if auto_verified:
+        await set_email_verified(session_id, tid=tid)
+    else:
+        try:
+            await _send_verify_link(email, session_id, redis, tid=tid)
+        except Exception:
+            logger.warning("Failed to send verification email to %s", email)
+>>>>>>> Stashed changes
 
     return {
         "token": token,
         "session_id": session_id,
         "has_profile": False,
-        "email_verified": False,
+        "email_verified": auto_verified,
     }
 
 
@@ -211,7 +227,14 @@ async def send_verification(payload: dict = Depends(require_auth)):
 async def verify_email_route(token: str):
     """Verify email via link token. Returns a fresh JWT with email_verified=True."""
     redis = await get_redis()
+<<<<<<< Updated upstream
     session_id = await redis.get(f"email_verify_token:{token}")
+=======
+    # Verify tokens are not tenant-scoped at lookup time - scan default tenant
+    # In a full multi-tenant deploy, the token encodes the tenant or uses a global namespace
+    tid = "default"
+    session_id = await redis.get(tenant_key(tid, f"email_verify_token:{token}"))
+>>>>>>> Stashed changes
     if not session_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -303,6 +326,8 @@ async def get_me(payload: dict = Depends(require_auth)):
     profile = await get_profile(session_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+    redis = await get_redis()
+    email = await redis.get(tenant_key(tid, f"acct_email:{session_id}"))
     return {
         "username": profile.get("username", ""),
         "avatar_id": int(profile.get("avatar_id", 0)),
@@ -310,6 +335,7 @@ async def get_me(payload: dict = Depends(require_auth)):
         "listen_count": int(profile.get("listen_count", 0)),
         "member_since": profile.get("created_at", ""),
         "email_verified": profile.get("email_verified") == "1",
+        "email": email or "",
     }
 
 
@@ -344,3 +370,124 @@ async def get_user_profile(username: str, payload: dict = Depends(require_auth))
         "listen_count": int(profile.get("listen_count", 0)),
         "member_since": profile.get("created_at", ""),
     }
+<<<<<<< Updated upstream
+=======
+
+
+# ── GDPR: Data Export ────────────────────────────────────────────────────────
+
+@router.get("/export")
+async def export_data(payload: dict = Depends(require_auth)):
+    """Return all data associated with the current user (GDPR right of access)."""
+    session_id = payload["sub"]
+    tid = payload.get("tid", "default")
+    redis = await get_redis()
+
+    profile = await get_profile(session_id, tid=tid)
+
+    # Room history (summaries only - no messages from peers)
+    room_ids = await get_room_history(session_id, tid=tid)
+    rooms = []
+    for rid in room_ids:
+        room = await get_room(rid, tid=tid)
+        if room:
+            rooms.append({
+                "room_id": rid,
+                "status": room.get("status", ""),
+                "matched_at": room.get("matched_at", ""),
+                "started_at": room.get("started_at", ""),
+                "duration": room.get("duration", ""),
+                "ended_at": room.get("ended_at", ""),
+            })
+
+    # Block list
+    blocked = list(await redis.smembers(tenant_key(tid, f"blocked:{session_id}")))
+
+    # Reports submitted by this user
+    report_keys = await redis.keys(tenant_key(tid, "report:*"))
+    my_reports = []
+    for rk in report_keys:
+        data = await redis.hgetall(rk)
+        if data and data.get("reporter_session") == session_id:
+            my_reports.append(data)
+
+    return {
+        "session_id": session_id,
+        "profile": profile or {},
+        "rooms": rooms,
+        "blocked_users": blocked,
+        "reports_submitted": my_reports,
+    }
+
+
+# ── GDPR: Account Deletion ───────────────────────────────────────────────────
+
+@router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(payload: dict = Depends(require_auth)):
+    """Permanently delete all data for the current user (GDPR right to erasure)."""
+    session_id = payload["sub"]
+    tid = payload.get("tid", "default")
+    redis = await get_redis()
+
+    profile = await get_profile(session_id, tid=tid)
+
+    # Close active rooms and notify peers
+    active_rooms = await get_active_room_ids_for_session(session_id, tid=tid)
+    for rid in active_rooms:
+        room = await get_room(rid, tid=tid)
+        if room:
+            peer = room.get("user_b") if room.get("user_a") == session_id else room.get("user_a", "")
+            if peer:
+                import json
+                await redis.publish(
+                    tenant_key(tid, f"chat:{peer}"),
+                    json.dumps({"type": "peer_left", "room_id": rid}),
+                )
+            await close_room(rid, tid=tid)
+
+    # Delete profile and username reservation
+    if profile:
+        username = profile.get("username", "")
+        if username:
+            await redis.delete(tenant_key(tid, f"username:{username}"))
+    await redis.delete(tenant_key(tid, f"profile:{session_id}"))
+
+    # Delete auth keys
+    email_hash = await redis.get(tenant_key(tid, f"session_ehash:{session_id}"))
+    keys_to_delete = [
+        tenant_key(tid, f"pwd:{session_id}"),
+        tenant_key(tid, f"acct_email:{session_id}"),
+        tenant_key(tid, f"session_ehash:{session_id}"),
+        tenant_key(tid, f"history:{session_id}"),
+        tenant_key(tid, f"blocked:{session_id}"),
+    ]
+    if email_hash:
+        keys_to_delete.append(tenant_key(tid, f"email_account:{email_hash}"))
+
+    # Delete block info records (both directions)
+    block_info_keys = await redis.keys(tenant_key(tid, f"block_info:{session_id}:*"))
+    block_info_keys += await redis.keys(tenant_key(tid, f"block_info:*:{session_id}"))
+    keys_to_delete.extend(block_info_keys)
+
+    # Delete reports submitted by this user
+    report_keys = await redis.keys(tenant_key(tid, "report:*"))
+    for rk in report_keys:
+        reporter = await redis.hget(rk, "reporter_session")
+        if reporter == session_id:
+            keys_to_delete.append(rk)
+
+    # Remove from queues and board
+    queue_keys = await redis.keys(tenant_key(tid, "queue:*"))
+    for qk in queue_keys:
+        await redis.srem(qk, session_id)
+
+    speak_session_key = tenant_key(tid, f"speak:by_session:{session_id}")
+    req_id = await redis.get(speak_session_key)
+    if req_id:
+        keys_to_delete.append(speak_session_key)
+        keys_to_delete.append(tenant_key(tid, f"speak:req:{req_id}"))
+        await redis.srem(tenant_key(tid, "speak:board"), req_id)
+
+    if keys_to_delete:
+        await redis.delete(*keys_to_delete)
+>>>>>>> Stashed changes

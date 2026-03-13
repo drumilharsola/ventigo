@@ -1,6 +1,10 @@
 """
+<<<<<<< Updated upstream
 UNBurDEN - Anonymous Timed Chat
 FastAPI application entrypoint.
+=======
+Anonymous Timed Chat - FastAPI application entrypoint.
+>>>>>>> Stashed changes
 """
 
 import logging
@@ -86,14 +90,50 @@ async def handle_timeout_error(_: Request, exc: AsyncTimeoutError):
         content={"detail": "The service timed out while processing your request. Please try again."},
     )
 
+# ── Tenant resolution ─────────────────────────────────────────────────────────
+app.add_middleware(TenantMiddleware)
+
 # ── CORS ──────────────────────────────────────────────────────────────────────
+<<<<<<< Updated upstream
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
+=======
+
+async def _build_allowed_origins() -> list[str]:
+    """Combine static allowed origins with tenant domains."""
+    origins = list(settings.allowed_origins_list)
+    try:
+        tenants = await list_tenants()
+        for t in tenants:
+            if t.domain:
+                origins.append(f"https://{t.domain}")
+                origins.append(f"http://{t.domain}")
+    except Exception:
+        pass
+    return origins
+
+# Use allow_origins=["*"] with allow_credentials isn't safe - instead we
+# set a generous static list and add tenant domains at startup. For truly
+# dynamic origins, the TenantMiddleware + CORS wildcard with specific
+# headers is an alternative. We use the simple approach here.
+# NOTE: CORSMiddleware must be added LAST so it is the outermost middleware
+# and can handle OPTIONS preflight requests before they reach other middleware.
+_cors_kwargs: dict = dict(
+>>>>>>> Stashed changes
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+<<<<<<< Updated upstream
+=======
+if settings.APP_ENV == "development":
+    # In dev, allow any localhost port so flutter run on random ports works.
+    _cors_kwargs["allow_origin_regex"] = r"^https?://localhost(:\d+)?$"
+else:
+    _cors_kwargs["allow_origins"] = settings.allowed_origins_list
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
+>>>>>>> Stashed changes
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)

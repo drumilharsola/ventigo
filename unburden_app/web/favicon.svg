@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Rounded square background — cream -->
+  <rect width="512" height="512" rx="108" fill="#FFF8F0"/>
+  <!-- Left bubble — peach/coral (Venter, speaking) -->
+  <ellipse cx="210" cy="240" rx="130" ry="110" fill="#F4A68C" opacity="0.92"/>
+  <!-- Venter bubble tail -->
+  <path d="M140 320 Q100 400 120 380 Q130 365 165 330Z" fill="#F4A68C" opacity="0.92"/>
+  <!-- Right bubble — lavender (Listener) -->
+  <ellipse cx="310" cy="270" rx="115" ry="100" fill="#C4B5E3" opacity="0.88"/>
+</svg>

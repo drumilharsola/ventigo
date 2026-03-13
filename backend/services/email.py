@@ -26,20 +26,32 @@ async def send_verification_email(to_email: str, verify_url: str) -> None:
 
     html = f"""
     <html>
+<<<<<<< Updated upstream
     <body style="font-family:sans-serif;background:#0f0c1a;color:#f5f5f5;padding:40px;">
       <div style="max-width:480px;margin:auto;background:#1d1829;border-radius:16px;padding:40px;">
         <h2 style="color:#b8a4f4;margin-top:0;font-size:22px;letter-spacing:-0.02em;">Unburden</h2>
         <p style="font-size:15px;color:#c8c4e2;margin:0 0 24px;">One click to verify your email address:</p>
+=======
+    <body style="font-family:'Comfortaa',sans-serif;background:#FFF8F0;color:#3B3335;padding:40px;">
+      <div style="max-width:480px;margin:auto;background:#FFFFFF;border-radius:16px;padding:40px;border:1px solid #F0E8EA;">
+        <h2 style="color:#3B3335;margin-top:0;font-size:22px;letter-spacing:-0.02em;">{brand.app_name_plain}</h2>
+        <p style="font-size:15px;color:#4D4448;margin:0 0 24px;">One click to verify your email address:</p>
+>>>>>>> Stashed changes
         <a href="{verify_url}"
-           style="display:inline-block;padding:14px 28px;background:#b8a4f4;color:#0f0c1a;
+           style="display:inline-block;padding:14px 28px;background:#F4A68C;color:#3B3335;
                   border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;">
           Verify my email &rarr;
         </a>
-        <p style="font-size:13px;color:#615c80;margin:28px 0 0;">
-          This link expires in <strong style="color:#9e9ab8;">24 hours</strong>.
+        <p style="font-size:13px;color:#8A7F85;margin:28px 0 0;">
+          This link expires in <strong style="color:#4D4448;">24 hours</strong>.
         </p>
+<<<<<<< Updated upstream
         <hr style="border:none;border-top:1px solid #2f2a42;margin:24px 0;"/>
         <p style="font-size:11px;color:#615c80;">If you didn't create an Unburden account, ignore this email.</p>
+=======
+        <hr style="border:none;border-top:1px solid #F0E8EA;margin:24px 0;"/>
+        <p style="font-size:11px;color:#8A7F85;">If you didn&rsquo;t create a {brand.app_name_plain} account, ignore this email.</p>
+>>>>>>> Stashed changes
       </div>
     </body>
     </html>

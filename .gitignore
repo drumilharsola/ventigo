@@ -17,3 +17,21 @@ __pycache__/
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+
+# ── Flutter / Dart ────────────────────────────────────────────────────────────
+unburden_app/build/
+unburden_app/.dart_tool/
+unburden_app/.idea/
+unburden_app/.flutter-plugins
+unburden_app/.flutter-plugins-dependencies
+unburden_app/android/.gradle/
+unburden_app/android/local.properties
+unburden_app/android/app/src/main/java/
+unburden_app/android/gradlew
+unburden_app/android/gradlew.bat
+unburden_app/android/gradle/
+*.lock
+
+# ── Python venv ───────────────────────────────────────────────────────────────
+.venv/
