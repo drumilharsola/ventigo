@@ -31,7 +31,6 @@ unburden_app/android/app/src/main/java/
 unburden_app/android/gradlew
 unburden_app/android/gradlew.bat
 unburden_app/android/gradle/
-*.lock
 
 # ── Python venv ───────────────────────────────────────────────────────────────
 .venv/
