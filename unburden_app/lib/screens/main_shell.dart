@@ -79,8 +79,8 @@ class MainShellState extends State<MainShell> {
                 label: '',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.forum_rounded),
-                activeIcon: Icon(Icons.forum_rounded),
+                icon: Icon(Icons.eco_rounded),
+                activeIcon: Icon(Icons.eco_rounded),
                 label: '',
               ),
               BottomNavigationBarItem(

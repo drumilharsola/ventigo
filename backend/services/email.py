@@ -6,11 +6,20 @@ Dev mode: if BREVO_API_KEY is not set, the verification link is printed to the
 console so you can click it directly during local development.
 """
 
+import re
 import logging
 import httpx
 from config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_sender(smtp_from: str) -> dict:
+    """Parse 'Name <email>' or plain 'email' into Brevo sender dict."""
+    match = re.match(r'^(.+?)\s*<(.+?)>$', smtp_from.strip())
+    if match:
+        return {"name": match.group(1).strip(), "email": match.group(2).strip()}
+    return {"name": "Unburden", "email": smtp_from.strip()}
 
 
 async def send_verification_email(to_email: str, verify_url: str) -> None:
@@ -53,7 +62,7 @@ async def send_verification_email(to_email: str, verify_url: str) -> None:
                 "Content-Type": "application/json",
             },
             json={
-                "sender": {"name": "Unburden", "email": settings.SMTP_FROM},
+                "sender": _parse_sender(settings.SMTP_FROM),
                 "to": [{"email": to_email}],
                 "subject": "Verify your Unburden email",
                 "htmlContent": html,
@@ -105,7 +114,7 @@ async def send_password_reset_email(to_email: str, reset_url: str) -> None:
                 "Content-Type": "application/json",
             },
             json={
-                "sender": {"name": "Unburden", "email": settings.SMTP_FROM},
+                "sender": _parse_sender(settings.SMTP_FROM),
                 "to": [{"email": to_email}],
                 "subject": "Reset your Unburden password",
                 "htmlContent": html,

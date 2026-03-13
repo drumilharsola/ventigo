@@ -254,14 +254,10 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               FlowButton(
-                label: '← Back',
+                label: '← Cancel',
                 variant: FlowButtonVariant.ghost,
                 size: FlowButtonSize.sm,
-                onPressed: () {
-                  // Don't cancel — just go back to lobby with pending request
-                  _ws?.sink.close();
-                  context.go('/home?request_id=${Uri.encodeComponent(_requestId)}');
-                },
+                onPressed: _handleCancel,
               ),
               TimerWidget(remainingSeconds: _remaining, onEnd: _handleTimeout),
             ],

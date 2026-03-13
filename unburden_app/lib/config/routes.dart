@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/auth_provider.dart';
-import '../state/pending_wait_provider.dart';
+
 import '../screens/landing_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/verify_screen.dart';
@@ -96,10 +96,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/blocked-users', builder: (_, __) => const BlockedUsersScreen()),
 
       // ── Main shell with bottom navigation ──
-      GoRoute(path: '/home', builder: (_, state) {
-        final requestId = state.uri.queryParameters['request_id'];
-        return _HomeShell(requestId: requestId);
-      }),
+      GoRoute(path: '/home', builder: (_, __) => const MainShell(initialIndex: 0)),
       GoRoute(path: '/chats', builder: (_, __) => const MainShell(initialIndex: 1)),
       GoRoute(path: '/posts', builder: (_, __) => const MainShell(initialIndex: 2)),
       GoRoute(path: '/help', builder: (_, __) => const MainShell(initialIndex: 3)),
@@ -131,25 +128,4 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Wrapper that triggers [pendingWaitProvider] when navigating to /home with
-/// a request_id query parameter (minimize-while-waiting flow).
-class _HomeShell extends ConsumerStatefulWidget {
-  final String? requestId;
-  const _HomeShell({this.requestId});
 
-  @override
-  ConsumerState<_HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends ConsumerState<_HomeShell> {
-  @override
-  void initState() {
-    super.initState();
-    if (widget.requestId != null) {
-      ref.read(pendingWaitProvider.notifier).startWaiting(widget.requestId!);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => const MainShell(initialIndex: 0);
-}
