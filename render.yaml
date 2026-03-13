@@ -35,7 +35,7 @@ services:
         sync: false          # From resend.com dashboard
 
       - key: APP_BASE_URL
-        sync: false          
+        sync: false          # Must be your Vercel frontend URL (e.g. https://unburden.vercel.app)
 
       - key: DATABASE_URL
         sync: false          # Render Postgres internal URL (postgresql+asyncpg://...)

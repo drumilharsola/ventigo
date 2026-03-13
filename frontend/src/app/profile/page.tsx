@@ -16,7 +16,7 @@ function fmtDate(ts: string): string {
 
 function ProfileContent() {
   const router = useRouter();
-  const { token, username, avatarId: storeAvatarId, setProfile, _hasHydrated } = useAuthStore();
+  const { token, username, avatarId: storeAvatarId, setProfile, clear, _hasHydrated } = useAuthStore();
 
   // ── Setup mode state ──
   const [dob, setDob] = useState("");
@@ -31,6 +31,8 @@ function ProfileContent() {
   const [rerollName, setRerollName] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     if (!_hasHydrated) return;
@@ -81,8 +83,20 @@ function ProfileContent() {
     }
   };
 
-  // ══════════════════════════════════════════════════
-  // VIEW MODE - profile already set up
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Are you sure you want to permanently delete your account? This cannot be undone.")) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await api.deleteAccount(token!);
+      clear();
+      router.push("/");
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete account");
+    } finally {
+      setDeleting(false);
+    }
+  };
   // ══════════════════════════════════════════════════
   // Wait for store to rehydrate before deciding which mode to render, so there
   // is no flash of the setup form for users who already have a profile.
@@ -202,6 +216,31 @@ function ProfileContent() {
                 >
                   Edit profile
                 </button>
+
+                {/* Danger zone */}
+                <div style={{ marginTop: 48, paddingTop: 28, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--danger)", marginBottom: 12, fontFamily: "var(--font-ui)" }}>Danger zone</p>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleting}
+                    style={{
+                      background: "rgba(232,128,128,0.08)",
+                      border: "1px solid rgba(232,128,128,0.25)",
+                      borderRadius: "var(--r-md)",
+                      padding: "10px 20px",
+                      color: "var(--danger)",
+                      fontSize: 13,
+                      fontFamily: "var(--font-ui)",
+                      cursor: deleting ? "not-allowed" : "pointer",
+                      opacity: deleting ? 0.6 : 1,
+                    }}
+                  >
+                    {deleting ? "Deleting…" : "Delete account"}
+                  </button>
+                  {deleteError && (
+                    <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{deleteError}</p>
+                  )}
+                </div>
               </>
             ) : (
               <>

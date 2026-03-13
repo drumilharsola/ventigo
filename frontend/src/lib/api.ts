@@ -209,6 +209,13 @@ export const api = {
 
   deletePost: (token: string, postId: string) =>
     request<void>(`/posts/${encodeURIComponent(postId)}`, { method: "DELETE" }, token),
+
+  // Account
+  exportData: (token: string) =>
+    request<Record<string, unknown>>("/auth/export", {}, token),
+
+  deleteAccount: (token: string) =>
+    request<{ message: string }>("/auth/account", { method: "DELETE" }, token),
 };
 
 export const wsUrl = {
