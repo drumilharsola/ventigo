@@ -15,7 +15,10 @@ if config.config_file_name is not None:
 
 # Override URL from app settings so env var works in production
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+_db_url = settings.DATABASE_URL
+if _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+config.set_main_option("sqlalchemy.url", _db_url)
 
 target_metadata = Base.metadata
 

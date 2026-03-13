@@ -14,8 +14,12 @@ def get_engine():
     global _engine
     if _engine is None:
         settings = get_settings()
+        url = settings.DATABASE_URL
+        # Normalize URL to use asyncpg driver regardless of what the env var provides
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         _engine = create_async_engine(
-            settings.DATABASE_URL,
+            url,
             pool_size=5,
             max_overflow=5,
             pool_pre_ping=True,
