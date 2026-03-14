@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Comfortaa, Inter } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import { PostHogProvider } from "@/components/PostHogProvider";
 
 const comfortaa = Comfortaa({
   variable: "--font-comfortaa",
@@ -16,8 +16,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "UNBurDEN - a safe place to be heard",
-  description: "UNBurDEN yourself in 15 minutes. Anonymous, no pressure, just presence.",
+  title: "Ventigo - a safe place to be heard",
+  description: "Ventigo yourself in 15 minutes. Anonymous, no pressure, just presence.",
 };
 
 export default function RootLayout({
@@ -28,7 +28,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${comfortaa.variable} ${inter.variable} antialiased min-h-screen`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <PostHogProvider>
+          {children}
+        </PostHogProvider>
       </body>
     </html>
   );

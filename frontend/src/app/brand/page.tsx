@@ -139,7 +139,7 @@ export default function BrandPage() {
 
         <footer style={{ paddingTop: 24, borderTop: "1px solid rgba(0,0,0,0.08)" }}>
           <p style={{ fontSize: 11, color: "var(--mist)", fontFamily: "var(--font-ui)" }}>
-            UNBurDEN Brand System · Internal reference only
+            Ventigo Brand System · Internal reference only
           </p>
         </footer>
       </div>

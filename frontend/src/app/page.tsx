@@ -6,12 +6,12 @@ import { FlowLogo } from "@/components/FlowLogo";
 
 
 const MARQUEE_ITEMS = [
-  "UNBurDEN in 15 minutes", "Completely anonymous", "No stored messages",
+  "Ventigo in 15 minutes", "Completely anonymous", "No stored messages",
   "Real humans only", "No advice, just presence", "Disappears in 7 days",
 ];
 
 const FEATURES = [
-  { num: "01", title: "UNBurDEN yourself", desc: "Say what’s weighing on you without names, judgment, or consequences." },
+  { num: "01", title: "Ventigo yourself", desc: "Say what's weighing on you without names, judgment, or consequences." },
   { num: "02", title: "Be a listener", desc: "Show up for someone with calm attention. No advice needed." },
   { num: "03", title: "15 minutes", desc: "Still enough to matter. Short enough to stay safe. The timer keeps it bounded." },
   { num: "04", title: "No trace", desc: "Sessions disappear. Words fade. Identity vanishes after 7 days." },
@@ -71,7 +71,7 @@ export default function HomePage() {
             color: "var(--white)",
             marginBottom: 36,
           }}>
-            UNBurDEN<br />
+            Ventigo<br />
             <em style={{
               fontStyle: "italic",
               background: "linear-gradient(135deg, var(--flow-1), var(--flow-2))",
@@ -94,7 +94,7 @@ export default function HomePage() {
               href={authed ? "/lobby" : "/onboarding"}
               className="btn btn-primary btn-lg"
             >
-              {authed ? "Let's Unburden" : "Get started"}
+              {authed ? "Let's Ventigo" : "Get started"}
             </Link>
           </div>
         </section>

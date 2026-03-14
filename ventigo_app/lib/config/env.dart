@@ -1,0 +1,58 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+/// Environment configuration for API and WebSocket endpoints.
+class Env {
+  Env._();
+
+  static const String _envApiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
+
+  /// Base URL for REST API calls (no trailing slash).
+  /// On web, defaults to same origin (empty string = relative paths).
+  /// On mobile, defaults to production Railway backend.
+  /// Override with --dart-define=API_BASE_URL=https://...
+  static String get apiBaseUrl {
+    if (_envApiBaseUrl.isNotEmpty) return _envApiBaseUrl;
+    if (kIsWeb) return ''; // same-origin; requests use relative paths
+    return 'https://ventigo-backend.up.railway.app'; // production backend (Railway)
+  }
+
+  /// WebSocket base URL (ws:// or wss://).
+  static String get wsBaseUrl {
+    final override = const String.fromEnvironment('WS_BASE_URL');
+    if (override.isNotEmpty) return override;
+    if (kIsWeb && apiBaseUrl.isEmpty) {
+      // Same-origin WebSocket: derive from window.location
+      // Uri.base is 'http://host:port/' in Flutter web
+      final base = Uri.base;
+      final scheme = base.scheme == 'https' ? 'wss' : 'ws';
+      return '$scheme://${base.host}${base.hasPort ? ':${base.port}' : ''}';
+    }
+    return apiBaseUrl.replaceFirst('http', 'ws');
+  }
+
+  /// Request timeout.
+  static const Duration requestTimeout = Duration(seconds: 8);
+
+  /// Tenant ID - set via --dart-define=TENANT_ID=xxx for multi-tenant builds.
+  static const String tenantId = String.fromEnvironment('TENANT_ID', defaultValue: '');
+
+  /// Sentry DSN - set via --dart-define=SENTRY_DSN=https://...
+  static const String sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+
+  /// OneSignal App ID - set via --dart-define=ONESIGNAL_APP_ID=xxx
+  static const String onesignalAppId = String.fromEnvironment('ONESIGNAL_APP_ID', defaultValue: '');
+
+  /// Environment name for Sentry / analytics.
+  static const String environment = String.fromEnvironment('APP_ENV', defaultValue: 'production');
+
+  /// Board WebSocket URL.
+  static String boardWsUrl(String token) =>
+      '${wsBaseUrl}/board/ws?token=${Uri.encodeComponent(token)}';
+
+  /// Chat WebSocket URL.
+  static String chatWsUrl(String token, String roomId) =>
+      '${wsBaseUrl}/chat/ws?token=${Uri.encodeComponent(token)}&room_id=${Uri.encodeComponent(roomId)}';
+}

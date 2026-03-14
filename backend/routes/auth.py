@@ -19,10 +19,9 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, field_validator
 from passlib.context import CryptContext
 from sqlalchemy import select, update, delete as sa_delete
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from config import get_settings
+from rate_limit import limiter
 from services.otp import get_email_hash
 from services.email import send_verification_email
 from services.session_token import create_session_token
@@ -36,17 +35,17 @@ from db.models import User, Profile, BlockedUser
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Emails that are auto-verified on registration (demo / internal testing)
-_AUTO_VERIFIED_EMAILS: set[str] = {
-    "roshan@gmail.com",
-}
-
 
 # ─── Models ───────────────────────────────────────────────────────────────────
+
+def _validate_password(v: str) -> str:
+    if len(v) < 8:
+        raise ValueError("Password must be at least 8 characters")
+    return v
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -55,9 +54,7 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def strong_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        return v
+        return _validate_password(v)
 
 
 class LoginRequest(BaseModel):
@@ -149,7 +146,7 @@ async def register(request: Request, body: RegisterRequest):
     redis = await get_redis()
     await redis.set(f"active_device:{session_id}", device_token)
 
-    auto_verified = email in _AUTO_VERIFIED_EMAILS
+    auto_verified = email in get_settings().auto_verified_emails_set
     if auto_verified:
         await set_email_verified(session_id)
     else:
@@ -392,9 +389,7 @@ class ResetPasswordRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def strong_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        return v
+        return _validate_password(v)
 
 
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)

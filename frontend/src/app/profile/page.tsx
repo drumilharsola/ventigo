@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { AVATARS, avatarUrl } from "@/lib/avatars";
 import { FlowLogo } from "@/components/FlowLogo";
+import { useAuthGuard } from "@/lib/useAuthGuard";
 
 const ALL_AVATARS = [...AVATARS];
 
@@ -34,10 +35,7 @@ function ProfileContent() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  useEffect(() => {
-    if (!_hasHydrated) return;
-    if (!token) router.push("/verify");
-  }, [_hasHydrated, token, router]);
+  useAuthGuard({ requireUsername: false });
 
   // Load stats when in view mode
   useEffect(() => {

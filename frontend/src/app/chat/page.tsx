@@ -11,6 +11,8 @@ import { ReportModal } from "@/components/ReportModal";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { avatarUrl } from "@/lib/avatars";
 import { FlowLogo } from "@/components/FlowLogo";
+import { formatTime } from "@/lib/utils";
+import { useAuthGuard } from "@/lib/useAuthGuard";
 
 interface ChatMessage {
   type: "message";
@@ -220,13 +222,13 @@ function ChatContent() {
     }
   }, [token, roomId, mergeTranscriptItems, appendSessionMarker]);
 
-  // Redirect guards
+  useAuthGuard();
+
+  // Redirect guards for page-specific checks
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!token) { router.push("/verify"); return; }
-    if (!username) { router.push("/profile"); return; }
     if (!roomId) { router.push("/lobby"); return; }
-  }, [_hasHydrated, token, username, roomId, router]);
+  }, [_hasHydrated, roomId, router]);
 
   useEffect(() => {
     setMessages([]);
@@ -516,9 +518,6 @@ function ChatContent() {
     const secs = totalSeconds % 60;
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
-
-  const formatTime = (ts: number) =>
-    new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="chat-shell" style={{

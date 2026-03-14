@@ -35,3 +35,13 @@ async def close_redis() -> None:
         except RedisError:
             pass
         _redis_client = None
+
+
+async def hset_with_ttl(key: str, mapping: dict, ttl: int) -> None:
+    """Set all fields of a Redis hash and apply a TTL in one pipeline."""
+    redis = await get_redis()
+    pipe = redis.pipeline(transaction=False)
+    for f, v in mapping.items():
+        pipe.hset(key, f, v)
+    pipe.expire(key, ttl)
+    await pipe.execute()

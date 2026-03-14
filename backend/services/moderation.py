@@ -5,7 +5,6 @@ Returns (flagged: bool, reason: str).
 """
 
 import re
-from typing import Optional
 
 # ── English bad words (core list — extend as needed) ────────────────────────
 _EN_WORDS = {
@@ -96,21 +95,3 @@ async def check_content(text: str) -> tuple[bool, str]:
             return True, f"contains phrase '{phrase}'"
 
     return False, ""
-
-
-async def sanitise_content(text: str) -> Optional[str]:
-    """
-    Sanitise text by replacing bad words with asterisks.
-    Use this for soft moderation (replace rather than block).
-    Returns sanitised text, or None if text should be blocked entirely.
-    """
-    flagged, _ = await check_content(text)
-    if not flagged:
-        return text
-
-    result = text
-    for word, pattern in _PATTERNS.items():
-        if pattern.search(_normalise(result)):
-            result = re.sub(re.escape(word), '*' * len(word), result, flags=re.IGNORECASE)
-
-    return result

@@ -19,7 +19,7 @@ from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from db.redis_client import get_redis
+from db.redis_client import get_redis, hset_with_ttl
 from db.postgres_client import get_session_factory
 from db.models import Profile, BlockedUser
 from config import get_settings
@@ -129,11 +129,7 @@ async def create_room(session_a: str, session_b: str) -> str:
         "first_message_a": "0",
         "first_message_b": "0",
     }
-    pipe = redis.pipeline(transaction=False)
-    for f, v in room_fields.items():
-        pipe.hset(f"room:{room_id}", f, v)
-    pipe.expire(f"room:{room_id}", ROOM_TTL_ACTIVE)
-    await pipe.execute()
+    await hset_with_ttl(f"room:{room_id}", room_fields, ROOM_TTL_ACTIVE)
 
     # Track all active rooms for each participant.
     pipe_active = redis.pipeline(transaction=False)
@@ -158,10 +154,6 @@ async def get_room(room_id: str) -> Optional[dict]:
     redis = await get_redis()
     data = await redis.hgetall(f"room:{room_id}")
     return data if data else None
-
-
-async def get_room_id_for_session(session_id: str) -> Optional[str]:
-    return await get_active_room_id_for_session(session_id)
 
 
 async def get_active_room_ids_for_session(session_id: str) -> list[str]:
@@ -300,24 +292,22 @@ async def get_room_history(session_id: str) -> list[str]:
     return await redis.lrange(f"history:{session_id}", 0, 49)
 
 
-async def increment_speak_count(session_id: str) -> None:
+async def _increment_profile_field(session_id: str, field) -> None:
     factory = get_session_factory()
     async with factory() as db:
         await db.execute(
             update(Profile).where(Profile.session_id == session_id)
-            .values(speak_count=Profile.speak_count + 1)
+            .values(**{field.key: field + 1})
         )
         await db.commit()
+
+
+async def increment_speak_count(session_id: str) -> None:
+    await _increment_profile_field(session_id, Profile.speak_count)
 
 
 async def increment_listen_count(session_id: str) -> None:
-    factory = get_session_factory()
-    async with factory() as db:
-        await db.execute(
-            update(Profile).where(Profile.session_id == session_id)
-            .values(listen_count=Profile.listen_count + 1)
-        )
-        await db.commit()
+    await _increment_profile_field(session_id, Profile.listen_count)
 
 
 async def get_blocked_set(session_id: str) -> set[str]:
@@ -503,6 +493,23 @@ async def delete_connection(session_id_a: str, session_id_b: str) -> bool:
         return True
 
 
+async def _build_peer_info(row, session_id: str, include_status: bool = False) -> dict:
+    """Build a peer info dict from a Connection row."""
+    peer_id = row.session_id_b if row.session_id_a == session_id else row.session_id_a
+    peer_profile = await get_profile(peer_id)
+    info = {
+        "id": row.id,
+        "peer_session_id": peer_id,
+        "peer_username": peer_profile.get("username", "") if peer_profile else "",
+        "peer_avatar_id": int(peer_profile.get("avatar_id", 0)) if peer_profile else 0,
+        "requested_by": row.requested_by,
+        "created_at": row.created_at,
+    }
+    if include_status:
+        info["status"] = row.status
+    return info
+
+
 async def list_connections(session_id: str, status: str = "accepted") -> list[dict]:
     """Return connections for this session filtered by status."""
     from db.models import Connection
@@ -519,20 +526,7 @@ async def list_connections(session_id: str, status: str = "accepted") -> list[di
             )
         )
         rows = result.scalars().all()
-        out = []
-        for row in rows:
-            peer_id = row.session_id_b if row.session_id_a == session_id else row.session_id_a
-            peer_profile = await get_profile(peer_id)
-            out.append({
-                "id": row.id,
-                "peer_session_id": peer_id,
-                "peer_username": peer_profile.get("username", "") if peer_profile else "",
-                "peer_avatar_id": int(peer_profile.get("avatar_id", 0)) if peer_profile else 0,
-                "status": row.status,
-                "requested_by": row.requested_by,
-                "created_at": row.created_at,
-            })
-        return out
+        return [await _build_peer_info(row, session_id, include_status=True) for row in rows]
 
 
 async def list_pending_requests(session_id: str) -> list[dict]:
@@ -552,16 +546,4 @@ async def list_pending_requests(session_id: str) -> list[dict]:
             )
         )
         rows = result.scalars().all()
-        out = []
-        for row in rows:
-            peer_id = row.session_id_b if row.session_id_a == session_id else row.session_id_a
-            peer_profile = await get_profile(peer_id)
-            out.append({
-                "id": row.id,
-                "peer_session_id": peer_id,
-                "peer_username": peer_profile.get("username", "") if peer_profile else "",
-                "peer_avatar_id": int(peer_profile.get("avatar_id", 0)) if peer_profile else 0,
-                "requested_by": row.requested_by,
-                "created_at": row.created_at,
-            })
-        return out
+        return [await _build_peer_info(row, session_id) for row in rows]

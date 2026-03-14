@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { api, wsUrl, AuthError } from "@/lib/api";
 import { FlowLogo } from "@/components/FlowLogo";
 import { Timer } from "@/components/Timer";
+import { useAuthGuard } from "@/lib/useAuthGuard";
 
 
 const WAIT_WINDOW_SECONDS = 10 * 60;
@@ -110,9 +111,11 @@ function WaitingInner() {
     };
   }, [token, router, clear, timedOut, syncRequestStatus, openMatchedRoom]);
 
+  useAuthGuard();
+
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!token) { router.push("/verify"); return; }
+    if (!token) return;
     if (!requestId) { router.push("/lobby"); return; }
 
     let cancelled = false;

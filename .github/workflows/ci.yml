@@ -75,15 +75,48 @@ jobs:
           # placeholder - real value set in Vercel dashboard
           NEXT_PUBLIC_API_URL: https://placeholder.example.com
 
-  # ── 4. Deploy backend to Render (main branch only, all checks must pass) ─────
+  # ── 4. Deploy backend to Railway (main branch only, all checks pass) ────────
   deploy-backend:
-    name: Deploy → Render
+    name: Deploy → Railway
     needs: [security, test-backend, build-frontend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render deploy hook
-        run: |
-          curl --fail-with-body -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
-        # Set RENDER_DEPLOY_HOOK in GitHub repo Settings → Secrets → Actions
-        # Get the hook URL from Render dashboard → your service → Settings → Deploy Hook
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          # Set these in GitHub → Settings → Secrets → Actions:
+          #   RAILWAY_TOKEN      – from railway.app → Account → Tokens → New Token
+          #   RAILWAY_SERVICE_ID – from railway.app → Project → Service → Settings → Service ID
+
+  # ── 5. Run Alembic migrations after deploy ──────────────────────────────────
+  migrate-db:
+    name: Run DB Migrations
+    needs: [deploy-backend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt --quiet
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Set DATABASE_URL in GitHub Secrets — your Neon Postgres connection string
+          # (use the one with sslmode=require)

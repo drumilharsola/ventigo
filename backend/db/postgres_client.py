@@ -1,5 +1,6 @@
 """
 Async SQLAlchemy engine and session factory for PostgreSQL.
+Supports Neon serverless Postgres (requires sslmode=require).
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -18,12 +19,19 @@ def get_engine():
         # Normalize URL to use asyncpg driver regardless of what the env var provides
         if url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        # Neon serverless Postgres: needs SSL and conservative pool sizes
+        is_neon = "neon.tech" in url or "neon" in url
+        connect_args = {"ssl": "require"} if is_neon else {}
+
         _engine = create_async_engine(
             url,
-            pool_size=5,
-            max_overflow=5,
+            pool_size=3 if is_neon else 5,
+            max_overflow=2 if is_neon else 5,
             pool_pre_ping=True,
+            pool_recycle=300,
             echo=settings.APP_ENV == "development",
+            connect_args=connect_args,
         )
     return _engine
 

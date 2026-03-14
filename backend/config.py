@@ -11,14 +11,18 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"    # Flutter web app (Vercel)
 
     REDIS_URL: str = "redis://localhost:6379/0"
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/unburden"
-    RESEND_API_KEY: str = ""
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ventigo"
 
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = "Unburden <dhruharsola@gmail.com>"
+    # ── Brevo (transactional email) ─────────────────────────────────────────
+    BREVO_API_KEY: str = ""
+    SMTP_FROM: str = "Ventigo <dhruharsola@gmail.com>"
+
+    # ── Sentry (error tracking) ─────────────────────────────────────────────
+    SENTRY_DSN: str = ""
+
+    # ── OneSignal (push notifications) ──────────────────────────────────────
+    ONESIGNAL_APP_ID: str = ""
+    ONESIGNAL_API_KEY: str = ""
 
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_HOURS: int = 168
@@ -34,7 +38,14 @@ class Settings(BaseSettings):
     # Turn this on in production once you want to require email verification for listeners
     REQUIRE_EMAIL_VERIFICATION: bool = False
 
+    # Emails auto-verified on registration (demo / internal testing)
+    AUTO_VERIFIED_EMAILS: str = ""
+
     ALLOWED_ORIGINS: str = "http://localhost:3000"
+
+    @property
+    def auto_verified_emails_set(self) -> set[str]:
+        return {e.strip().lower() for e in self.AUTO_VERIFIED_EMAILS.split(",") if e.strip()}
 
     @property
     def allowed_origins_list(self) -> list[str]:

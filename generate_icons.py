@@ -1,9 +1,9 @@
-"""Generate Unburden app icons at all required sizes."""
+"""Generate Ventigo app icons at all required sizes."""
 from PIL import Image, ImageDraw
 import math, os
 
 def draw_icon(size):
-    """Draw the Unburden logo: overlapping peach + lavender bubbles, amber dot."""
+    """Draw the Ventigo logo: overlapping peach + lavender bubbles, amber dot."""
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     s = size
@@ -45,7 +45,7 @@ def draw_icon(size):
 
 def main():
     base = os.path.dirname(os.path.abspath(__file__))
-    web_dir = os.path.join(base, 'unburden_app', 'web')
+    web_dir = os.path.join(base, 'ventigo_app', 'web')
     icons_dir = os.path.join(web_dir, 'icons')
 
     # Generate all sizes
@@ -72,7 +72,7 @@ def main():
         'mipmap-xxhdpi': 144,
         'mipmap-xxxhdpi': 192,
     }
-    android_res = os.path.join(base, 'unburden_app', 'android', 'app', 'src', 'main', 'res')
+    android_res = os.path.join(base, 'ventigo_app', 'android', 'app', 'src', 'main', 'res')
     for folder, size in android_sizes.items():
         img = draw_icon(size)
         folder_path = os.path.join(android_res, folder)

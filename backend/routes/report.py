@@ -79,12 +79,8 @@ async def submit_report(body: ReportRequest, payload: dict = Depends(require_aut
         "ts": str(int(time.time())),
     }
 
-    # Store as Redis hash; auto-expires
-    pipe = redis.pipeline()
-    for field, value in report_data.items():
-        pipe.hset(f"report:{report_id}", field, value)
-    pipe.expire(f"report:{report_id}", REPORT_TTL)
-    await pipe.execute()
+    from db.redis_client import hset_with_ttl
+    await hset_with_ttl(f"report:{report_id}", report_data, REPORT_TTL)
 
     # Index by reported session for admin lookup (optional future use)
     await redis.rpush(f"reports_for:{peer_id}", report_id)

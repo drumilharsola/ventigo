@@ -55,13 +55,3 @@ async def generate_unique_username(redis=None) -> str:
     username = generate_username()
     suffix = random.randint(10, 99)
     return f"{username}{suffix}"
-
-
-async def reserve_username(redis=None, username: str = "", session_id: str = "") -> None:
-    """No-op — username uniqueness is enforced by Postgres unique constraint."""
-    pass
-
-
-async def release_username(redis=None, username: str = "") -> None:
-    """No-op — usernames are tied to profiles in Postgres."""
-    pass

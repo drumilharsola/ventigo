@@ -5,10 +5,8 @@ No user identity is embedded other than a session ID and email hash.
 
 import uuid
 import time
-from datetime import datetime, timezone
 
 import jwt
-from jwt.exceptions import PyJWTError
 from config import get_settings
 
 

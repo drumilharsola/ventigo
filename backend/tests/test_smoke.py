@@ -25,9 +25,9 @@ def test_settings_loads():
     assert s.APP_BASE_URL
 
 
-def test_settings_expose_resend_api_key_field():
+def test_settings_expose_brevo_api_key_field():
     from config import get_settings
-    assert hasattr(get_settings(), "RESEND_API_KEY")
+    assert hasattr(get_settings(), "BREVO_API_KEY")
 
 
 # ── Email hash ────────────────────────────────────────────────────────────────

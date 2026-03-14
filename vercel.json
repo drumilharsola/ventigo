@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "bash build.sh",
-  "outputDirectory": "unburden_app/build/web",
+  "outputDirectory": "ventigo_app/build/web",
   "installCommand": "echo 'skip'",
   "framework": null,
   "routes": [

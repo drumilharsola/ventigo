@@ -19,13 +19,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: unburden
-      POSTGRES_USER: unburden
+      POSTGRES_DB: ventigo
+      POSTGRES_USER: ventigo
       POSTGRES_PASSWORD: dev_password
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U unburden"]
+      test: ["CMD-SHELL", "pg_isready -U ventigo"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -46,7 +46,7 @@ services:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql+asyncpg://unburden:dev_password@postgres:5432/unburden
+      - DATABASE_URL=postgresql+asyncpg://ventigo:dev_password@postgres:5432/ventigo
 
   frontend:
     build:

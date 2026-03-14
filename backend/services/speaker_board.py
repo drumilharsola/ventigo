@@ -12,7 +12,7 @@ import time
 import uuid
 from typing import Optional
 
-from db.redis_client import get_redis
+from db.redis_client import get_redis, hset_with_ttl
 
 SPEAK_TTL = 300  # auto-expire speaker hash after 5 minutes
 MATCH_RESULT_TTL = 300
@@ -39,11 +39,7 @@ async def post_request(session_id: str, username: str, avatar_id: str = "0") -> 
         "avatar_id": avatar_id,
         "posted_at": str(now),
     }
-    pipe = redis.pipeline(transaction=False)
-    for f, v in req_fields.items():
-        pipe.hset(f"speak:req:{request_id}", f, v)
-    pipe.expire(f"speak:req:{request_id}", SPEAK_TTL)
-    await pipe.execute()
+    await hset_with_ttl(f"speak:req:{request_id}", req_fields, SPEAK_TTL)
 
     # Add to sorted set, score = timestamp for chronological order
     await redis.zadd("speak:board", {request_id: now})

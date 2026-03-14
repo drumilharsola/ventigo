@@ -11,7 +11,7 @@ echo "==> Flutter version:"
 $FLUTTER --version
 
 echo "==> Getting dependencies..."
-cd unburden_app
+cd ventigo_app
 $FLUTTER pub get
 
 echo "==> Building web..."

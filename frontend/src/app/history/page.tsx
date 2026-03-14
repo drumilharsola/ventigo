@@ -6,6 +6,9 @@ import { useAuthStore } from "@/store/authStore";
 import { api, RoomSummary, BlockedUser, ConnectionItem } from "@/lib/api";
 import { avatarUrl } from "@/lib/avatars";
 import { FlowLogo } from "@/components/FlowLogo";
+import { AvatarImg } from "@/components/AvatarImg";
+import { groupRoomsByPeer } from "@/lib/utils";
+import { useAuthGuard } from "@/lib/useAuthGuard";
 
 function formatDate(unixStr: string): string {
   if (!unixStr) return "";
@@ -36,23 +39,6 @@ function formatTotalDuration(rooms: RoomSummary[], peerSessionId: string): strin
   return totalMinutes > 0 ? `${totalMinutes} min` : "";
 }
 
-function groupRoomsByPeer(rooms: RoomSummary[]) {
-  const grouped = new Map<string, { latest: RoomSummary; count: number }>();
-  for (const room of rooms) {
-    const key = room.peer_session_id || room.peer_username || room.room_id;
-    const existing = grouped.get(key);
-    if (existing) {
-      existing.count += 1;
-      if (roomSortTs(room) > roomSortTs(existing.latest)) {
-        existing.latest = room;
-      }
-      continue;
-    }
-    grouped.set(key, { latest: room, count: 1 });
-  }
-  return Array.from(grouped.values());
-}
-
 function HistoryContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -66,10 +52,10 @@ function HistoryContent() {
   const [loading, setLoading] = useState(true);
   const [unblocking, setUnblocking] = useState<string | null>(null);
 
+  useAuthGuard();
+
   useEffect(() => {
-    if (!_hasHydrated) return;
-    if (!token) { router.push("/verify"); return; }
-    if (!username) { router.push("/profile"); return; }
+    if (!_hasHydrated || !token || !username) return;
     Promise.all([
       api.getChatRooms(token).then((res) => setRooms(res.rooms)),
       api.getBlockedUsers(token).then((res) => setBlockedUsers(res.blocked)),

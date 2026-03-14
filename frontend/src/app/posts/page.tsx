@@ -6,16 +6,11 @@ import { useAuthStore } from "@/store/authStore";
 import { api, Post, AuthError } from "@/lib/api";
 import { avatarUrl } from "@/lib/avatars";
 import { FlowLogo } from "@/components/FlowLogo";
+import { AvatarImg } from "@/components/AvatarImg";
+import { timeAgo } from "@/lib/utils";
 
 const POST_MAX_CHARS = 400;
 const REFRESH_INTERVAL_MS = 30_000;
-
-function timeAgo(ts: number): string {
-  const secs = Math.floor(Date.now() / 1000) - ts;
-  if (secs < 60) return "just now";
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
-  return `${Math.floor(secs / 3600)}h ago`;
-}
 
 function timeLeft(expiresAt: number): string {
   const secs = Math.max(0, expiresAt - Math.floor(Date.now() / 1000));
@@ -24,18 +19,6 @@ function timeLeft(expiresAt: number): string {
   if (h > 0) return `${h}h ${m}m left`;
   if (m > 0) return `${m}m left`;
   return "expiring soon";
-}
-
-function AvatarImg({ id, size = 32 }: { id: number; size?: number }) {
-  return (
-    <img
-      src={avatarUrl(id, size * 2)}
-      alt=""
-      width={size}
-      height={size}
-      style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-    />
-  );
 }
 
 export default function PostsPage() {

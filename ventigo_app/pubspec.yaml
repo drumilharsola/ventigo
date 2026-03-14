@@ -1,0 +1,48 @@
+name: ventigo_app
+description: Ventigo - Anonymous peer support in 15-minute sessions.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.8.1
+  dio: ^5.7.0
+  web_socket_channel: ^3.0.2
+  flutter_secure_storage: ^9.2.4
+  cached_network_image: ^3.4.1
+  intl: ^0.19.0
+  shimmer: ^3.0.0
+  url_launcher: ^6.3.1
+  flutter_animate: ^4.5.0
+  smooth_page_indicator: ^1.2.0
+  sentry_flutter: ^8.12.0
+  onesignal_flutter: ^5.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/brands/ventigo/
+    - assets/fonts/
+  fonts:
+    - family: Comfortaa
+      fonts:
+        - asset: assets/fonts/Comfortaa.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+    - family: Syne
+      fonts:
+        - asset: assets/fonts/Syne.ttf
+    - family: InstrumentSans
+      fonts:
+        - asset: assets/fonts/InstrumentSans.ttf

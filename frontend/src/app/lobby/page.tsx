@@ -6,50 +6,15 @@ import { useAuthStore } from "@/store/authStore";
 import { api, wsUrl, SpeakerRequest, RoomSummary, BlockedUser, AuthError } from "@/lib/api";
 import { AVATARS, avatarUrl } from "@/lib/avatars";
 import { FlowLogo } from "@/components/FlowLogo";
-import { Timer } from "@/components/Timer";
-
+import { Timer } from "@/components/Timer";import { AvatarImg } from "@/components/AvatarImg";
+import { timeAgo, groupRoomsByPeer } from "@/lib/utils";
+import { useAuthGuard } from "@/lib/useAuthGuard";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function AvatarImg({ id, size = 40 }: { id: string | number | undefined; size?: number }) {
-  return (
-    <img
-      src={avatarUrl(id, size * 2)}
-      alt=""
-      width={size}
-      height={size}
-      style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-    />
-  );
-}
-
-function timeAgo(postedAt: string | number): string {
-  const secs = Math.floor(Date.now() / 1000) - Number(postedAt);
-  if (secs < 60) return "just now";
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
-  return `${Math.floor(secs / 3600)}h ago`;
-}
 
 function filterOwnRequests(requests: SpeakerRequest[], sessionId: string | null) {
   if (!sessionId) return requests;
   return requests.filter((request) => request.session_id !== sessionId);
-}
-
-function groupRoomsByPeer(rooms: RoomSummary[]) {
-  const grouped = new Map<string, { latest: RoomSummary; count: number }>();
-  for (const room of rooms) {
-    const key = room.peer_session_id || room.peer_username || room.room_id;
-    const existing = grouped.get(key);
-    if (existing) {
-      existing.count += 1;
-      if (Number(room.started_at || room.matched_at || 0) > Number(existing.latest.started_at || existing.latest.matched_at || 0)) {
-        existing.latest = room;
-      }
-      continue;
-    }
-    grouped.set(key, { latest: room, count: 1 });
-  }
-  return Array.from(grouped.values());
 }
 
 // ─── Wellbeing tips ──────────────────────────────────────────────────────────
@@ -135,11 +100,7 @@ function LobbyContent() {
 
   const wsRef = useRef<WebSocket | null>(null);
 
-  useEffect(() => {
-    if (!_hasHydrated) return;
-    if (!token) router.push("/verify");
-    else if (!username) router.push("/profile");
-  }, [_hasHydrated, token, username, router]);
+  useAuthGuard();
 
   const syncRooms = useCallback(async () => {
     if (!token) return;

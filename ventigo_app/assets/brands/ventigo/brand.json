@@ -1,0 +1,25 @@
+{
+  "appName": "Ventigo",
+  "appNamePlain": "Ventigo",
+  "tagline": "vent \u00b7 listen \u00b7 breathe",
+  "description": "Anonymous peer support in 15-minute sessions.",
+  "supportEmail": "support@ventigo.app",
+  "senderName": "Ventigo",
+  "senderEmail": "noreply@ventigo.app",
+  "logo": {
+    "text": "ventigo",
+    "prefix": "ven",
+    "emphasis": "tigo",
+    "suffix": ""
+  },
+  "theme": {
+    "ink": "#3B3335",
+    "charcoal": "#4D4448",
+    "accent": "#F4A68C",
+    "accentHover": "#E88F72",
+    "danger": "#E88888",
+    "success": "#7ECAA0",
+    "fontDisplay": "Comfortaa",
+    "fontUI": "Inter"
+  }
+}

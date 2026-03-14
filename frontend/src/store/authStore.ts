@@ -54,7 +54,7 @@ export const useAuthStore = create<AuthState>()(
         }),
     }),
     {
-      name: "UNBurDEN-auth",
+      name: "Ventigo-auth",
       // Only persist token + profile - not email (sensitive)
       partialize: (state) => ({
         token: state.token,

@@ -1,5 +1,5 @@
 """
-UNBurDEN - Anonymous Timed Chat
+Ventigo - Anonymous Timed Chat
 FastAPI application entrypoint.
 """
 
@@ -7,15 +7,16 @@ import logging
 from asyncio import TimeoutError as AsyncTimeoutError
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from redis.exceptions import RedisError
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from config import get_settings
+from rate_limit import limiter
 from db.redis_client import close_redis, ping_redis
 from db.postgres_client import init_db, close_db
 from routes.auth import router as auth_router
@@ -33,12 +34,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ── Sentry (error tracking) ──────────────────────────────────────────────────
+_settings_boot = get_settings()
+if _settings_boot.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_settings_boot.SENTRY_DSN,
+        traces_sample_rate=0.2,
+        profiles_sample_rate=0.1,
+        environment=_settings_boot.APP_ENV,
+        send_default_pii=False,
+    )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ───────────────────────────────────────────────────────────────
     settings = get_settings()
-    logger.info(f"Starting UNBurDEN ({settings.APP_ENV})")
+    logger.info(f"Starting Ventigo ({settings.APP_ENV})")
     try:
         await ping_redis()
         logger.info("Redis connection ready")
@@ -55,15 +67,13 @@ async def lifespan(app: FastAPI):
     stop_matchmaker()
     await close_redis()
     await close_db()
-    logger.info("UNBurDEN shut down cleanly")
+    logger.info("Ventigo shut down cleanly")
 
 
 settings = get_settings()
 
-limiter = Limiter(key_func=get_remote_address)
-
 app = FastAPI(
-    title="UNBurDEN",
+    title="Ventigo",
     description="Anonymous timed chat - ephemeral, private, and fun.",
     version="0.1.0",
     lifespan=lifespan,
