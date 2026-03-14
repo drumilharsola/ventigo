@@ -290,6 +290,9 @@ function ChatContent() {
           break;
 
         case "timer_status":
+          if (data.started && !timerStartedRef.current) {
+            appendSessionMarkerRef.current("started");
+          }
           setTimerStarted(data.started);
           setRemaining(data.remaining);
           break;
@@ -356,7 +359,7 @@ function ChatContent() {
 
     const intervalId = window.setInterval(() => {
       syncLiveRoomMessages().catch(() => {});
-    }, 1500);
+    }, 5000);
 
     return () => window.clearInterval(intervalId);
   }, [token, roomId, mode, syncLiveRoomMessages]);
@@ -381,6 +384,7 @@ function ChatContent() {
     const optimisticMessage: ChatMessage = {
       type: "message",
       from: username,
+      from_session: sessionId ?? undefined,
       text,
       ts: Math.floor(Date.now() / 1000),
       client_id: clientId,
@@ -605,9 +609,7 @@ function ChatContent() {
         {mode === "live" && !peerLeft && (
           <div style={{ textAlign: "center", paddingBottom: 6 }}>
             <span className="pill" style={{ fontSize: 11, background: "rgba(255,255,255,0.04)", color: "var(--fog)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              {timerStarted
-                ? "Listen first. Respond honestly."
-                : "Listen first. Respond honestly."}
+              Listen first. Respond honestly.
             </span>
           </div>
         )}
@@ -646,13 +648,22 @@ function ChatContent() {
 
         {messages.map((msg, i) => {
           if (msg.type === "session_marker") {
-            const label = msg.event === "started" ? "Chat started" : "Chat ended";
+            const isStarted = msg.event === "started";
+            const label = isStarted ? "Session started" : "Session ended";
+            const markerColor = isStarted ? "var(--accent)" : "var(--slate)";
             return (
-              <div key={`${msg.roomId}-${msg.event}-${msg.ts}-${i}`} style={{ display: "flex", justifyContent: "center", padding: "6px 0" }}>
-                <div style={{ padding: "8px 12px", borderRadius: "var(--r-full)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--fog)", display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <div key={`${msg.roomId}-${msg.event}-${msg.ts}-${i}`} style={{ display: "flex", alignItems: "center", gap: 0, padding: "10px 0" }}>
+                <div style={{ flex: 1, height: 1, background: isStarted ? "rgba(184,160,232,0.25)" : "rgba(255,255,255,0.08)" }} />
+                <div style={{ padding: "6px 14px", fontFamily: "var(--font-ui)", fontSize: 11, color: markerColor, display: "inline-flex", gap: 6, alignItems: "center", whiteSpace: "nowrap" }}>
+                  {isStarted ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                  )}
                   <span>{label}</span>
                   <span style={{ color: "var(--graphite)" }}>{formatTime(msg.ts)}</span>
                 </div>
+                <div style={{ flex: 1, height: 1, background: isStarted ? "rgba(184,160,232,0.25)" : "rgba(255,255,255,0.08)" }} />
               </div>
             );
           }
@@ -660,10 +671,25 @@ function ChatContent() {
           const isMe = msg.from_session
             ? msg.from_session === sessionId
             : msg.from === username;
+
+          // Only show username label for first message in a consecutive group
+          let showLabel = false;
+          if (!isMe) {
+            const prevMsg = messages.slice(0, i).reverse().find((m) => m.type === "message" || m.type === "session_marker");
+            if (!prevMsg || prevMsg.type === "session_marker") {
+              showLabel = true;
+            } else {
+              const prevIsMe = prevMsg.from_session
+                ? prevMsg.from_session === sessionId
+                : prevMsg.from === username;
+              showLabel = prevIsMe;
+            }
+          }
+
           return (
             <div key={i} className="msg-enter" style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-              {!isMe && (
-                <span style={{ fontSize: 11, color: "var(--slate)", marginBottom: 4, paddingLeft: 4, fontFamily: "var(--font-ui)" }}>{msg.from}</span>
+              {showLabel && (
+                <span style={{ fontSize: 11, color: "var(--slate)", marginBottom: 4, paddingLeft: 4, fontFamily: "var(--font-ui)" }}>{peerUsername ?? msg.from}</span>
               )}
               <div className="chat-bubble" style={{
                 maxWidth: "72%",

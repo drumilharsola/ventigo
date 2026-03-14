@@ -331,7 +331,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           final isMe = item.fromSession != null
               ? item.fromSession == auth.sessionId
               : item.from == auth.username;
-          return _buildBubble(item, isMe);
+
+          // Only show username label for first message in a consecutive group
+          bool showLabel = false;
+          if (!isMe) {
+            bool prevWasMe = true; // default: show label
+            for (int j = msgIndex - 1; j >= 0; j--) {
+              final prev = chat.transcript[j];
+              if (prev is TranscriptMessage) {
+                final prevIsMe = prev.fromSession != null
+                    ? prev.fromSession == auth.sessionId
+                    : prev.from == auth.username;
+                prevWasMe = prevIsMe;
+                break;
+              }
+              if (prev is TranscriptMarker) { prevWasMe = true; break; } // after a marker, show label
+            }
+            showLabel = prevWasMe;
+          }
+          return _buildBubble(item, isMe, showLabel: showLabel, peerDisplayName: chat.peerUsername);
         }
         return const SizedBox.shrink();
       },
@@ -339,35 +357,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildMarker(TranscriptMarker marker) {
-    final label = marker.event == 'started' ? 'Chat started' : 'Chat ended';
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.6),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-          borderRadius: BorderRadius.circular(AppRadii.full),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
-          const SizedBox(width: 8),
-          Text(_formatTime(marker.ts), style: AppTypography.body(fontSize: 11, color: AppColors.mist)),
-        ]),
+    final isStarted = marker.event == 'started';
+    final label = isStarted ? 'Session started' : 'Session ended';
+    final icon = isStarted ? Icons.play_circle_outline : Icons.stop_circle_outlined;
+    final color = isStarted ? AppColors.accent : AppColors.slate;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: color.withValues(alpha: 0.25), thickness: 0.5)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(label, style: AppTypography.ui(fontSize: 11, fontWeight: FontWeight.w500, color: color)),
+              const SizedBox(width: 8),
+              Text(_formatTime(marker.ts), style: AppTypography.body(fontSize: 11, color: AppColors.mist)),
+            ]),
+          ),
+          Expanded(child: Divider(color: color.withValues(alpha: 0.25), thickness: 0.5)),
+        ],
       ),
     );
   }
 
-  Widget _buildBubble(TranscriptMessage msg, bool isMe, {bool canReply = true}) {
+  Widget _buildBubble(TranscriptMessage msg, bool isMe, {bool canReply = true, bool showLabel = true, String? peerDisplayName}) {
     final bubble = Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
         crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          if (!isMe)
+          if (!isMe && showLabel)
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 4),
-              child: Text(msg.from, style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
+              child: Text(peerDisplayName ?? msg.from, style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
             ),
           // Reply preview
           if (msg.replyText != null && msg.replyText!.isNotEmpty)

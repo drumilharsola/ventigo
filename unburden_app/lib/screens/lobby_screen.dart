@@ -307,7 +307,18 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: () {
+                      _syncRooms();
+                      _syncBoard();
+                    },
+                    icon: const Icon(Icons.refresh, size: 22),
+                    color: AppColors.slate,
+                    tooltip: 'Refresh',
+                    splashRadius: 20,
+                  ),
+                  const SizedBox(width: 4),
                   TextButton(onPressed: _handleSignOut, child: Text('Sign out', style: AppTypography.ui(fontSize: 12, color: AppColors.slate))),
                   const SizedBox(width: 16),
                 ],

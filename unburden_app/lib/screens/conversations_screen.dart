@@ -313,7 +313,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                 color: AppColors.snow,
                 border: Border(bottom: BorderSide(color: AppColors.border)),
               ),
-              child: TabBar(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TabBar(
                 controller: _tabCtrl,
                 labelColor: AppColors.ink,
                 unselectedLabelColor: AppColors.slate,
@@ -354,6 +357,20 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                       ],
                     ),
                   ),
+                ],
+              ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      _syncRooms();
+                      _syncBoard();
+                    },
+                    icon: const Icon(Icons.refresh, size: 22),
+                    color: AppColors.slate,
+                    tooltip: 'Refresh',
+                    splashRadius: 20,
+                  ),
+                  const SizedBox(width: 4),
                 ],
               ),
             ),

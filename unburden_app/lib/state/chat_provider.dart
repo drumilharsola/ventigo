@@ -129,12 +129,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
       clientId: m.clientId,
     )).toList();
 
-    // Add 'started' marker only when both users have messaged (started_at is set)
+    // Add 'started' marker when timer has started (started_at is set)
     final startedTs = double.tryParse(data.startedAt) ?? 0;
     final hasStartedMarker = state.transcript.any((t) => t is TranscriptMarker && t.event == 'started' && t.roomId == roomId);
     final List<TranscriptItem> extra = [];
     if (startedTs > 0 && !hasStartedMarker) {
       extra.add(TranscriptMarker(event: 'started', roomId: roomId, ts: startedTs));
+    }
+
+    // Add 'ended' marker when room has ended
+    final endedTs = double.tryParse(data.endedAt) ?? 0;
+    final hasEndedMarker = state.transcript.any((t) => t is TranscriptMarker && t.event == 'ended' && t.roomId == roomId);
+    if (endedTs > 0 && !hasEndedMarker) {
+      extra.add(TranscriptMarker(event: 'ended', roomId: roomId, ts: endedTs));
     }
 
     state = state.copyWith(
@@ -226,6 +233,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       case 'timer_status':
         final started = data['started'] as bool? ?? false;
+        if (started && !state.timerStarted) {
+          // Timer just started — insert marker immediately
+          _appendMarkerIfMissing('started');
+        }
         state = state.copyWith(timerStarted: started, remaining: (data['remaining'] as num).toInt());
         break;
 
@@ -322,6 +333,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
   void _appendMarker(String event) {
     final marker = TranscriptMarker(event: event, roomId: roomId, ts: (DateTime.now().millisecondsSinceEpoch / 1000));
     state = state.copyWith(transcript: _merge(state.transcript, [marker]));
+  }
+
+  void _appendMarkerIfMissing(String event) {
+    final exists = state.transcript.any((t) => t is TranscriptMarker && t.event == event && t.roomId == roomId);
+    if (!exists) _appendMarker(event);
   }
 
   List<TranscriptItem> _merge(List<TranscriptItem> existing, List<TranscriptItem> incoming) {
