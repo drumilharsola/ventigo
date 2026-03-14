@@ -1,0 +1,70 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "What to deploy"
+        required: true
+        type: choice
+        options:
+          - backend
+          - web
+          - android
+          - ios
+          - all
+
+jobs:
+  # ── Backend → Railway ───────────────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy → Railway
+    if: inputs.target == 'backend' || inputs.target == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Railway deploy
+        run: curl -sf -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK }}"
+
+  # ── Web → Vercel ────────────────────────────────────────────────────────────
+  deploy-web:
+    name: Deploy → Vercel
+    if: inputs.target == 'web' || inputs.target == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy
+        run: curl -sf -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+
+  # ── Android → Codemagic ────────────────────────────────────────────────────
+  build-android:
+    name: Build → Android
+    if: inputs.target == 'android' || inputs.target == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Codemagic Android build
+        run: |
+          curl -sf -X POST \
+            "https://api.codemagic.io/builds" \
+            -H "Content-Type: application/json" \
+            -H "x-auth-token: ${{ secrets.CODEMAGIC_API_TOKEN }}" \
+            -d '{
+              "appId": "${{ secrets.CODEMAGIC_APP_ID }}",
+              "workflowId": "android-release",
+              "branch": "main"
+            }'
+
+  # ── iOS → Codemagic ────────────────────────────────────────────────────────
+  build-ios:
+    name: Build → iOS
+    if: inputs.target == 'ios' || inputs.target == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Codemagic iOS build
+        run: |
+          curl -sf -X POST \
+            "https://api.codemagic.io/builds" \
+            -H "Content-Type: application/json" \
+            -H "x-auth-token: ${{ secrets.CODEMAGIC_API_TOKEN }}" \
+            -d '{
+              "appId": "${{ secrets.CODEMAGIC_APP_ID }}",
+              "workflowId": "ios-release",
+              "branch": "main"
+            }'
