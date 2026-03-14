@@ -37,9 +37,13 @@ type WsEvent =
   | { type: "typing_stop"; from: string; room_id?: string }
   | { type: "timer_status"; started: boolean; remaining: number; room_id?: string }
   | { type: "tick"; remaining: number; room_id?: string }
+  | { type: "ending_soon"; remaining: number; room_id?: string }
   | { type: "session_end"; room_id?: string }
   | { type: "peer_left"; room_id?: string }
   | { type: "extended"; remaining: number; room_id?: string }
+  | { type: "continue_request"; room_id?: string }
+  | { type: "continue_accepted"; room_id: string }
+  | { type: "reaction"; message_client_id: string; emoji: string; from: string; from_session?: string; ts: number; room_id?: string }
   | { type: "error"; detail: string; code?: string };
 
 function ChatContent() {
@@ -72,6 +76,10 @@ function ChatContent() {
   const [inputError, setInputError] = useState("");
   const [mode, setMode] = useState<"checking" | "live" | "readonly" | "expired">("checking");
   const [showPeerProfile, setShowPeerProfile] = useState(false);
+  const [continueWaiting, setContinueWaiting] = useState(false);
+  const [endingSoon, setEndingSoon] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, { emoji: string; from: string }[]>>({});
+  const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -185,6 +193,24 @@ function ChatContent() {
     }
 
     setMessages((prev) => mergeTranscriptItems(prev, data.messages));
+
+    // Load reactions from API
+    if (data.reactions) {
+      setReactions((prev) => {
+        const updated = { ...prev };
+        for (const r of data.reactions!) {
+          const key = r.message_client_id;
+          const existing = updated[key] ?? [];
+          const alreadyExists = existing.some(
+            (er) => er.emoji === r.emoji && er.from === r.from
+          );
+          if (!alreadyExists) {
+            updated[key] = [...existing, { emoji: r.emoji, from: r.from }];
+          }
+        }
+        return updated;
+      });
+    }
 
     if (data.status === "ended") {
       if (data.ended_at) {
@@ -318,6 +344,38 @@ function ChatContent() {
           setRemaining(data.remaining);
           setCanExtend(false);
           setSessionEnded(false);
+          setContinueWaiting(false);
+          setEndingSoon(false);
+          break;
+
+        case "ending_soon":
+          setEndingSoon(true);
+          break;
+
+        case "continue_request":
+          // Peer wants to continue — we will show the "continue" button on the modal
+          break;
+
+        case "continue_accepted":
+          setContinueWaiting(false);
+          // Redirect to new room
+          if (data.room_id) {
+            router.push(`/chat?room_id=${data.room_id}`);
+          }
+          break;
+
+        case "reaction":
+          if ("message_client_id" in data) {
+            setReactions((prev) => {
+              const key = data.message_client_id;
+              const existing = prev[key] ?? [];
+              const alreadyExists = existing.some(
+                (r) => r.emoji === data.emoji && r.from === data.from
+              );
+              if (alreadyExists) return prev;
+              return { ...prev, [key]: [...existing, { emoji: data.emoji, from: data.from }] };
+            });
+          }
           break;
 
         case "error":
@@ -421,6 +479,22 @@ function ChatContent() {
   const handleExtend = () => {
     wsRef.current?.send(JSON.stringify({ type: "extend" }));
     setSessionEnded(false);
+  };
+
+  const handleContinue = () => {
+    wsRef.current?.send(JSON.stringify({ type: "continue" }));
+    setContinueWaiting(true);
+  };
+
+  const handleFeedback = (mood: string) => {
+    if (token && roomId) {
+      api.postFeedback(token, roomId, mood).catch(() => {});
+    }
+  };
+
+  const handleReaction = (messageClientId: string, emoji: string) => {
+    wsRef.current?.send(JSON.stringify({ type: "reaction", message_client_id: messageClientId, emoji }));
+    setActiveReactionMsgId(null);
   };
 
   const handleBlock = async () => {
@@ -620,6 +694,18 @@ function ChatContent() {
           </div>
         )}
 
+        {endingSoon && !sessionEnded && mode === "live" && (
+          <div style={{
+            textAlign: "center", fontSize: 13, color: "#e8b450",
+            background: "rgba(232,180,80,0.08)", border: "1px solid rgba(232,180,80,0.2)",
+            borderRadius: "var(--r-md)", padding: "10px 16px",
+            fontFamily: "var(--font-ui)", fontWeight: 500,
+            animation: "fadeIn 0.3s ease-in",
+          }}>
+            Session ending soon &mdash; make the most of this moment
+          </div>
+        )}
+
         {peerLeft && (
           <div style={{ textAlign: "center", fontSize: 13, color: "var(--slate)", background: "rgba(255,255,255,0.04)", borderRadius: "var(--r-md)", padding: "12px 16px", fontFamily: "var(--font-ui)" }}>
             Chat ended. The other person left the room. You can head back to the lobby whenever you&apos;re ready.
@@ -687,23 +773,67 @@ function ChatContent() {
           }
 
           return (
-            <div key={i} className="msg-enter" style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
+            <div key={i} className="msg-enter" style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", position: "relative" }}>
               {showLabel && (
                 <span style={{ fontSize: 11, color: "var(--slate)", marginBottom: 4, paddingLeft: 4, fontFamily: "var(--font-ui)" }}>{peerUsername ?? msg.from}</span>
               )}
-              <div className="chat-bubble" style={{
-                maxWidth: "72%",
-                padding: "10px 16px",
-                borderRadius: isMe ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
-                fontSize: 14, lineHeight: 1.55,
-                fontFamily: "var(--font-ui)", fontWeight: 300,
-                ...(isMe
-                  ? { background: "var(--charcoal)", color: "var(--white)", border: "1px solid rgba(255,255,255,0.08)" }
-                  : { background: "rgba(255,255,255,0.08)", color: "var(--fog)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(8px)" }
-                ),
-              }}>
+              <div
+                className="chat-bubble"
+                onContextMenu={(e) => {
+                  if (mode === "live" && msg.client_id) { e.preventDefault(); setActiveReactionMsgId(activeReactionMsgId === msg.client_id ? null : msg.client_id); }
+                }}
+                onDoubleClick={() => {
+                  if (mode === "live" && msg.client_id) setActiveReactionMsgId(activeReactionMsgId === msg.client_id ? null : msg.client_id);
+                }}
+                style={{
+                  maxWidth: "72%",
+                  padding: "10px 16px",
+                  borderRadius: isMe ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
+                  fontSize: 14, lineHeight: 1.55,
+                  fontFamily: "var(--font-ui)", fontWeight: 300,
+                  cursor: mode === "live" ? "pointer" : "default",
+                  ...(isMe
+                    ? { background: "var(--charcoal)", color: "var(--white)", border: "1px solid rgba(255,255,255,0.08)" }
+                    : { background: "rgba(255,255,255,0.08)", color: "var(--fog)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(8px)" }
+                  ),
+                }}
+              >
                 {msg.text}
               </div>
+
+              {/* Reaction picker */}
+              {activeReactionMsgId === msg.client_id && (
+                <div style={{
+                  display: "flex", gap: 4, padding: "4px 8px",
+                  background: "rgba(30,30,35,0.95)", border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 20, position: "absolute", top: -36, zIndex: 5,
+                  ...(isMe ? { right: 0 } : { left: 0 }),
+                }}>
+                  {["❤️", "🫂", "💪", "🙏", "😢"].map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => msg.client_id && handleReaction(msg.client_id, emoji)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: "2px 4px", transition: "transform 0.15s" }}
+                      onMouseEnter={(e) => ((e.target as HTMLElement).style.transform = "scale(1.3)")}
+                      onMouseLeave={(e) => ((e.target as HTMLElement).style.transform = "scale(1)")}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Display reactions */}
+              {msg.client_id && reactions[msg.client_id] && reactions[msg.client_id].length > 0 && (
+                <div style={{ display: "flex", gap: 2, padding: "0 4px" }}>
+                  {reactions[msg.client_id].map((r, ri) => (
+                    <span key={ri} style={{ fontSize: 14, background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "1px 5px" }}>
+                      {r.emoji}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <span style={{ fontSize: 10, color: "var(--graphite)", padding: "3px 4px", fontFamily: "var(--font-ui)" }}>
                 {formatTime(msg.ts)}
               </span>
@@ -788,14 +918,29 @@ function ChatContent() {
               </button>
             </>
           ) : (
-            <button
-              onClick={() => setConfirmingBlock(true)}
-              disabled={blocking || blocked || !resolvedPeerSessionId}
-              className="btn btn-sm btn-ghost"
-              style={{ color: blocked ? "var(--graphite)" : "var(--danger)", opacity: (!resolvedPeerSessionId || blocked) ? 0.4 : 1 }}
-            >
-              {blocked ? "Blocked" : blocking ? "Blocking…" : "Block"}
-            </button>
+            <>
+              {resolvedPeerSessionId && (
+                <button
+                  onClick={() => {
+                    if (token && resolvedPeerSessionId) {
+                      api.sendConnectionRequest(token, resolvedPeerSessionId).catch(() => {});
+                    }
+                  }}
+                  className="btn btn-sm btn-ghost"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Connect
+                </button>
+              )}
+              <button
+                onClick={() => setConfirmingBlock(true)}
+                disabled={blocking || blocked || !resolvedPeerSessionId}
+                className="btn btn-sm btn-ghost"
+                style={{ color: blocked ? "var(--graphite)" : "var(--danger)", opacity: (!resolvedPeerSessionId || blocked) ? 0.4 : 1 }}
+              >
+                {blocked ? "Blocked" : blocking ? "Blocking…" : "Block"}
+              </button>
+            </>
           )}
           <button
             onClick={() => router.push("/lobby")}
@@ -815,7 +960,16 @@ function ChatContent() {
 
       {/* Modals */}
       {sessionEnded && (
-        <SessionEndModal canExtend={canExtend} onExtend={handleExtend} onClose={() => setSessionEnded(false)} />
+        <SessionEndModal
+          canExtend={canExtend}
+          canContinue={!peerLeft}
+          peerLeft={peerLeft}
+          continueWaiting={continueWaiting}
+          onExtend={handleExtend}
+          onContinue={handleContinue}
+          onClose={() => setSessionEnded(false)}
+          onFeedback={handleFeedback}
+        />
       )}
       {showReport && <ReportModal onClose={() => setShowReport(false)} />}
       {showPeerProfile && peerUsername && token && (

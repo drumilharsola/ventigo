@@ -145,6 +145,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Show safety dialog on new live chat
     _showSafetyDialogIfNeeded(chat);
 
+    // Navigate to new room if continue was accepted
+    final continueRoomId = notifier.continueRoomId;
+    if (continueRoomId != null && continueRoomId != widget.roomId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/chat?room_id=$continueRoomId');
+      });
+    }
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -163,6 +171,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               _buildHeader(chat, notifier, auth),
 
               // ── Messages ──
+              // Ending soon banner
+              if (chat.endingSoon && !chat.sessionEnded && chat.mode == 'live')
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  color: const Color(0xFFE8B450).withValues(alpha: 0.1),
+                  child: Text(
+                    'Session ending soon — make the most of this moment',
+                    style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFFE8B450)),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               Expanded(child: _buildMessageList(chat, auth)),
 
               // ── Input or footer ──
@@ -175,8 +195,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           if (chat.sessionEnded)
             SessionEndModal(
               canExtend: chat.canExtend,
+              canContinue: !chat.peerLeft,
+              peerLeft: chat.peerLeft,
+              continueWaiting: chat.continueWaiting,
               onExtend: notifier.extend,
+              onContinue: notifier.requestContinue,
               onClose: notifier.dismissSessionEnd,
+              onFeedback: (mood) => notifier.sendFeedback(mood),
             ),
           if (_showReport) ReportModal(onClose: () => setState(() => _showReport = false)),
           if (_showPeerProfile && chat.peerUsername != null && auth.token != null)

@@ -71,6 +71,13 @@ export interface RoomMessages extends RoomSummary {
     ts: number;
     client_id?: string;
   }>;
+  reactions?: Array<{
+    message_client_id: string;
+    emoji: string;
+    from: string;
+    from_session?: string;
+    ts: number;
+  }>;
 }
 
 export interface CurrentSpeakerRequest {
@@ -88,6 +95,16 @@ export interface BlockedUser {
   username: string;
   avatar_id: number;
   blocked_at: string;
+}
+
+export interface ConnectionItem {
+  id: number;
+  peer_session_id: string;
+  peer_username: string;
+  peer_avatar_id: number;
+  status: string;
+  requested_by: string;
+  created_at: number;
 }
 
 export interface Post {
@@ -197,6 +214,50 @@ export const api = {
     request<RoomMessages>(
       `/chat/rooms/${encodeURIComponent(roomId)}/messages`,
       {},
+      token
+    ),
+
+  // Feedback
+  postFeedback: (token: string, roomId: string, mood: string, text?: string) =>
+    request<{ message: string }>(
+      `/chat/rooms/${encodeURIComponent(roomId)}/feedback`,
+      { method: "POST", body: JSON.stringify({ mood, text: text ?? "" }) },
+      token
+    ),
+
+  // Connections
+  sendConnectionRequest: (token: string, peerSessionId: string) =>
+    request<{ connection: ConnectionItem }>(
+      `/chat/connect/${encodeURIComponent(peerSessionId)}`,
+      { method: "POST" },
+      token
+    ),
+
+  acceptConnectionRequest: (token: string, peerSessionId: string) =>
+    request<{ message: string }>(
+      `/chat/connect/${encodeURIComponent(peerSessionId)}/accept`,
+      { method: "POST" },
+      token
+    ),
+
+  removeConnection: (token: string, peerSessionId: string) =>
+    request<{ message: string }>(
+      `/chat/connect/${encodeURIComponent(peerSessionId)}`,
+      { method: "DELETE" },
+      token
+    ),
+
+  getConnections: (token: string) =>
+    request<{ connections: ConnectionItem[]; pending_requests: ConnectionItem[] }>(
+      "/chat/connections",
+      {},
+      token
+    ),
+
+  directChat: (token: string, peerSessionId: string) =>
+    request<{ room_id: string }>(
+      `/chat/connect/${encodeURIComponent(peerSessionId)}/chat`,
+      { method: "POST" },
       token
     ),
 

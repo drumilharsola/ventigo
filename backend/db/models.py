@@ -62,3 +62,21 @@ class BlockedUser(Base):
         UniqueConstraint("blocker_session_id", "blocked_session_id", name="uq_block_pair"),
         Index("ix_blocker", "blocker_session_id"),
     )
+
+
+class Connection(Base):
+    """Saved connection between two users for direct re-chat."""
+    __tablename__ = "connections"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id_a = Column(String(64), ForeignKey("users.session_id", ondelete="CASCADE"), nullable=False)
+    session_id_b = Column(String(64), ForeignKey("users.session_id", ondelete="CASCADE"), nullable=False)
+    requested_by = Column(String(64), nullable=False)
+    status = Column(String(16), default="pending", nullable=False)  # pending | accepted
+    created_at = Column(BigInteger, default=lambda: int(time.time()), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("session_id_a", "session_id_b", name="uq_connection_pair"),
+        Index("ix_conn_a", "session_id_a"),
+        Index("ix_conn_b", "session_id_b"),
+    )

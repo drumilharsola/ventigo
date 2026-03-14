@@ -329,3 +329,239 @@ async def get_blocked_set(session_id: str) -> set[str]:
             .where(BlockedUser.blocker_session_id == session_id)
         )
         return {row[0] for row in result.all()}
+
+
+# ─── Mutual Continue ──────────────────────────────────────────────────────────
+
+CONTINUE_REQUEST_TTL = 120  # 2 minutes
+
+async def request_continue(room_id: str, session_id: str) -> Optional[str]:
+    """
+    Register a continue request. If both sides have requested, create a new
+    room and return its id. Otherwise return None (waiting for peer).
+    """
+    redis = await get_redis()
+    room = await get_room(room_id)
+    if not room:
+        return None
+
+    peer_id = room["user_b"] if room["user_a"] == session_id else room.get("user_a", "")
+    if not peer_id:
+        return None
+
+    # Store this user's continue request
+    await redis.setex(f"continue_request:{room_id}:{session_id}", CONTINUE_REQUEST_TTL, "1")
+
+    # Check if peer also requested
+    peer_requested = await redis.get(f"continue_request:{room_id}:{peer_id}")
+    if not peer_requested:
+        return None  # still waiting
+
+    # Both want to continue — clean up keys and create new room
+    await redis.delete(f"continue_request:{room_id}:{session_id}")
+    await redis.delete(f"continue_request:{room_id}:{peer_id}")
+
+    new_room_id = await create_room(session_id, peer_id)
+    return new_room_id
+
+
+# ─── Reactions ─────────────────────────────────────────────────────────────────
+
+ALLOWED_REACTIONS = {"❤️", "🫂", "💪", "🙏", "😢"}
+
+
+async def add_reaction(room_id: str, message_client_id: str, emoji: str,
+                       from_user: str, from_session: str) -> Optional[dict]:
+    """Store a reaction. Returns the reaction record or None if invalid."""
+    if emoji not in ALLOWED_REACTIONS:
+        return None
+    redis = await get_redis()
+    record = {
+        "message_client_id": message_client_id,
+        "emoji": emoji,
+        "from": from_user,
+        "from_session": from_session,
+        "ts": int(time.time()),
+    }
+    await redis.rpush(f"room:{room_id}:reactions", json.dumps(record))
+    await redis.expire(f"room:{room_id}:reactions", ROOM_TTL_ACTIVE)
+    return record
+
+
+async def get_reactions(room_id: str) -> list[dict]:
+    redis = await get_redis()
+    raw = await redis.lrange(f"room:{room_id}:reactions", 0, -1)
+    return [json.loads(r) for r in raw]
+
+
+# ─── Feedback ──────────────────────────────────────────────────────────────────
+
+async def save_feedback(room_id: str, session_id: str, mood: str, text: str = "") -> None:
+    """Store mood feedback for a room (ephemeral, 7-day TTL)."""
+    redis = await get_redis()
+    data = {"mood": mood, "ts": int(time.time())}
+    if text:
+        data["text"] = text
+    await redis.hset(f"room:{room_id}:feedback:{session_id}", mapping=data)
+    await redis.expire(f"room:{room_id}:feedback:{session_id}", ROOM_TTL_AFTER)
+
+
+# ─── Connections (PostgreSQL) ──────────────────────────────────────────────────
+
+async def get_connection(session_id_a: str, session_id_b: str) -> Optional[dict]:
+    """Return connection row between two users (normalized order), or None."""
+    from db.models import Connection
+    lo, hi = sorted([session_id_a, session_id_b])
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(Connection).where(
+                Connection.session_id_a == lo,
+                Connection.session_id_b == hi,
+            )
+        )
+        row = result.scalar_one_or_none()
+        if not row:
+            return None
+        return {
+            "id": row.id,
+            "session_id_a": row.session_id_a,
+            "session_id_b": row.session_id_b,
+            "status": row.status,
+            "requested_by": row.requested_by,
+            "created_at": row.created_at,
+        }
+
+
+async def create_connection(requester_id: str, peer_id: str) -> dict:
+    """Create a pending connection request. Raises if already exists."""
+    from db.models import Connection
+    lo, hi = sorted([requester_id, peer_id])
+    factory = get_session_factory()
+    async with factory() as db:
+        conn = Connection(
+            session_id_a=lo,
+            session_id_b=hi,
+            requested_by=requester_id,
+            status="pending",
+            created_at=int(time.time()),
+        )
+        db.add(conn)
+        await db.commit()
+        await db.refresh(conn)
+        return {
+            "id": conn.id,
+            "session_id_a": conn.session_id_a,
+            "session_id_b": conn.session_id_b,
+            "status": conn.status,
+            "requested_by": conn.requested_by,
+            "created_at": conn.created_at,
+        }
+
+
+async def accept_connection(session_id_a: str, session_id_b: str, accepter_id: str) -> bool:
+    """Accept a pending connection. Returns True on success."""
+    from db.models import Connection
+    lo, hi = sorted([session_id_a, session_id_b])
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(Connection).where(
+                Connection.session_id_a == lo,
+                Connection.session_id_b == hi,
+                Connection.status == "pending",
+            )
+        )
+        row = result.scalar_one_or_none()
+        if not row:
+            return False
+        # Only the non-requester can accept
+        if row.requested_by == accepter_id:
+            return False
+        row.status = "accepted"
+        await db.commit()
+        return True
+
+
+async def delete_connection(session_id_a: str, session_id_b: str) -> bool:
+    """Remove a connection. Returns True if deleted."""
+    from db.models import Connection
+    lo, hi = sorted([session_id_a, session_id_b])
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(Connection).where(
+                Connection.session_id_a == lo,
+                Connection.session_id_b == hi,
+            )
+        )
+        row = result.scalar_one_or_none()
+        if not row:
+            return False
+        await db.delete(row)
+        await db.commit()
+        return True
+
+
+async def list_connections(session_id: str, status: str = "accepted") -> list[dict]:
+    """Return connections for this session filtered by status."""
+    from db.models import Connection
+    from sqlalchemy import or_
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(Connection).where(
+                or_(
+                    Connection.session_id_a == session_id,
+                    Connection.session_id_b == session_id,
+                ),
+                Connection.status == status,
+            )
+        )
+        rows = result.scalars().all()
+        out = []
+        for row in rows:
+            peer_id = row.session_id_b if row.session_id_a == session_id else row.session_id_a
+            peer_profile = await get_profile(peer_id)
+            out.append({
+                "id": row.id,
+                "peer_session_id": peer_id,
+                "peer_username": peer_profile.get("username", "") if peer_profile else "",
+                "peer_avatar_id": int(peer_profile.get("avatar_id", 0)) if peer_profile else 0,
+                "status": row.status,
+                "requested_by": row.requested_by,
+                "created_at": row.created_at,
+            })
+        return out
+
+
+async def list_pending_requests(session_id: str) -> list[dict]:
+    """Return incoming pending connection requests for this session."""
+    from db.models import Connection
+    from sqlalchemy import or_
+    factory = get_session_factory()
+    async with factory() as db:
+        result = await db.execute(
+            select(Connection).where(
+                or_(
+                    Connection.session_id_a == session_id,
+                    Connection.session_id_b == session_id,
+                ),
+                Connection.status == "pending",
+                Connection.requested_by != session_id,
+            )
+        )
+        rows = result.scalars().all()
+        out = []
+        for row in rows:
+            peer_id = row.session_id_b if row.session_id_a == session_id else row.session_id_a
+            peer_profile = await get_profile(peer_id)
+            out.append({
+                "id": row.id,
+                "peer_session_id": peer_id,
+                "peer_username": peer_profile.get("username", "") if peer_profile else "",
+                "peer_avatar_id": int(peer_profile.get("avatar_id", 0)) if peer_profile else 0,
+                "requested_by": row.requested_by,
+                "created_at": row.created_at,
+            })
+        return out

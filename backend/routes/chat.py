@@ -8,6 +8,8 @@ Message format (client → server):
   {"type": "typing_start"}
   {"type": "typing_stop"}
   {"type": "extend"}         - request to extend session
+  {"type": "continue"}       - request to continue with same person (mutual)
+  {"type": "reaction",      "message_client_id": "...", "emoji": "❤️"}
   {"type": "rematch"}        - request new match after session end
   {"type": "leave"}          - disconnect from session
 
@@ -15,11 +17,15 @@ Message format (server → client):
   {"type": "message",       "from": username, "text": "...", "ts": epoch}
   {"type": "typing_start",  "from": username}
   {"type": "typing_stop",   "from": username}
-    {"type": "timer_status",  "started": bool, "remaining": seconds}
+  {"type": "timer_status",  "started": bool, "remaining": seconds}
   {"type": "tick",          "remaining": seconds}
+  {"type": "ending_soon",   "remaining": seconds}
   {"type": "session_end"}
   {"type": "peer_left"}
   {"type": "extended",      "remaining": seconds}
+  {"type": "continue_request"}
+  {"type": "continue_accepted", "room_id": new_room_id}
+  {"type": "reaction",     "message_client_id": "...", "emoji": "...", "from": username, "ts": epoch}
   {"type": "history",       "messages": [...]}
   {"type": "error",         "detail": "..."}
 """
@@ -31,6 +37,7 @@ import logging
 
 import bleach
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 from jwt.exceptions import PyJWTError
 
 from services.session_token import decode_session_token
@@ -39,6 +46,10 @@ from services.session import (
     extend_room, close_room, append_message, get_messages,
     get_room_history, get_blocked_set,
     mark_room_message_started,
+    request_continue, add_reaction, get_reactions,
+    save_feedback, create_room,
+    get_connection, create_connection, accept_connection,
+    delete_connection, list_connections, list_pending_requests,
 )
 from services.moderation import check_content
 from middleware.jwt_auth import require_auth
@@ -132,6 +143,7 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
     async def _send_ticks():
         """Emit countdown ticks every 5 seconds; fire session_end at T=0."""
         tick_lock_key = f"room:{room_id}:tick_lock"
+        ending_soon_sent = False
         while True:
             room_now = await get_room(room_id)
             if not room_now or room_now.get("status") != "active":
@@ -160,6 +172,13 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
             tick = _room_event(room_id, {"type": "tick", "remaining": remaining})
             await _publish(redis, session_id, tick)
             await _publish(redis, peer_id, tick)
+
+            # Send ending_soon once when crossing 2-minute mark
+            if remaining <= 120 and not ending_soon_sent:
+                ending_soon_sent = True
+                ending_event = _room_event(room_id, {"type": "ending_soon", "remaining": remaining})
+                await _publish(redis, session_id, ending_event)
+                await _publish(redis, peer_id, ending_event)
 
             if remaining == 0:
                 end_event = _room_event(room_id, {"type": "session_end"})
@@ -252,6 +271,34 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
                 await close_room(room_id)
                 break
 
+            elif msg_type == "continue":
+                new_room_id = await request_continue(room_id, session_id)
+                if new_room_id:
+                    # Both want to continue — notify both
+                    accept_event = _room_event(room_id, {"type": "continue_accepted", "room_id": new_room_id})
+                    await _publish(redis, session_id, accept_event)
+                    await _publish(redis, peer_id, accept_event)
+                else:
+                    # Notify peer that this side wants to continue
+                    await _publish(redis, peer_id, _room_event(room_id, {"type": "continue_request"}))
+
+            elif msg_type == "reaction":
+                msg_client_id = str(data.get("message_client_id", "")).strip()
+                emoji = str(data.get("emoji", "")).strip()
+                if msg_client_id and emoji:
+                    record = await add_reaction(room_id, msg_client_id, emoji, username, session_id)
+                    if record:
+                        reaction_event = _room_event(room_id, {
+                            "type": "reaction",
+                            "message_client_id": msg_client_id,
+                            "emoji": emoji,
+                            "from": username,
+                            "from_session": session_id,
+                            "ts": record["ts"],
+                        })
+                        await _publish(redis, session_id, reaction_event)
+                        await _publish(redis, peer_id, reaction_event)
+
     except (WebSocketDisconnect, asyncio.CancelledError):
         # User navigated away - notify peer but keep the room alive
         await _publish(redis, peer_id, _room_event(room_id, {"type": "peer_left"}))
@@ -324,6 +371,7 @@ async def get_room_messages_endpoint(
         raise HTTPException(status_code=403, detail="Access denied")
 
     messages = await get_messages(room_id)
+    reactions = await get_reactions(room_id)
     peer_session_id, stored_username, stored_avatar_id = _peer_context(room, session_id)
     peer_profile = await get_profile(peer_session_id) if peer_session_id else None
     return {
@@ -337,4 +385,131 @@ async def get_room_messages_endpoint(
         "peer_username": peer_profile.get("username", stored_username) if peer_profile else stored_username,
         "peer_avatar_id": int(peer_profile.get("avatar_id", stored_avatar_id) if peer_profile else stored_avatar_id),
         "messages": messages,
+        "reactions": reactions,
     }
+
+
+# ── Feedback ──────────────────────────────────────────────────────────────────
+
+class FeedbackRequest(BaseModel):
+    mood: str            # e.g. "calm", "better", "same", "worse"
+    text: str = ""
+
+
+@router.post("/rooms/{room_id}/feedback")
+async def post_feedback(
+    room_id: str,
+    body: FeedbackRequest,
+    session: dict = Depends(require_auth),
+):
+    session_id = session["sub"]
+    room = await get_room(room_id)
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    is_member = room.get("user_a") == session_id or room.get("user_b") == session_id
+    if not is_member:
+        raise HTTPException(status_code=403, detail="Access denied")
+    await save_feedback(room_id, session_id, body.mood, body.text)
+    return {"message": "ok"}
+
+
+# ── Connections ───────────────────────────────────────────────────────────────
+
+@router.post("/connect/{peer_session_id}")
+async def send_connection_request(
+    peer_session_id: str,
+    session: dict = Depends(require_auth),
+):
+    """Send a connection request to a peer you've chatted with."""
+    session_id = session["sub"]
+    if session_id == peer_session_id:
+        raise HTTPException(status_code=400, detail="Cannot connect with yourself")
+
+    # Must have chatted with this person at least once
+    room_ids = await get_room_history(session_id)
+    has_chatted = False
+    for rid in room_ids:
+        room = await get_room(rid)
+        if room:
+            participants = {room.get("user_a", ""), room.get("user_b", "")}
+            if participants == {session_id, peer_session_id}:
+                has_chatted = True
+                break
+    if not has_chatted:
+        raise HTTPException(status_code=400, detail="You can only connect with someone you've chatted with")
+
+    # Check blocked
+    blocked = await get_blocked_set(session_id)
+    if peer_session_id in blocked:
+        raise HTTPException(status_code=400, detail="Cannot connect with a blocked user")
+
+    existing = await get_connection(session_id, peer_session_id)
+    if existing:
+        return {"connection": existing}
+
+    conn = await create_connection(session_id, peer_session_id)
+
+    # Notify the peer via pub/sub
+    redis = await get_redis()
+    await redis.publish(f"session:{peer_session_id}", json.dumps({
+        "event": "connection_request",
+        "from_session_id": session_id,
+    }))
+
+    return {"connection": conn}
+
+
+@router.post("/connect/{peer_session_id}/accept")
+async def accept_connection_request(
+    peer_session_id: str,
+    session: dict = Depends(require_auth),
+):
+    session_id = session["sub"]
+    ok = await accept_connection(session_id, peer_session_id, session_id)
+    if not ok:
+        raise HTTPException(status_code=400, detail="No pending request to accept")
+    return {"message": "connected"}
+
+
+@router.delete("/connect/{peer_session_id}")
+async def remove_connection(
+    peer_session_id: str,
+    session: dict = Depends(require_auth),
+):
+    session_id = session["sub"]
+    ok = await delete_connection(session_id, peer_session_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return {"message": "removed"}
+
+
+@router.get("/connections")
+async def get_connections_list(session: dict = Depends(require_auth)):
+    session_id = session["sub"]
+    accepted = await list_connections(session_id, "accepted")
+    pending = await list_pending_requests(session_id)
+    return {"connections": accepted, "pending_requests": pending}
+
+
+@router.post("/connect/{peer_session_id}/chat")
+async def direct_chat(
+    peer_session_id: str,
+    session: dict = Depends(require_auth),
+):
+    """Start a direct chat with an accepted connection (bypasses matchmaking)."""
+    session_id = session["sub"]
+    conn = await get_connection(session_id, peer_session_id)
+    if not conn or conn["status"] != "accepted":
+        raise HTTPException(status_code=400, detail="Not connected with this user")
+
+    room_id = await create_room(session_id, peer_session_id)
+
+    # Notify peer
+    redis = await get_redis()
+    await redis.publish(f"session:{peer_session_id}", json.dumps({
+        "event": "direct_chat",
+        "room_id": room_id,
+        "from_session_id": session_id,
+    }))
+
+    return {"room_id": room_id}

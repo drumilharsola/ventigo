@@ -18,11 +18,15 @@ class HistoryScreen extends ConsumerStatefulWidget {
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   List<RoomSummary> _rooms = [];
+  List<Map<String, dynamic>> _connections = [];
+  List<Map<String, dynamic>> _pendingRequests = [];
   bool _loading = true;
+  String _tab = 'chat'; // chat | connections
 
   @override
   void initState() {
     super.initState();
+    _tab = widget.tab == 'connections' ? 'connections' : 'chat';
     _load();
   }
 
@@ -31,7 +35,18 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (token == null) return;
     try {
       final rooms = await ref.read(apiClientProvider).getChatRooms(token);
-      if (mounted) setState(() { _rooms = rooms; _loading = false; });
+      Map<String, dynamic>? conns;
+      try {
+        conns = await ref.read(apiClientProvider).getConnections(token);
+      } catch (_) {}
+      if (mounted) setState(() {
+        _rooms = rooms;
+        if (conns != null) {
+          _connections = (conns['connections'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          _pendingRequests = (conns['pending_requests'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        }
+        _loading = false;
+      });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -52,6 +67,96 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   String _formatTime(DateTime dt) => DateFormat('h:mm a').format(dt);
+
+  Widget _buildConnectionsTab() {
+    if (_connections.isEmpty && _pendingRequests.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('🤝', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 16),
+            Text('No connections yet', style: AppTypography.title(fontSize: 20, color: AppColors.charcoal)),
+            const SizedBox(height: 8),
+            Text('After a good chat, tap "Connect" to save that person.', style: AppTypography.body(fontSize: 14, color: AppColors.slate), textAlign: TextAlign.center),
+          ]),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        if (_pendingRequests.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Text('PENDING REQUESTS', style: AppTypography.label(color: AppColors.accent)),
+          ),
+          ..._pendingRequests.map((req) {
+            final peerUsername = req['peer_username'] as String? ?? 'Anonymous';
+            final peerAvatarId = req['peer_avatar_id'] as int? ?? 0;
+            final peerSessionId = req['peer_session_id'] as String? ?? '';
+            return ListTile(
+              leading: ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(peerAvatarId, size: 72), width: 44, height: 44)),
+              title: Text(peerUsername, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w600)),
+              subtitle: Text('Wants to connect', style: AppTypography.body(fontSize: 12, color: AppColors.slate)),
+              trailing: FilledButton(
+                onPressed: () async {
+                  final token = ref.read(authProvider).token;
+                  if (token == null) return;
+                  await ref.read(apiClientProvider).acceptConnectionRequest(token, peerSessionId);
+                  _load();
+                },
+                style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+                child: Text('Accept', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white)),
+              ),
+            );
+          }),
+          const Divider(height: 24, indent: 20, endIndent: 20),
+        ],
+        if (_connections.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Text('CONNECTED', style: AppTypography.label(color: AppColors.slate)),
+          ),
+          ..._connections.map((conn) {
+            final peerUsername = conn['peer_username'] as String? ?? 'Anonymous';
+            final peerAvatarId = conn['peer_avatar_id'] as int? ?? 0;
+            final peerSessionId = conn['peer_session_id'] as String? ?? '';
+            return ListTile(
+              leading: ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(peerAvatarId, size: 72), width: 44, height: 44)),
+              title: Text(peerUsername, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w600)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton(
+                    onPressed: () async {
+                      final token = ref.read(authProvider).token;
+                      if (token == null) return;
+                      final roomId = await ref.read(apiClientProvider).directChat(token, peerSessionId);
+                      if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(roomId)}');
+                    },
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+                    child: Text('Chat', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white)),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, size: 18, color: AppColors.danger),
+                    onPressed: () async {
+                      final token = ref.read(authProvider).token;
+                      if (token == null) return;
+                      await ref.read(apiClientProvider).removeConnection(token, peerSessionId);
+                      _load();
+                    },
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,11 +182,23 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/chats'),
         ),
-        title: Text('Conversations', style: AppTypography.title(fontSize: 20)),
+        title: Text(_tab == 'connections' ? 'Connections' : 'Conversations', style: AppTypography.title(fontSize: 20)),
+        actions: [
+          TextButton(
+            onPressed: () => setState(() => _tab = _tab == 'chat' ? 'connections' : 'chat'),
+            child: Text(
+              _tab == 'chat' ? 'Connections' : 'Chats',
+              style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accent),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _rooms.isEmpty
+          : _tab == 'connections'
+              ? _buildConnectionsTab()
+              : _rooms.isEmpty
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(40),

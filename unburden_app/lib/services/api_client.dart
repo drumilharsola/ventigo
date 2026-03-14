@@ -247,6 +247,56 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
+  // ────────────────────────── FEEDBACK ──────────────────────────
+
+  Future<void> postFeedback(String token, String roomId, String mood, {String text = ''}) async {
+    try {
+      await _dio.post('/chat/rooms/${Uri.encodeComponent(roomId)}/feedback',
+          data: {'mood': mood, 'text': text},
+          options: Options(headers: _authHeader(token)));
+    } catch (e) { _rethrow(e); }
+  }
+
+  // ────────────────────────── CONNECTIONS ──────────────────────────
+
+  Future<Map<String, dynamic>> sendConnectionRequest(String token, String peerSessionId) async {
+    try {
+      final res = await _dio.post('/chat/connect/${Uri.encodeComponent(peerSessionId)}',
+          options: Options(headers: _authHeader(token)));
+      return res.data as Map<String, dynamic>;
+    } catch (e) { _rethrow(e); }
+  }
+
+  Future<void> acceptConnectionRequest(String token, String peerSessionId) async {
+    try {
+      await _dio.post('/chat/connect/${Uri.encodeComponent(peerSessionId)}/accept',
+          options: Options(headers: _authHeader(token)));
+    } catch (e) { _rethrow(e); }
+  }
+
+  Future<void> removeConnection(String token, String peerSessionId) async {
+    try {
+      await _dio.delete('/chat/connect/${Uri.encodeComponent(peerSessionId)}',
+          options: Options(headers: _authHeader(token)));
+    } catch (e) { _rethrow(e); }
+  }
+
+  Future<Map<String, dynamic>> getConnections(String token) async {
+    try {
+      final res = await _dio.get('/chat/connections',
+          options: Options(headers: _authHeader(token)));
+      return res.data as Map<String, dynamic>;
+    } catch (e) { _rethrow(e); }
+  }
+
+  Future<String> directChat(String token, String peerSessionId) async {
+    try {
+      final res = await _dio.post('/chat/connect/${Uri.encodeComponent(peerSessionId)}/chat',
+          options: Options(headers: _authHeader(token)));
+      return res.data['room_id'] as String;
+    } catch (e) { _rethrow(e); }
+  }
+
   // ────────────────────────── POSTS ──────────────────────────
 
   Future<List<Map<String, dynamic>>> getPosts() async {

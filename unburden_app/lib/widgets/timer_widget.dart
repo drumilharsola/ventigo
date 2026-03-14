@@ -54,14 +54,24 @@ class _TimerWidgetState extends State<TimerWidget> {
   Widget build(BuildContext context) {
     final mins = (_secs ~/ 60).toString().padLeft(2, '0');
     final sec = (_secs % 60).toString().padLeft(2, '0');
-    final urgent = _secs <= 120;
+
+    final Color timerColor;
+    if (_secs <= 30) {
+      timerColor = AppColors.danger;
+    } else if (_secs <= 120) {
+      timerColor = const Color(0xFFE8B450); // orange
+    } else if (_secs <= 300) {
+      timerColor = const Color(0xFFD4A844); // amber
+    } else {
+      timerColor = AppColors.accent;
+    }
 
     return Text(
       '$mins:$sec',
       style: AppTypography.ui(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: urgent ? AppColors.danger : AppColors.slate,
+        color: timerColor,
       ),
     );
   }

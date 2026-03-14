@@ -11,6 +11,13 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+function timerStyle(secs: number) {
+  if (secs <= 30) return { bg: "rgba(232,128,128,0.18)", border: "rgba(232,128,128,0.4)", color: "var(--danger)" };
+  if (secs <= 120) return { bg: "rgba(232,180,80,0.14)", border: "rgba(232,180,80,0.35)", color: "#e8b450" };
+  if (secs <= 300) return { bg: "rgba(232,200,120,0.10)", border: "rgba(232,200,120,0.25)", color: "#d4a844" };
+  return { bg: "rgba(184,160,232,0.1)", border: "rgba(184,160,232,0.2)", color: "var(--accent)" };
+}
+
 export function Timer({ remainingSeconds, onEnd }: TimerProps) {
   const [secs, setSecs] = useState(remainingSeconds);
 
@@ -29,7 +36,7 @@ export function Timer({ remainingSeconds, onEnd }: TimerProps) {
 
   const mins = Math.floor(secs / 60);
   const sec = secs % 60;
-  const urgent = secs <= 120;
+  const style = timerStyle(secs);
 
   return (
     <div
@@ -38,13 +45,13 @@ export function Timer({ remainingSeconds, onEnd }: TimerProps) {
         alignItems: "center",
         gap: 6,
         padding: "6px 14px",
-        background: urgent ? "rgba(232,128,128,0.12)" : "rgba(184,160,232,0.1)",
-        border: `1px solid ${urgent ? "rgba(232,128,128,0.3)" : "rgba(184,160,232,0.2)"}`,
+        background: style.bg,
+        border: `1px solid ${style.border}`,
         borderRadius: "var(--r-full)",
         fontFamily: "var(--font-ui)",
         fontSize: 13,
         fontWeight: 600,
-        color: urgent ? "var(--danger)" : "var(--accent)",
+        color: style.color,
         letterSpacing: "0.05em",
         transition: "all 0.3s",
       }}

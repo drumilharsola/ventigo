@@ -24,6 +24,9 @@ class ChatState {
   final bool connected;
   final String? connectionError;
   final String mode; // checking | live | readonly | expired
+  final bool continueWaiting;
+  final bool endingSoon;
+  final Map<String, List<ReactionEntry>> reactions;
 
   const ChatState({
     this.transcript = const [],
@@ -39,6 +42,9 @@ class ChatState {
     this.connected = false,
     this.connectionError,
     this.mode = 'checking',
+    this.continueWaiting = false,
+    this.endingSoon = false,
+    this.reactions = const {},
   });
 
   ChatState copyWith({
@@ -56,6 +62,9 @@ class ChatState {
     String? connectionError,
     String? mode,
     bool clearConnectionError = false,
+    bool? continueWaiting,
+    bool? endingSoon,
+    Map<String, List<ReactionEntry>>? reactions,
   }) {
     return ChatState(
       transcript: transcript ?? this.transcript,
@@ -71,8 +80,19 @@ class ChatState {
       connected: connected ?? this.connected,
       connectionError: clearConnectionError ? null : (connectionError ?? this.connectionError),
       mode: mode ?? this.mode,
+      continueWaiting: continueWaiting ?? this.continueWaiting,
+      endingSoon: endingSoon ?? this.endingSoon,
+      reactions: reactions ?? this.reactions,
     );
   }
+}
+
+/// Simple reaction entry.
+class ReactionEntry {
+  final String emoji;
+  final String from;
+  final int? ts;
+  const ReactionEntry({required this.emoji, required this.from, this.ts});
 }
 
 // ── Notifier ──
@@ -88,12 +108,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
   Timer? _typingStopTimer;
   bool _isTyping = false;
   bool _disposed = false;
+  String? _continueRoomId;
 
   ChatNotifier(this.ref, {required this.roomId, this.initialPeerSessionId}) : super(const ChatState());
 
   String? get _token => ref.read(authProvider).token;
   String? get _username => ref.read(authProvider).username;
   ApiClient get _api => ref.read(apiClientProvider);
+  /// Expose continue room ID for navigation by the chat screen.
+  String? get continueRoomId => _continueRoomId;
 
   // ── Lifecycle ──
 
@@ -255,7 +278,44 @@ class ChatNotifier extends StateNotifier<ChatState> {
         break;
 
       case 'extended':
-        state = state.copyWith(remaining: (data['remaining'] as num).toInt(), canExtend: false, sessionEnded: false);
+        state = state.copyWith(
+          remaining: (data['remaining'] as num).toInt(),
+          canExtend: false,
+          sessionEnded: false,
+          continueWaiting: false,
+          endingSoon: false,
+        );
+        break;
+
+      case 'ending_soon':
+        state = state.copyWith(endingSoon: true);
+        break;
+
+      case 'continue_request':
+        // Peer wants to continue — the UI will let this user respond
+        break;
+
+      case 'continue_accepted':
+        state = state.copyWith(continueWaiting: false);
+        // New room created — navigation handled by the screen
+        _continueRoomId = data['room_id'] as String?;
+        break;
+
+      case 'reaction':
+        final msgClientId = data['message_client_id'] as String?;
+        final emoji = data['emoji'] as String?;
+        final reactFrom = data['from'] as String?;
+        if (msgClientId != null && emoji != null && reactFrom != null) {
+          final updated = Map<String, List<ReactionEntry>>.from(state.reactions);
+          final existing = List<ReactionEntry>.from(updated[msgClientId] ?? []);
+          final alreadyExists = existing.any((r) => r.emoji == emoji && r.from == reactFrom);
+          if (!alreadyExists) {
+            final reactTs = (data['ts'] as num?)?.toInt();
+            existing.add(ReactionEntry(emoji: emoji, from: reactFrom, ts: reactTs));
+            updated[msgClientId] = existing;
+            state = state.copyWith(reactions: updated);
+          }
+        }
         break;
 
       case 'error':
@@ -317,6 +377,27 @@ class ChatNotifier extends StateNotifier<ChatState> {
   void extend() {
     _channel?.sink.add(jsonEncode({'type': 'extend'}));
     state = state.copyWith(sessionEnded: false);
+  }
+
+  void requestContinue() {
+    _channel?.sink.add(jsonEncode({'type': 'continue'}));
+    state = state.copyWith(continueWaiting: true);
+  }
+
+  void sendReaction(String messageClientId, String emoji) {
+    _channel?.sink.add(jsonEncode({
+      'type': 'reaction',
+      'message_client_id': messageClientId,
+      'emoji': emoji,
+    }));
+  }
+
+  Future<void> sendFeedback(String mood) async {
+    final token = _token;
+    if (token == null) return;
+    try {
+      await _api.postFeedback(token, roomId, mood);
+    } catch (_) {}
   }
 
   void leave() {

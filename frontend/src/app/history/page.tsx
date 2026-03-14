@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { api, RoomSummary, BlockedUser } from "@/lib/api";
+import { api, RoomSummary, BlockedUser, ConnectionItem } from "@/lib/api";
 import { avatarUrl } from "@/lib/avatars";
 import { FlowLogo } from "@/components/FlowLogo";
 
@@ -23,6 +23,17 @@ function formatDuration(startedAt: string, endedAt: string): string {
 
 function roomSortTs(room: Pick<RoomSummary, "started_at" | "matched_at">): number {
   return Number(room.started_at || room.matched_at || 0);
+}
+
+function formatTotalDuration(rooms: RoomSummary[], peerSessionId: string): string {
+  let totalMinutes = 0;
+  for (const room of rooms) {
+    if (room.peer_session_id !== peerSessionId) continue;
+    if (room.started_at && room.ended_at) {
+      totalMinutes += Math.max(1, Math.round((Number(room.ended_at) - Number(room.started_at)) / 60));
+    }
+  }
+  return totalMinutes > 0 ? `${totalMinutes} min` : "";
 }
 
 function groupRoomsByPeer(rooms: RoomSummary[]) {
@@ -45,11 +56,13 @@ function groupRoomsByPeer(rooms: RoomSummary[]) {
 function HistoryContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const initialTab = params.get("tab") === "blocked" ? "blocked" : "chat";
+  const initialTab = (params.get("tab") === "blocked" ? "blocked" : params.get("tab") === "connections" ? "connections" : "chat") as "chat" | "connections" | "blocked";
   const { token, username, _hasHydrated } = useAuthStore();
-  const [tab, setTab] = useState<"chat" | "blocked">(initialTab);
+  const [tab, setTab] = useState<"chat" | "connections" | "blocked">(initialTab);
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [connections, setConnections] = useState<ConnectionItem[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<ConnectionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [unblocking, setUnblocking] = useState<string | null>(null);
 
@@ -60,6 +73,7 @@ function HistoryContent() {
     Promise.all([
       api.getChatRooms(token).then((res) => setRooms(res.rooms)),
       api.getBlockedUsers(token).then((res) => setBlockedUsers(res.blocked)),
+      api.getConnections(token).then((res) => { setConnections(res.connections); setPendingRequests(res.pending_requests); }),
     ]).catch(() => {}).finally(() => setLoading(false));
   }, [_hasHydrated, token, username, router]);
 
@@ -109,13 +123,14 @@ function HistoryContent() {
         {/* Header */}
         <div style={{ marginBottom: 36 }}>
           <h1 className="t-display" style={{ color: "var(--ink)", fontSize: "clamp(36px,6vw,64px)" }}>
-            {tab === "chat"
-              ? <>Your <em style={{ color: "var(--accent)" }}>conversations.</em></>
-              : <>Blocked <em style={{ color: "var(--danger)" }}>users.</em></>
-            }
+            {tab === "chat" && <>Your <em style={{ color: "var(--accent)" }}>conversations.</em></>}
+            {tab === "connections" && <>Your <em style={{ color: "var(--accent)" }}>connections.</em></>}
+            {tab === "blocked" && <>Blocked <em style={{ color: "var(--danger)" }}>users.</em></>}
           </h1>
           <p style={{ fontSize: 14, color: "var(--slate)", fontFamily: "var(--font-ui)", fontWeight: 300, marginTop: 8 }}>
-            {tab === "chat" ? "Every session, preserved in quiet." : "People you've blocked won't appear in your conversations or board."}
+            {tab === "chat" && "Every session, preserved in quiet."}
+            {tab === "connections" && "People you've connected with for direct conversations."}
+            {tab === "blocked" && "People you've blocked won't appear in your conversations or board."}
           </p>
         </div>
 
@@ -123,6 +138,9 @@ function HistoryContent() {
         <div style={{ display: "flex", gap: 6, marginBottom: 40, background: "rgba(0,0,0,0.04)", borderRadius: "var(--r-full)", padding: 4, width: "fit-content" }}>
           <button style={tabStyle(tab === "chat")} onClick={() => setTab("chat")}>
             Conversations {groupedRooms.length > 0 ? `· ${groupedRooms.length}` : ""}
+          </button>
+          <button style={tabStyle(tab === "connections")} onClick={() => setTab("connections")}>
+            Connections {connections.length + pendingRequests.length > 0 ? `· ${connections.length + pendingRequests.length}` : ""}
           </button>
           <button style={tabStyle(tab === "blocked")} onClick={() => setTab("blocked")}>
             Blocked {blockedUsers.length > 0 ? `· ${blockedUsers.length}` : ""}
@@ -173,7 +191,7 @@ function HistoryContent() {
                         {latest.peer_username || "Anonymous"}
                       </p>
                       <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--slate)", fontFamily: "var(--font-ui)" }}>
-                        {count === 1 ? formatDate(latest.started_at || latest.matched_at) : `${count} sessions`}
+                        {count === 1 ? formatDate(latest.started_at || latest.matched_at) : `${count} sessions · ${formatTotalDuration(rooms, latest.peer_session_id)} total`}
                       </p>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
@@ -193,6 +211,74 @@ function HistoryContent() {
                 ))}
               </div>
               </>
+            )}
+          </>
+        )}
+
+        {/* ── Connections tab ── */}
+        {!loading && tab === "connections" && (
+          <>
+            {pendingRequests.length > 0 && (
+              <>
+                <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 600, color: "var(--accent)", fontFamily: "var(--font-ui)" }}>Pending requests</p>
+                <div style={{ display: "flex", flexDirection: "column", marginBottom: 32 }}>
+                  {pendingRequests.map((req, i) => (
+                    <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 0", borderBottom: i < pendingRequests.length - 1 ? "1px solid rgba(0,0,0,0.07)" : "none" }}>
+                      <img src={avatarUrl(req.peer_avatar_id, 72)} alt="avatar" width={40} height={40} style={{ borderRadius: "50%", border: "2px solid rgba(184,160,232,0.3)" }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 14, fontFamily: "var(--font-ui)", color: "var(--ink)", fontStyle: "italic" }}>{req.peer_username || "Anonymous"}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--slate)", fontFamily: "var(--font-ui)" }}>Wants to connect</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (!token) return;
+                          api.acceptConnectionRequest(token, req.peer_session_id).then(() => {
+                            setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
+                            setConnections((prev) => [...prev, { ...req, status: "accepted" }]);
+                          }).catch(() => {});
+                        }}
+                        className="btn btn-sm btn-accent"
+                      >Accept</button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {connections.length === 0 && pendingRequests.length === 0 ? (
+              <div style={{ borderRadius: "var(--r-lg)", padding: "60px 32px", textAlign: "center", border: "1.5px dashed rgba(0,0,0,0.1)", background: "var(--white)" }}>
+                <p style={{ margin: 0, fontWeight: 600, color: "var(--charcoal)", fontSize: 16, fontFamily: "var(--font-ui)" }}>No connections yet.</p>
+                <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--slate)", fontFamily: "var(--font-ui)", fontWeight: 300 }}>After a good chat, tap &ldquo;Connect&rdquo; to save that person.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {connections.map((conn, i) => (
+                  <div key={conn.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "18px 0", borderBottom: i < connections.length - 1 ? "1px solid rgba(0,0,0,0.07)" : "none" }}>
+                    <img src={avatarUrl(conn.peer_avatar_id, 72)} alt="avatar" width={44} height={44} style={{ borderRadius: "50%", border: "2px solid rgba(184,160,232,0.3)" }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: 15, fontFamily: "var(--font-ui)", color: "var(--ink)", fontStyle: "italic" }}>{conn.peer_username || "Anonymous"}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!token) return;
+                        api.directChat(token, conn.peer_session_id).then((res) => {
+                          router.push(`/chat?room_id=${encodeURIComponent(res.room_id)}`);
+                        }).catch(() => {});
+                      }}
+                      className="btn btn-sm btn-accent"
+                    >Start chat</button>
+                    <button
+                      onClick={() => {
+                        if (!token) return;
+                        api.removeConnection(token, conn.peer_session_id).then(() => {
+                          setConnections((prev) => prev.filter((c) => c.id !== conn.id));
+                        }).catch(() => {});
+                      }}
+                      className="btn btn-sm btn-ghost"
+                      style={{ color: "var(--danger)", fontSize: 11 }}
+                    >Remove</button>
+                  </div>
+                ))}
+              </div>
             )}
           </>
         )}
