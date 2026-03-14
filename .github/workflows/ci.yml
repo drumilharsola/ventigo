@@ -22,7 +22,6 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 1
-          trivy-version: v0.56.1
 
       - name: pip-audit - Python dependency scan
         run: |
@@ -47,46 +46,3 @@ jobs:
       - run: pip install -r requirements.txt pytest --quiet
 
       - run: pytest tests/ -v --tb=short
-
-  # ── 3. Deploy backend to Railway (main branch only, all checks pass) ────────
-  deploy-backend:
-    name: Deploy → Railway
-    needs: [security, test-backend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        run: railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-  # ── 4. Run Alembic migrations after deploy ──────────────────────────────────
-  migrate-db:
-    name: Run DB Migrations
-    needs: [deploy-backend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - run: pip install -r requirements.txt --quiet
-
-      - name: Run Alembic migrations
-        run: alembic upgrade head
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # Set DATABASE_URL in GitHub Secrets — your Neon Postgres connection string
-          # (use the one with sslmode=require)
