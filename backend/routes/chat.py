@@ -34,6 +34,7 @@ import asyncio
 import json
 import time
 import logging
+from typing import Annotated
 
 import bleach
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
@@ -324,7 +325,7 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
 # ── REST endpoints for chat history ───────────────────────────────────────────
 
 @router.get("/active")
-async def get_active_room(session: dict = Depends(require_auth)):
+async def get_active_room(session: Annotated[dict, Depends(require_auth)]):
     """Return the current active room_id for this session, or null."""
     session_id = session["sub"]
     room_id = await get_active_room_id_for_session(session_id)
@@ -334,7 +335,7 @@ async def get_active_room(session: dict = Depends(require_auth)):
 
 
 @router.get("/rooms")
-async def list_chat_rooms(session: dict = Depends(require_auth)):
+async def list_chat_rooms(session: Annotated[dict, Depends(require_auth)]):
     """Return all rooms this session participated in, newest first, excluding blocked peers."""
     session_id = session["sub"]
     redis = await get_redis()
@@ -367,7 +368,7 @@ async def list_chat_rooms(session: dict = Depends(require_auth)):
 @router.get("/rooms/{room_id}/messages")
 async def get_room_messages_endpoint(
     room_id: str,
-    session: dict = Depends(require_auth),
+    session: Annotated[dict, Depends(require_auth)],
 ):
     """Return messages for any room this session participated in."""
     session_id = session["sub"]
@@ -409,7 +410,7 @@ class FeedbackRequest(BaseModel):
 async def post_feedback(
     room_id: str,
     body: FeedbackRequest,
-    session: dict = Depends(require_auth),
+    session: Annotated[dict, Depends(require_auth)],
 ):
     session_id = session["sub"]
     room = await get_room(room_id)
@@ -427,7 +428,7 @@ async def post_feedback(
 @router.post("/connect/{peer_session_id}")
 async def send_connection_request(
     peer_session_id: str,
-    session: dict = Depends(require_auth),
+    session: Annotated[dict, Depends(require_auth)],
 ):
     """Send a connection request to a peer you've chatted with."""
     session_id = session["sub"]
@@ -471,7 +472,7 @@ async def send_connection_request(
 @router.post("/connect/{peer_session_id}/accept")
 async def accept_connection_request(
     peer_session_id: str,
-    session: dict = Depends(require_auth),
+    session: Annotated[dict, Depends(require_auth)],
 ):
     session_id = session["sub"]
     ok = await accept_connection(session_id, peer_session_id, session_id)
@@ -483,7 +484,7 @@ async def accept_connection_request(
 @router.delete("/connect/{peer_session_id}")
 async def remove_connection(
     peer_session_id: str,
-    session: dict = Depends(require_auth),
+    session: Annotated[dict, Depends(require_auth)],
 ):
     session_id = session["sub"]
     ok = await delete_connection(session_id, peer_session_id)
@@ -493,7 +494,7 @@ async def remove_connection(
 
 
 @router.get("/connections")
-async def get_connections_list(session: dict = Depends(require_auth)):
+async def get_connections_list(session: Annotated[dict, Depends(require_auth)]):
     session_id = session["sub"]
     accepted = await list_connections(session_id, "accepted")
     pending = await list_pending_requests(session_id)
@@ -503,7 +504,7 @@ async def get_connections_list(session: dict = Depends(require_auth)):
 @router.post("/connect/{peer_session_id}/chat")
 async def direct_chat(
     peer_session_id: str,
-    session: dict = Depends(require_auth),
+    session: Annotated[dict, Depends(require_auth)],
 ):
     """Start a direct chat with an accepted connection (bypasses matchmaking)."""
     session_id = session["sub"]

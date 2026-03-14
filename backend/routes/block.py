@@ -8,6 +8,7 @@ GET    /block/                      - list all blocked peers
 """
 
 import time
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -29,7 +30,7 @@ class BlockRequest(BaseModel):
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 @router.post("/", status_code=status.HTTP_201_CREATED, include_in_schema=False)
-async def block_user(body: BlockRequest, session: dict = Depends(require_auth)):
+async def block_user(body: BlockRequest, session: Annotated[dict, Depends(require_auth)]):
     session_id = session["sub"]
 
     if not body.peer_session_id or body.peer_session_id == session_id:
@@ -51,7 +52,7 @@ async def block_user(body: BlockRequest, session: dict = Depends(require_auth)):
 
 
 @router.delete("/{peer_session_id}", status_code=status.HTTP_200_OK)
-async def unblock_user(peer_session_id: str, session: dict = Depends(require_auth)):
+async def unblock_user(peer_session_id: str, session: Annotated[dict, Depends(require_auth)]):
     session_id = session["sub"]
     factory = get_session_factory()
     async with factory() as db:
@@ -66,7 +67,7 @@ async def unblock_user(peer_session_id: str, session: dict = Depends(require_aut
 
 @router.get("")
 @router.get("/", include_in_schema=False)
-async def get_blocked_users(session: dict = Depends(require_auth)):
+async def get_blocked_users(session: Annotated[dict, Depends(require_auth)]):
     session_id = session["sub"]
     factory = get_session_factory()
     async with factory() as db:

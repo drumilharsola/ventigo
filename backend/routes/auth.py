@@ -13,6 +13,7 @@ Auth routes:
 import secrets
 import logging
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -208,7 +209,7 @@ async def login(request: Request, body: LoginRequest):
 
 @router.post("/send-verification", status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit("3/hour")
-async def send_verification(request: Request, payload: dict = Depends(require_auth)):
+async def send_verification(request: Request, payload: Annotated[dict, Depends(require_auth)]):
     """Resend email verification link. Rate-limited to 1 per minute."""
     session_id = payload["sub"]
     redis = await get_redis()
@@ -262,7 +263,7 @@ async def verify_email_route(token: str):
 @router.post("/profile")
 async def set_profile(
     body: ProfileRequest,
-    payload: dict = Depends(require_auth),
+    payload: Annotated[dict, Depends(require_auth)],
 ):
     session_id = payload["sub"]
 
@@ -292,7 +293,7 @@ async def set_profile(
 @router.patch("/profile")
 async def update_profile(
     body: UpdateProfileRequest,
-    payload: dict = Depends(require_auth),
+    payload: Annotated[dict, Depends(require_auth)],
 ):
     """Re-roll username and/or change avatar."""
     session_id = payload["sub"]
@@ -327,7 +328,7 @@ async def update_profile(
 
 
 @router.get("/me")
-async def get_me(payload: dict = Depends(require_auth)):
+async def get_me(payload: Annotated[dict, Depends(require_auth)]):
     session_id = payload["sub"]
     profile = await get_profile(session_id)
     if not profile:
@@ -348,7 +349,7 @@ async def get_me(payload: dict = Depends(require_auth)):
 
 
 @router.get("/user/{username}")
-async def get_user_profile(username: str, payload: dict = Depends(require_auth)):
+async def get_user_profile(username: str, payload: Annotated[dict, Depends(require_auth)]):
     """Public stats for a user. Returns 404 if the requester has been blocked by the profile owner."""
     requester_session_id = payload["sub"]
 
@@ -459,7 +460,7 @@ async def reset_password(request: Request, body: ResetPasswordRequest):
 # ─── GDPR / Account Management ───────────────────────────────────────────────
 
 @router.get("/export")
-async def export_data(payload: dict = Depends(require_auth)):
+async def export_data(payload: Annotated[dict, Depends(require_auth)]):
     """Export all user data (GDPR compliance)."""
     session_id = payload["sub"]
 
@@ -496,7 +497,7 @@ async def export_data(payload: dict = Depends(require_auth)):
 
 @router.delete("/account")
 @limiter.limit("3/hour")
-async def delete_account(request: Request, payload: dict = Depends(require_auth)):
+async def delete_account(request: Request, payload: Annotated[dict, Depends(require_auth)]):
     """Permanently delete the user account and all associated data."""
     session_id = payload["sub"]
 

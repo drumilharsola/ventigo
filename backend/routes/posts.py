@@ -8,6 +8,8 @@ Posts routes:
 import time
 import uuid
 import json
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 from middleware.jwt_auth import require_auth
@@ -67,7 +69,7 @@ async def get_posts():
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_post(body: CreatePostRequest, payload: dict = Depends(require_auth)):
+async def create_post(body: CreatePostRequest, payload: Annotated[dict, Depends(require_auth)]):
     session_id = payload["sub"]
     redis = await get_redis()
 
@@ -116,7 +118,7 @@ async def create_post(body: CreatePostRequest, payload: dict = Depends(require_a
 
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_post(post_id: str, payload: dict = Depends(require_auth)):
+async def delete_post(post_id: str, payload: Annotated[dict, Depends(require_auth)]):
     session_id = payload["sub"]
     redis = await get_redis()
 

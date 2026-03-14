@@ -6,6 +6,7 @@ Reports expire after 7 days.
 
 import time
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -38,7 +39,7 @@ class ReportRequest(BaseModel):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def submit_report(body: ReportRequest, payload: dict = Depends(require_auth)):
+async def submit_report(body: ReportRequest, payload: Annotated[dict, Depends(require_auth)]):
     if body.reason not in REPORT_REASONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

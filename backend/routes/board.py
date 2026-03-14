@@ -11,6 +11,7 @@ WS     /board/ws?token=...       - real-time board + match notifications
 import json
 import asyncio
 import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 
@@ -36,7 +37,7 @@ router = APIRouter(prefix="/board", tags=["board"])
 # ── REST endpoints ────────────────────────────────────────────────────────────
 
 @router.post("/speak")
-async def speak(session=Depends(require_auth)):
+async def speak(session: Annotated[dict, Depends(require_auth)]):
     """Post a speaker request to the public board."""
     session_id = session["sub"]
     profile = await get_profile(session_id)
@@ -54,14 +55,14 @@ async def speak(session=Depends(require_auth)):
 
 
 @router.delete("/speak")
-async def cancel_speak(session=Depends(require_auth)):
+async def cancel_speak(session: Annotated[dict, Depends(require_auth)]):
     """Cancel own active speaker request."""
     await cancel_request(session["sub"])
     return {"status": "cancelled"}
 
 
 @router.get("/requests")
-async def list_requests(session=Depends(require_auth)):
+async def list_requests(session: Annotated[dict, Depends(require_auth)]):
     """Return the current speaker board (REST fallback)."""
     session_id = session["sub"]
     own_request_id = await get_request_for_session(session_id)
@@ -76,7 +77,7 @@ async def list_requests(session=Depends(require_auth)):
 
 
 @router.get("/request/{request_id}")
-async def get_request_status(request_id: str, session=Depends(require_auth)):
+async def get_request_status(request_id: str, session: Annotated[dict, Depends(require_auth)]):
     """Return the caller's active speaker request metadata."""
     data = await get_request(request_id)
     if not data:
@@ -88,7 +89,7 @@ async def get_request_status(request_id: str, session=Depends(require_auth)):
 
 
 @router.post("/accept/{request_id}")
-async def accept(request_id: str, session=Depends(require_auth)):
+async def accept(request_id: str, session: Annotated[dict, Depends(require_auth)]):
     """Accept a speaker request. Requires verified email - creates a chat room."""
     settings = get_settings()
     session_id = session["sub"]

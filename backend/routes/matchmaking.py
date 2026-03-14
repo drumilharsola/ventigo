@@ -8,6 +8,7 @@ Matchmaking routes:
 
 import asyncio
 import json
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
@@ -26,7 +27,7 @@ class JoinRequest(BaseModel):
 
 
 @router.post("/join", status_code=status.HTTP_202_ACCEPTED)
-async def join_queue(body: JoinRequest, payload: dict = Depends(require_auth)):
+async def join_queue(body: JoinRequest, payload: Annotated[dict, Depends(require_auth)]):
     session_id = payload["sub"]
     profile = await get_profile(session_id)
     if not profile:
@@ -43,14 +44,14 @@ async def join_queue(body: JoinRequest, payload: dict = Depends(require_auth)):
 
 
 @router.post("/cancel")
-async def cancel_queue(payload: dict = Depends(require_auth)):
+async def cancel_queue(payload: Annotated[dict, Depends(require_auth)]):
     session_id = payload["sub"]
     await dequeue(session_id)
     return {"message": "Left queue"}
 
 
 @router.get("/status")
-async def match_status(payload: dict = Depends(require_auth)):
+async def match_status(payload: Annotated[dict, Depends(require_auth)]):
     """Polling fallback - check if user has been matched to a room."""
     session_id = payload["sub"]
     room_id = await get_active_room_id_for_session(session_id)
