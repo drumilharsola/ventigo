@@ -96,7 +96,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               Text('Before you begin', style: AppTypography.title(fontSize: 20)),
             ],
           ),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -109,6 +110,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               const SizedBox(height: 10),
               _safetyRule(Icons.favorite_border, 'Be kind and respectful - the other person is human too.'),
             ],
+          ),
           ),
           actions: [
             FilledButton(

@@ -145,7 +145,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         final msg = jsonDecode(raw as String) as Map<String, dynamic>;
         final event = msg['event'] as String?;
 
-        if (event == 'error' && msg['detail'] == 'token_invalid') {
+        if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
           _ws?.sink.close();
           ref.read(authProvider.notifier).clear();
           if (mounted) context.go('/verify');
@@ -205,7 +205,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             Text('Before you begin', style: AppTypography.title(fontSize: 20)),
           ],
         ),
-        content: Column(
+        content: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -220,6 +221,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             const SizedBox(height: 10),
             _safetyRule(Icons.favorite_border, 'Be kind and respectful - the other person is human too.'),
           ],
+        ),
         ),
         actions: [
           TextButton(

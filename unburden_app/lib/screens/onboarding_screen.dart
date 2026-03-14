@@ -94,7 +94,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     itemBuilder: (_, i) {
                       final step = _steps[i];
                       return Center(
-                        child: Padding(
+                        child: SingleChildScrollView(
                           padding: EdgeInsets.symmetric(horizontal: narrow ? 24 : 80),
                           child: WarmCard(
                             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),

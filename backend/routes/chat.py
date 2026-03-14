@@ -106,6 +106,15 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
         await websocket.close(code=4001, reason="Unauthorized")
         return
 
+    # Single-device enforcement
+    device_token = payload.get("dt")
+    if device_token:
+        redis_check = await get_redis()
+        active_dt = await redis_check.get(f"active_device:{session_id}")
+        if active_dt and active_dt != device_token:
+            await websocket.close(code=4001, reason="Session replaced by another device")
+            return
+
     # ── Validate room membership via room hash ─────────────────────────────────
     room = await get_room(room_id)
     if not room:

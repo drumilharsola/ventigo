@@ -151,6 +151,16 @@ async def board_ws(websocket: WebSocket, token: str = ""):
 
     session_id = claims["sub"]
 
+    # Single-device enforcement
+    device_token = claims.get("dt")
+    if device_token:
+        redis_check = await get_redis()
+        active_dt = await redis_check.get(f"active_device:{session_id}")
+        if active_dt and active_dt != device_token:
+            await websocket.send_json({"event": "error", "detail": "session_replaced"})
+            await websocket.close(code=4401)
+            return
+
     redis = await get_redis()
     pubsub = redis.pubsub()
     await pubsub.subscribe("board:updates", f"session:{session_id}")

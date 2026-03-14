@@ -53,25 +53,28 @@ def test_email_hash_is_sha256_hex():
 
 def test_session_token_is_valid_jwt():
     from services.session_token import create_session_token
-    token, session_id = create_session_token("fakehash123")
+    token, session_id, device_token = create_session_token("fakehash123")
     # JWT has exactly 3 dot-separated parts
     assert token.count(".") == 2
     # session_id is a UUID (36 chars)
     assert len(session_id) == 36
+    # device_token is a UUID
+    assert len(device_token) == 36
 
 
 def test_session_token_round_trip():
     from services.session_token import create_session_token, decode_session_token
-    token, session_id = create_session_token("myhash")
+    token, session_id, _ = create_session_token("myhash")
     payload = decode_session_token(token)
     assert payload["sub"] == session_id
     assert payload["eh"] == "myhash"
+    assert "dt" in payload
 
 
 def test_different_hashes_produce_different_tokens():
     from services.session_token import create_session_token
-    t1, _ = create_session_token("hash_a")
-    t2, _ = create_session_token("hash_b")
+    t1, _, _ = create_session_token("hash_a")
+    t2, _, _ = create_session_token("hash_b")
     assert t1 != t2
 
 

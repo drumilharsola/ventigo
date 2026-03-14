@@ -181,7 +181,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
         final msg = jsonDecode(raw as String) as Map<String, dynamic>;
         final event = msg['event'] as String?;
 
-        if (event == 'error' && msg['detail'] == 'token_invalid') {
+        if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
           _ws?.sink.close();
           ref.read(authProvider.notifier).clear();
           if (mounted) context.go('/verify');
@@ -331,7 +331,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                       children: [
                         const Text('🎤', style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 6),
-                        const Text('Venter'),
+                        const Flexible(child: Text('Venter', overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                   ),
@@ -341,7 +341,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                       children: [
                         const Text('🤝', style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 6),
-                        const Text('Listener'),
+                        const Flexible(child: Text('Listener', overflow: TextOverflow.ellipsis)),
                         if (_board.isNotEmpty) ...[
                           const SizedBox(width: 6),
                           Container(

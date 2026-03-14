@@ -68,7 +68,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
   void _handleMessage(Map<String, dynamic> msg) {
     final event = msg['event'] as String?;
 
-    if (event == 'error' && msg['detail'] == 'token_invalid') {
+    if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
       close();
       ref.read(authProvider.notifier).clear();
       return;

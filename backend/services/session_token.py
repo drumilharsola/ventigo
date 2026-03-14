@@ -16,24 +16,26 @@ def _settings():
     return get_settings()
 
 
-def create_session_token(email_hash: str, session_id: str | None = None) -> tuple[str, str]:
+def create_session_token(email_hash: str, session_id: str | None = None) -> tuple[str, str, str]:
     """
-    Issue a JWT.
-    Returns (token, session_id).
+    Issue a JWT with a unique device_token for single-device enforcement.
+    Returns (token, session_id, device_token).
     """
     settings = _settings()
     sid = session_id or str(uuid.uuid4())
+    device_token = str(uuid.uuid4())
     now = int(time.time())
     expire = now + settings.JWT_EXPIRE_HOURS * 3600
 
     payload = {
         "sub": sid,
         "eh": email_hash,       # email hash - never plaintext
+        "dt": device_token,     # unique per login - single-device enforcement
         "iat": now,
         "exp": expire,
     }
     token = jwt.encode(payload, settings.APP_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-    return token, sid
+    return token, sid, device_token
 
 
 def decode_session_token(token: str) -> dict:

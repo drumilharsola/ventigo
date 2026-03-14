@@ -133,7 +133,7 @@ async def register(request: Request, body: RegisterRequest):
                 detail="An account with this email already exists. Please sign in.",
             )
 
-    token, session_id = create_session_token(email_hash)
+    token, session_id, device_token = create_session_token(email_hash)
     pwd_hash = _pwd_ctx.hash(body.password)
 
     async with factory() as db:
@@ -145,12 +145,15 @@ async def register(request: Request, body: RegisterRequest):
         ))
         await db.commit()
 
+    # Store active device token for single-device enforcement
+    redis = await get_redis()
+    await redis.set(f"active_device:{session_id}", device_token)
+
     auto_verified = email in _AUTO_VERIFIED_EMAILS
     if auto_verified:
         await set_email_verified(session_id)
     else:
         try:
-            redis = await get_redis()
             await _send_verify_link(email, session_id, redis)
         except Exception:
             logger.warning("Failed to send verification email to %s", email)
@@ -192,7 +195,12 @@ async def login(request: Request, body: LoginRequest):
     has_profile = bool(profile and profile.get("username"))
     email_verified = bool(profile and profile.get("email_verified") == "1")
 
-    token, _ = create_session_token(email_hash, session_id)
+    token, _, device_token = create_session_token(email_hash, session_id)
+
+    # Store active device token - invalidates any previous device's session
+    redis = await get_redis()
+    await redis.set(f"active_device:{session_id}", device_token)
+
     return {
         "token": token,
         "session_id": session_id,
@@ -512,6 +520,7 @@ async def delete_account(request: Request, payload: dict = Depends(require_auth)
     pipe.delete(f"early_email_verified:{session_id}")
     pipe.delete(f"history:{session_id}")
     pipe.delete(f"active_rooms:{session_id}")
+    pipe.delete(f"active_device:{session_id}")
     await pipe.execute()
 
     return {"message": "Account deleted"}

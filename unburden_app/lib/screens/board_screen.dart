@@ -86,7 +86,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         final msg = jsonDecode(raw as String) as Map<String, dynamic>;
         final event = msg['event'] as String?;
 
-        if (event == 'error' && msg['detail'] == 'token_invalid') {
+        if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
           _ws?.sink.close();
           ref.read(authProvider.notifier).clear();
           if (mounted) context.go('/verify');
@@ -142,7 +142,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           const SizedBox(width: 10),
           Text('Before you begin', style: AppTypography.title(fontSize: 20)),
         ]),
-        content: Column(
+        content: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -154,6 +155,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             const SizedBox(height: 10),
             _rule(Icons.favorite_border, 'Be kind - the other person is human too.'),
           ],
+        ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text('Cancel', style: AppTypography.ui(fontSize: 14, color: AppColors.slate))),

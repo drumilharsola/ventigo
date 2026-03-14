@@ -142,7 +142,7 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
         final msg = jsonDecode(raw as String) as Map<String, dynamic>;
         final event = msg['event'] as String?;
 
-        if (event == 'error' && msg['detail'] == 'token_invalid') {
+        if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
           _ws?.sink.close();
           ref.read(authProvider.notifier).clear();
           if (mounted) context.go('/verify');
@@ -360,12 +360,11 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
   }
 
   Widget _timedOutView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
             Text('⏱', style: const TextStyle(fontSize: 48)),
             const SizedBox(height: 20),
             Text("No one connected this time.", style: AppTypography.heading(fontSize: 24, color: AppColors.ink)),
@@ -418,7 +417,6 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
             ),
           ],
         ),
-      ),
     );
   }
 }
