@@ -11,11 +11,12 @@ class Env {
 
   /// Base URL for REST API calls (no trailing slash).
   /// On web, defaults to same origin (empty string = relative paths).
-  /// On mobile, defaults to Android emulator localhost proxy.
+  /// On mobile, defaults to production Render backend.
+  /// Override with --dart-define=API_BASE_URL=https://...
   static String get apiBaseUrl {
     if (_envApiBaseUrl.isNotEmpty) return _envApiBaseUrl;
     if (kIsWeb) return ''; // same-origin; requests use relative paths
-    return 'http://10.0.2.2:8000'; // Android emulator → host
+    return 'https://unburden-backend-pvn9.onrender.com'; // production backend
   }
 
   /// WebSocket base URL (ws:// or wss://).
