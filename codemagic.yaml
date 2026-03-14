@@ -6,8 +6,6 @@ workflows:
     max_build_duration: 30
     instance_type: mac_mini_m2
     working_directory: ventigo_app
-    triggering:
-      enabled: false
     environment:
       flutter: stable
       vars:
@@ -46,8 +44,6 @@ workflows:
     max_build_duration: 30
     instance_type: mac_mini_m2
     working_directory: ventigo_app
-    triggering:
-      enabled: false
     environment:
       flutter: stable
       ios_signing:
@@ -91,8 +87,6 @@ workflows:
     max_build_duration: 15
     instance_type: mac_mini_m2
     working_directory: ventigo_app
-    triggering:
-      enabled: false
     environment:
       flutter: stable
       vars:
