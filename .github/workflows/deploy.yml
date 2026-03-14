@@ -18,10 +18,12 @@ jobs:
     name: Build → Android
     if: inputs.target == 'android' || inputs.target == 'all'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Trigger Codemagic Android build
+        id: trigger
         run: |
-          curl -sf -X POST \
+          RESPONSE=$(curl -sf -X POST \
             "https://api.codemagic.io/builds" \
             -H "Content-Type: application/json" \
             -H "x-auth-token: ${{ secrets.CODEMAGIC_API_TOKEN }}" \
@@ -29,17 +31,84 @@ jobs:
               "appId": "${{ secrets.CODEMAGIC_APP_ID }}",
               "workflowId": "android-release",
               "branch": "main"
-            }'
+            }')
+          BUILD_ID=$(echo "$RESPONSE" | jq -r '.buildId')
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "🚀 Codemagic build started: $BUILD_ID"
+
+      - name: Wait for build & stream logs
+        id: wait
+        run: |
+          BUILD_ID="${{ steps.trigger.outputs.build_id }}"
+          AUTH="${{ secrets.CODEMAGIC_API_TOKEN }}"
+          echo "⏳ Polling build $BUILD_ID ..."
+
+          while true; do
+            RESP=$(curl -sf "https://api.codemagic.io/builds/$BUILD_ID" \
+              -H "x-auth-token: $AUTH")
+            STATUS=$(echo "$RESP" | jq -r '.build.status')
+            echo "   Status: $STATUS"
+
+            if [ "$STATUS" = "finished" ] || [ "$STATUS" = "failed" ] || \
+               [ "$STATUS" = "canceled" ] || [ "$STATUS" = "error" ]; then
+              break
+            fi
+            sleep 30
+          done
+
+          # ── Print full build log ──
+          echo ""
+          echo "════════════════════════════════════════════"
+          echo "  CODEMAGIC BUILD LOG (Android)"
+          echo "════════════════════════════════════════════"
+          echo "$RESP" | jq -r '
+            .build.steps[]? |
+            "── \(.name) [\(.status)] ──\n\(.log // "")\n"
+          ' 2>/dev/null || echo "(logs not available in API response)"
+
+          # ── Print artifact links ──
+          echo ""
+          echo "════════════════════════════════════════════"
+          echo "  BUILD ARTIFACTS"
+          echo "════════════════════════════════════════════"
+          ARTIFACTS=$(echo "$RESP" | jq -r '.build.artefacts[]? | "📦 \(.name): \(.url)"')
+          if [ -z "$ARTIFACTS" ]; then
+            echo "No artifacts found."
+          else
+            echo "$ARTIFACTS"
+          fi
+
+          # ── Set output for summary ──
+          APK_URL=$(echo "$RESP" | jq -r '[.build.artefacts[]? | select(.name | test("\\.(apk|aab)$"))] | first | .url // empty')
+          echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" != "finished" ]; then
+            echo "❌ Build $STATUS"
+            exit 1
+          fi
+          echo "✅ Build finished successfully"
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "## 🤖 Android Build" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Status:** ${{ steps.wait.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.wait.outputs.apk_url }}" ]; then
+            echo "- **📥 Download APK:** ${{ steps.wait.outputs.apk_url }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # ── iOS → Codemagic ────────────────────────────────────────────────────────
   build-ios:
     name: Build → iOS
     if: inputs.target == 'ios' || inputs.target == 'all'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Trigger Codemagic iOS build
+        id: trigger
         run: |
-          curl -sf -X POST \
+          RESPONSE=$(curl -sf -X POST \
             "https://api.codemagic.io/builds" \
             -H "Content-Type: application/json" \
             -H "x-auth-token: ${{ secrets.CODEMAGIC_API_TOKEN }}" \
@@ -47,4 +116,69 @@ jobs:
               "appId": "${{ secrets.CODEMAGIC_APP_ID }}",
               "workflowId": "ios-release",
               "branch": "main"
-            }'
+            }')
+          BUILD_ID=$(echo "$RESPONSE" | jq -r '.buildId')
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "🚀 Codemagic build started: $BUILD_ID"
+
+      - name: Wait for build & stream logs
+        id: wait
+        run: |
+          BUILD_ID="${{ steps.trigger.outputs.build_id }}"
+          AUTH="${{ secrets.CODEMAGIC_API_TOKEN }}"
+          echo "⏳ Polling build $BUILD_ID ..."
+
+          while true; do
+            RESP=$(curl -sf "https://api.codemagic.io/builds/$BUILD_ID" \
+              -H "x-auth-token: $AUTH")
+            STATUS=$(echo "$RESP" | jq -r '.build.status')
+            echo "   Status: $STATUS"
+
+            if [ "$STATUS" = "finished" ] || [ "$STATUS" = "failed" ] || \
+               [ "$STATUS" = "canceled" ] || [ "$STATUS" = "error" ]; then
+              break
+            fi
+            sleep 30
+          done
+
+          # ── Print full build log ──
+          echo ""
+          echo "════════════════════════════════════════════"
+          echo "  CODEMAGIC BUILD LOG (iOS)"
+          echo "════════════════════════════════════════════"
+          echo "$RESP" | jq -r '
+            .build.steps[]? |
+            "── \(.name) [\(.status)] ──\n\(.log // "")\n"
+          ' 2>/dev/null || echo "(logs not available in API response)"
+
+          # ── Print artifact links ──
+          echo ""
+          echo "════════════════════════════════════════════"
+          echo "  BUILD ARTIFACTS"
+          echo "════════════════════════════════════════════"
+          ARTIFACTS=$(echo "$RESP" | jq -r '.build.artefacts[]? | "📦 \(.name): \(.url)"')
+          if [ -z "$ARTIFACTS" ]; then
+            echo "No artifacts found."
+          else
+            echo "$ARTIFACTS"
+          fi
+
+          # ── Set output for summary ──
+          IPA_URL=$(echo "$RESP" | jq -r '[.build.artefacts[]? | select(.name | test("\\.(ipa)$"))] | first | .url // empty')
+          echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" != "finished" ]; then
+            echo "❌ Build $STATUS"
+            exit 1
+          fi
+          echo "✅ Build finished successfully"
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "## 🍎 iOS Build" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Status:** ${{ steps.wait.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.wait.outputs.ipa_url }}" ]; then
+            echo "- **📥 Download IPA:** ${{ steps.wait.outputs.ipa_url }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
