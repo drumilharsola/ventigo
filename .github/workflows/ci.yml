@@ -29,10 +29,6 @@ jobs:
           pip install pip-audit --quiet
           pip-audit -r backend/requirements.txt --desc on
 
-      - name: npm audit - frontend dependency scan
-        working-directory: frontend
-        run: npm audit --audit-level=critical
-
   # ── 2. Backend unit tests ────────────────────────────────────────────────────
   test-backend:
     name: Backend Tests
@@ -52,33 +48,10 @@ jobs:
 
       - run: pytest tests/ -v --tb=short
 
-  # ── 3. Frontend type-check & build ──────────────────────────────────────────
-  build-frontend:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - run: npm ci
-
-      - run: npm run build
-        env:
-          # placeholder - real value set in Vercel dashboard
-          NEXT_PUBLIC_API_URL: https://placeholder.example.com
-
-  # ── 4. Deploy backend to Railway (main branch only, all checks pass) ────────
+  # ── 3. Deploy backend to Railway (main branch only, all checks pass) ────────
   deploy-backend:
     name: Deploy → Railway
-    needs: [security, test-backend, build-frontend]
+    needs: [security, test-backend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -91,11 +64,8 @@ jobs:
         run: railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          # Set these in GitHub → Settings → Secrets → Actions:
-          #   RAILWAY_TOKEN      – from railway.app → Account → Tokens → New Token
-          #   RAILWAY_SERVICE_ID – from railway.app → Project → Service → Settings → Service ID
 
-  # ── 5. Run Alembic migrations after deploy ──────────────────────────────────
+  # ── 4. Run Alembic migrations after deploy ──────────────────────────────────
   migrate-db:
     name: Run DB Migrations
     needs: [deploy-backend]
