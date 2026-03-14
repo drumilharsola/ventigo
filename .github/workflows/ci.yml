@@ -115,28 +115,21 @@ jobs:
             -Dsonar.python.coverage.reportPaths=backend/coverage.xml
             -Dsonar.coverageReportPaths=ventigo_app/coverage/lcov.info
 
-  # ── 5. Deploy backend to Railway ────────────────────────────────────────────
+  # ── 5. Trigger Railway deploy ────────────────────────────────────────────────
   deploy-backend:
-    name: Deploy → Railway
+    name: Trigger → Railway
     needs: [security, test-backend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        run: railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Trigger Railway deploy hook
+        run: curl -s -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK }}"
 
   # ── 6. Vercel deploys automatically after CI passes (Wait for CI enabled) ──
 
-  # ── 7. Build Android APK via Codemagic ──────────────────────────────────────
+  # ── 7. Trigger Codemagic Android build ──────────────────────────────────────
   build-android:
-    name: Build → Android (Codemagic)
+    name: Trigger → Android (Codemagic)
     needs: [security, test-flutter]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -153,9 +146,9 @@ jobs:
               "branch": "main"
             }'
 
-  # ── 8. Build iOS IPA via Codemagic ──────────────────────────────────────────
+  # ── 8. Trigger Codemagic iOS build ──────────────────────────────────────────
   build-ios:
-    name: Build → iOS (Codemagic)
+    name: Trigger → iOS (Codemagic)
     needs: [security, test-flutter]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
