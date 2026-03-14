@@ -126,15 +126,13 @@ app.include_router(posts_router)
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/health", tags=["meta"])
 async def health():
+    status = {"status": "ok"}
     try:
         await ping_redis()
     except (RedisError, AsyncTimeoutError, OSError) as exc:
-        logger.error(f"Health check failed: {exc}")
-        return JSONResponse(
-            status_code=503,
-            content={"status": "degraded", "detail": "Redis unavailable"},
-        )
-    return {"status": "ok"}
+        logger.warning(f"Health check: Redis unavailable: {exc}")
+        status = {"status": "degraded", "detail": "Redis unavailable"}
+    return status
 
 
 # ── Security headers ──────────────────────────────────────────────────────────
