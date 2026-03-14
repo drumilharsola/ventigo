@@ -46,6 +46,54 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() => _step = page);
   }
 
+  Widget _buildStepDots() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(4, (i) {
+        final active = i == _step;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: active ? 28 : 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: active ? AppColors.accent : AppColors.mist,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildNavButtons(bool narrow) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: narrow ? 24 : 80, vertical: 24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (_step > 0)
+            FlowButton(
+              label: '← Back',
+              variant: FlowButtonVariant.ghost,
+              size: FlowButtonSize.md,
+              onPressed: () => _goTo(_step - 1),
+            ),
+          if (_step > 0) const SizedBox(width: 12),
+          FlowButton(
+            label: _step == 3 ? 'Continue →' : 'Next →',
+            onPressed: () {
+              if (_step < 3) {
+                _goTo(_step + 1);
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final parsed = parseIntent(widget.intent);
@@ -60,24 +108,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 40),
-
-                // Step dots
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(4, (i) {
-                    final active = i == _step;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: active ? 28 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: active ? AppColors.accent : AppColors.mist,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    );
-                  }),
-                ),
+                _buildStepDots(),
                 const SizedBox(height: 16),
 
                 // Intent pill
@@ -117,32 +148,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                 ),
 
-                // Buttons
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: narrow ? 24 : 80, vertical: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (_step > 0)
-                        FlowButton(
-                          label: '← Back',
-                          variant: FlowButtonVariant.ghost,
-                          size: FlowButtonSize.md,
-                          onPressed: () => _goTo(_step - 1),
-                        ),
-                      if (_step > 0) const SizedBox(width: 12),
-                      FlowButton(
-                        label: _step == 3 ? 'Continue →' : 'Next →',
-                        onPressed: () {
-                          if (_step < 3) {
-                            _goTo(_step + 1);
-                          } else {
-                            context.go('/home');
-                          }
-                        },
-                      ),
-                    ],
-                  ),
+                _buildNavButtons(narrow),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
                 ),
               ],
             ),

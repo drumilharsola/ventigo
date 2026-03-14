@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_RESET_LINK_SENT = "If an account exists, a reset link has been sent."
 
 
 # ─── Models ───────────────────────────────────────────────────────────────────
@@ -207,7 +208,9 @@ async def login(request: Request, body: LoginRequest):
     }
 
 
-@router.post("/send-verification", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/send-verification", status_code=status.HTTP_202_ACCEPTED,
+             responses={400: {"description": "Account email not found"},
+                        429: {"description": "Too many requests"}})
 @limiter.limit("3/hour")
 async def send_verification(request: Request, payload: Annotated[dict, Depends(require_auth)]):
     """Resend email verification link. Rate-limited to 1 per minute."""
@@ -407,14 +410,14 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest):
         user = result.scalar_one_or_none()
 
     if not user:
-        return {"message": "If an account exists, a reset link has been sent."}
+        return {"message": _RESET_LINK_SENT}
 
     session_id = user.session_id
 
     # Rate limit: 1 reset email per 2 minutes
     throttle_key = f"pwd_reset_throttle:{session_id}"
     if await redis.exists(throttle_key):
-        return {"message": "If an account exists, a reset link has been sent."}
+        return {"message": _RESET_LINK_SENT}
     await redis.setex(throttle_key, 120, "1")
 
     token = secrets.token_urlsafe(32)
@@ -429,7 +432,7 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest):
     except Exception:
         logger.warning("Failed to send password reset email to %s", email)
 
-    return {"message": "If an account exists, a reset link has been sent."}
+    return {"message": _RESET_LINK_SENT}
 
 
 @router.post("/reset-password")
@@ -459,7 +462,7 @@ async def reset_password(request: Request, body: ResetPasswordRequest):
 
 # ─── GDPR / Account Management ───────────────────────────────────────────────
 
-@router.get("/export")
+@router.get("/export", responses={404: {"description": "Account not found"}})
 async def export_data(payload: Annotated[dict, Depends(require_auth)]):
     """Export all user data (GDPR compliance)."""
     session_id = payload["sub"]
@@ -495,7 +498,7 @@ async def export_data(payload: Annotated[dict, Depends(require_auth)]):
     }
 
 
-@router.delete("/account")
+@router.delete("/account", responses={404: {"description": "Account not found"}})
 @limiter.limit("3/hour")
 async def delete_account(request: Request, payload: Annotated[dict, Depends(require_auth)]):
     """Permanently delete the user account and all associated data."""

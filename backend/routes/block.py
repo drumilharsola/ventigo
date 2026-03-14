@@ -28,7 +28,8 @@ class BlockRequest(BaseModel):
     avatar_id: int = 0
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED,
+             responses={400: {"description": "Invalid peer"}})
 @router.post("/", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def block_user(body: BlockRequest, session: Annotated[dict, Depends(require_auth)]):
     session_id = session["sub"]

@@ -128,6 +128,28 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
     }
   }
 
+  void _handleWaitWsEvent(Map<String, dynamic> msg) {
+    final event = msg['event'] as String?;
+    if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
+      _ws?.sink.close();
+      ref.read(authProvider.notifier).clear();
+      if (mounted) context.go('/verify');
+      return;
+    }
+    if (event == 'board_state' && msg['my_request_id'] == null) {
+      _syncRequest().then((s) {
+        if (s != _ReqStatus.matched && s != _ReqStatus.active) {
+          setState(() => _timedOut = true);
+        }
+      });
+      return;
+    }
+    if (event == 'matched') {
+      _ws?.sink.close();
+      if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
+    }
+  }
+
   void _connectWs() {
     final token = _token;
     if (token == null || _timedOut) return;
@@ -138,29 +160,7 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
     _ws = WebSocketChannel.connect(uri);
 
     _wsSub = _ws!.stream.listen(
-      (raw) {
-        final msg = jsonDecode(raw as String) as Map<String, dynamic>;
-        final event = msg['event'] as String?;
-
-        if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
-          _ws?.sink.close();
-          ref.read(authProvider.notifier).clear();
-          if (mounted) context.go('/verify');
-          return;
-        }
-        if (event == 'board_state' && msg['my_request_id'] == null) {
-          _syncRequest().then((s) {
-            if (s != _ReqStatus.matched && s != _ReqStatus.active) {
-              setState(() => _timedOut = true);
-            }
-          });
-          return;
-        }
-        if (event == 'matched') {
-          _ws?.sink.close();
-          if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
-        }
-      },
+      (raw) => _handleWaitWsEvent(jsonDecode(raw as String) as Map<String, dynamic>),
       onDone: () {
         _reconnectTimer?.cancel();
         _reconnectTimer = Timer(const Duration(seconds: 3), () {
@@ -244,10 +244,64 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
     return Center(child: CircularProgressIndicator(color: AppColors.accent));
   }
 
+  Widget _buildBreathingCircle() {
+    return SizedBox(
+      width: 180,
+      height: 180,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const BreathingCircle(size: 140),
+          AnimatedOpacity(
+            opacity: 1.0,
+            duration: const Duration(milliseconds: 500),
+            child: Text(
+              _breatheIn ? 'Breathe in' : 'Breathe out',
+              style: AppTypography.ui(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.accent,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFunFactCard() {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      child: Container(
+        key: ValueKey(_funFact),
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.lavender.withValues(alpha: 0.1),
+          borderRadius: AppRadii.lgAll,
+          border: Border.all(color: AppColors.lavender.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'FUN FACT',
+              style: AppTypography.label(fontSize: 10, color: AppColors.lavender),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _funFact,
+              style: AppTypography.body(fontSize: 13, color: AppColors.graphite),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _waitingView() {
     return Column(
       children: [
-        // Top bar with cancel
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
@@ -263,8 +317,6 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
             ],
           ),
         ),
-
-        // Center breathing section
         Expanded(
           child: Center(
             child: SingleChildScrollView(
@@ -273,31 +325,8 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Breathing circle with text
-                    SizedBox(
-                      width: 180,
-                      height: 180,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const BreathingCircle(size: 140),
-                          AnimatedOpacity(
-                            opacity: 1.0,
-                            duration: const Duration(milliseconds: 500),
-                            child: Text(
-                              _breatheIn ? 'Breathe in' : 'Breathe out',
-                              style: AppTypography.ui(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.accent,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildBreathingCircle(),
                     const SizedBox(height: 24),
-
                     Text(
                       'Your space is ready.',
                       style: AppTypography.title(fontSize: 22, color: AppColors.ink),
@@ -310,38 +339,8 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 28),
-
-                    // Fun fact card
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 500),
-                      child: Container(
-                        key: ValueKey(_funFact),
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.lavender.withValues(alpha: 0.1),
-                          borderRadius: AppRadii.lgAll,
-                          border: Border.all(color: AppColors.lavender.withValues(alpha: 0.2)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'FUN FACT',
-                              style: AppTypography.label(fontSize: 10, color: AppColors.lavender),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _funFact,
-                              style: AppTypography.body(fontSize: 13, color: AppColors.graphite),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _buildFunFactCard(),
                     const SizedBox(height: 20),
-
-                    // Cancel button
                     FlowButton(
                       label: 'Cancel',
                       variant: FlowButtonVariant.danger,

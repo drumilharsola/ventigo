@@ -67,6 +67,42 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     }
   }
 
+  void _handleBoardWsEvent(Map<String, dynamic> msg) {
+    final event = msg['event'] as String?;
+
+    if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
+      _ws?.sink.close();
+      ref.read(authProvider.notifier).clear();
+      if (mounted) context.go('/verify');
+      return;
+    }
+    if (event == 'board_state') {
+      final list = (msg['requests'] as List?)?.map((e) => SpeakerRequest.fromJson(e as Map<String, dynamic>)).toList() ?? [];
+      setState(() => _board = _filterOwn(list));
+      return;
+    }
+    if (event == 'new_request') {
+      if (msg['session_id'] == _sessionId) return;
+      final id = msg['request_id'] as String;
+      if (_board.any((r) => r.requestId == id)) return;
+      setState(() {
+        _board = [
+          ..._board,
+          SpeakerRequest(requestId: id, sessionId: '', username: msg['username'] as String? ?? '', avatarId: (msg['avatar_id'] ?? 0).toString(), postedAt: msg['posted_at'] as String? ?? ''),
+        ];
+      });
+      return;
+    }
+    if (event == 'removed_request') {
+      setState(() => _board = _board.where((r) => r.requestId != msg['request_id']).toList());
+      return;
+    }
+    if (event == 'matched') {
+      _ws?.sink.close();
+      if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
+    }
+  }
+
   void _connectWs() {
     final token = _token;
     if (token == null) return;
@@ -77,42 +113,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     _ws = WebSocketChannel.connect(uri);
 
     _wsSub = _ws!.stream.listen(
-      (raw) {
-        final msg = jsonDecode(raw as String) as Map<String, dynamic>;
-        final event = msg['event'] as String?;
-
-        if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
-          _ws?.sink.close();
-          ref.read(authProvider.notifier).clear();
-          if (mounted) context.go('/verify');
-          return;
-        }
-        if (event == 'board_state') {
-          final list = (msg['requests'] as List?)?.map((e) => SpeakerRequest.fromJson(e as Map<String, dynamic>)).toList() ?? [];
-          setState(() => _board = _filterOwn(list));
-          return;
-        }
-        if (event == 'new_request') {
-          if (msg['session_id'] == _sessionId) return;
-          final id = msg['request_id'] as String;
-          if (_board.any((r) => r.requestId == id)) return;
-          setState(() {
-            _board = [
-              ..._board,
-              SpeakerRequest(requestId: id, sessionId: '', username: msg['username'] as String? ?? '', avatarId: (msg['avatar_id'] ?? 0).toString(), postedAt: msg['posted_at'] as String? ?? ''),
-            ];
-          });
-          return;
-        }
-        if (event == 'removed_request') {
-          setState(() => _board = _board.where((r) => r.requestId != msg['request_id']).toList());
-          return;
-        }
-        if (event == 'matched') {
-          _ws?.sink.close();
-          if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
-        }
-      },
+      (raw) => _handleBoardWsEvent(jsonDecode(raw as String) as Map<String, dynamic>),
       onDone: () {
         _reconnectTimer?.cancel();
         _reconnectTimer = Timer(const Duration(seconds: 3), _connectWs);
@@ -142,6 +143,32 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _accepting = null; });
     }
+  }
+
+  Widget _buildRequestTile(SpeakerRequest req) {
+    final accepting = _accepting == req.requestId;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadii.mdAll,
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 2))],
+      ),
+      child: Row(children: [
+        ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(req.avatarId, size: 84), width: 42, height: 42)),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(req.username, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
+          Text('needs to be heard · ${timeAgo(req.postedAt)}', style: AppTypography.body(fontSize: 12, color: AppColors.slate)),
+        ])),
+        FlowButton(
+          label: accepting ? '…' : 'Show up',
+          size: FlowButtonSize.sm,
+          onPressed: accepting ? null : () => _handleAccept(req.requestId),
+        ),
+      ]),
+    );
   }
 
   @override
@@ -192,32 +219,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                     padding: const EdgeInsets.all(16),
                     itemCount: _board.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) {
-                      final req = _board[i];
-                      final accepting = _accepting == req.requestId;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: AppRadii.mdAll,
-                          border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 2))],
-                        ),
-                        child: Row(children: [
-                          ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(req.avatarId, size: 84), width: 42, height: 42)),
-                          const SizedBox(width: 14),
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(req.username, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                            Text('needs to be heard · ${timeAgo(req.postedAt)}', style: AppTypography.body(fontSize: 12, color: AppColors.slate)),
-                          ])),
-                          FlowButton(
-                            label: accepting ? '…' : 'Show up',
-                            size: FlowButtonSize.sm,
-                            onPressed: accepting ? null : () => _handleAccept(req.requestId),
-                          ),
-                        ]),
-                      );
-                    },
+                    itemBuilder: (_, i) => _buildRequestTile(_board[i]),
                   ),
           ),
         ],

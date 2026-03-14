@@ -23,6 +23,12 @@ import '../screens/admin/admin_tenants_screen.dart';
 import '../screens/privacy_screen.dart';
 import '../screens/terms_screen.dart';
 
+// ── Route path constants ─────────────────────────────────────────────────────
+const kPathVerify = '/verify';
+const kPathOnboarding = '/onboarding';
+const kPathHome = '/home';
+const kPathProfile = '/profile';
+
 /// Bridges Riverpod [AuthState] changes into a [Listenable] so the single
 /// GoRouter instance can re-evaluate its redirect without being recreated.
 class _AuthChangeNotifier extends ChangeNotifier {
@@ -59,32 +65,32 @@ final routerProvider = Provider<GoRouter>((ref) {
       final hasProfile = auth.hasProfile;
 
       // If logged in with profile and on landing/verify/onboarding → go to home
-      if (loggedIn && hasProfile && (path == '/' || path == '/verify' || path == '/onboarding')) {
-        return '/home';
+      if (loggedIn && hasProfile && (path == '/' || path == kPathVerify || path == kPathOnboarding)) {
+        return kPathHome;
       }
       // Legacy lobby redirect
       if (path == '/lobby') return '/home';
 
       // Public routes - no redirect needed.
-      const publicPaths = {'/', '/onboarding', '/verify', '/verify-email', '/brand', '/privacy', '/terms'};
+      const publicPaths = {'/', kPathOnboarding, kPathVerify, '/verify-email', '/brand', '/privacy', '/terms'};
       // Admin routes need auth but are handled by the admin screens themselves
       if (publicPaths.contains(path) || path.startsWith('/admin')) return null;
 
       // If not logged in, send to verify.
-      if (!loggedIn) return '/verify';
+      if (!loggedIn) return kPathVerify;
 
       // If logged in but no profile, send to profile setup.
-      if (!hasProfile && path != '/profile') return '/profile';
+      if (!hasProfile && path != kPathProfile) return kPathProfile;
 
       return null;
     },
     routes: [
       GoRoute(path: '/', builder: (_, __) => const LandingScreen()),
-      GoRoute(path: '/onboarding', builder: (_, state) {
+      GoRoute(path: kPathOnboarding, builder: (_, state) {
         final intent = state.uri.queryParameters['intent'];
         return OnboardingScreen(intent: intent);
       }),
-      GoRoute(path: '/verify', builder: (_, state) {
+      GoRoute(path: kPathVerify, builder: (_, state) {
         final resetToken = state.uri.queryParameters['reset_token'];
         return VerifyScreen(resetToken: resetToken);
       }),
@@ -92,11 +98,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         final status = state.uri.queryParameters['status'] ?? '';
         return VerifyEmailScreen(status: status);
       }),
-      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+      GoRoute(path: kPathProfile, builder: (_, __) => const ProfileScreen()),
       GoRoute(path: '/blocked-users', builder: (_, __) => const BlockedUsersScreen()),
 
       // ── Main shell with bottom navigation ──
-      GoRoute(path: '/home', builder: (_, __) => const MainShell(initialIndex: 0)),
+      GoRoute(path: kPathHome, builder: (_, __) => const MainShell(initialIndex: 0)),
       GoRoute(path: '/chats', builder: (_, __) => const MainShell(initialIndex: 1)),
       GoRoute(path: '/posts', builder: (_, __) => const MainShell(initialIndex: 2)),
       GoRoute(path: '/help', builder: (_, __) => const MainShell(initialIndex: 3)),

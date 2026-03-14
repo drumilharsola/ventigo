@@ -87,6 +87,25 @@ class PendingWaitNotifier extends StateNotifier<PendingWaitState> {
     );
   }
 
+  void _processPollResponse(dynamic req) {
+    if (req.status == 'matched' && req.roomId != null) {
+      _ws?.sink.close();
+      state = state.copyWith(matchedRoomId: req.roomId);
+      return;
+    }
+    if (req.postedAt == null) {
+      state = state.copyWith(timedOut: true);
+      return;
+    }
+    final elapsed = (DateTime.now().millisecondsSinceEpoch ~/ 1000) - (int.tryParse(req.postedAt!) ?? 0);
+    final rem = (600 - elapsed).clamp(0, 600);
+    if (rem <= 0) {
+      state = state.copyWith(timedOut: true);
+    } else {
+      state = state.copyWith(remaining: rem);
+    }
+  }
+
   void _startPoll() {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
@@ -96,22 +115,7 @@ class PendingWaitNotifier extends StateNotifier<PendingWaitState> {
       if (token == null || rid == null) return;
       try {
         final req = await ref.read(apiClientProvider).getSpeakerRequest(token, rid);
-        if (req.status == 'matched' && req.roomId != null) {
-          _ws?.sink.close();
-          state = state.copyWith(matchedRoomId: req.roomId);
-          return;
-        }
-        if (req.postedAt == null) {
-          state = state.copyWith(timedOut: true);
-          return;
-        }
-        final elapsed = (DateTime.now().millisecondsSinceEpoch ~/ 1000) - (int.tryParse(req.postedAt!) ?? 0);
-        final rem = (600 - elapsed).clamp(0, 600);
-        if (rem <= 0) {
-          state = state.copyWith(timedOut: true);
-        } else {
-          state = state.copyWith(remaining: rem);
-        }
+        _processPollResponse(req);
       } catch (_) {}
     });
   }

@@ -207,43 +207,68 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(connected: true, clearConnectionError: true);
   }
 
+  void _handleHistoryWs(Map<String, dynamic> data, String? username) {
+    final msgs = (data['messages'] as List?)
+        ?.map((m) => TranscriptMessage(
+              from: m['from'] as String,
+              fromSession: m['from_session'] as String?,
+              text: m['text'] as String,
+              ts: (m['ts'] as num).toDouble(),
+              clientId: m['client_id'] as String?,
+            ))
+        .toList();
+    if (msgs != null) {
+      state = state.copyWith(transcript: _merge(state.transcript, msgs.cast<TranscriptItem>()));
+      final peer = msgs.where((m) => m.from != username).firstOrNull;
+      if (peer != null) state = state.copyWith(peerUsername: peer.from);
+    }
+  }
+
+  void _handleMessageWs(Map<String, dynamic> data, String? username) {
+    final msg = TranscriptMessage(
+      from: data['from'] as String,
+      fromSession: data['from_session'] as String?,
+      text: data['text'] as String,
+      ts: (data['ts'] as num).toDouble(),
+      clientId: data['client_id'] as String?,
+      replyTo: data['reply_to'] as String?,
+      replyText: data['reply_text'] as String?,
+      replyFrom: data['reply_from'] as String?,
+    );
+    state = state.copyWith(transcript: _merge(state.transcript, [msg]));
+    if (msg.from != username) {
+      state = state.copyWith(peerUsername: msg.from, peerTyping: false);
+    }
+  }
+
+  void _handleReactionWs(Map<String, dynamic> data) {
+    final msgClientId = data['message_client_id'] as String?;
+    final emoji = data['emoji'] as String?;
+    final reactFrom = data['from'] as String?;
+    if (msgClientId != null && emoji != null && reactFrom != null) {
+      final updated = Map<String, List<ReactionEntry>>.from(state.reactions);
+      final existing = List<ReactionEntry>.from(updated[msgClientId] ?? []);
+      final alreadyExists = existing.any((r) => r.emoji == emoji && r.from == reactFrom);
+      if (!alreadyExists) {
+        final reactTs = (data['ts'] as num?)?.toInt();
+        existing.add(ReactionEntry(emoji: emoji, from: reactFrom, ts: reactTs));
+        updated[msgClientId] = existing;
+        state = state.copyWith(reactions: updated);
+      }
+    }
+  }
+
   void _handleWs(Map<String, dynamic> data) {
     final type = data['type'] as String?;
     final username = _username;
 
     switch (type) {
       case 'history':
-        final msgs = (data['messages'] as List?)
-            ?.map((m) => TranscriptMessage(
-                  from: m['from'] as String,
-                  fromSession: m['from_session'] as String?,
-                  text: m['text'] as String,
-                  ts: (m['ts'] as num).toDouble(),
-                  clientId: m['client_id'] as String?,
-                ))
-            .toList();
-        if (msgs != null) {
-          state = state.copyWith(transcript: _merge(state.transcript, msgs.cast<TranscriptItem>()));
-          final peer = msgs.where((m) => m.from != username).firstOrNull;
-          if (peer != null) state = state.copyWith(peerUsername: peer.from);
-        }
+        _handleHistoryWs(data, username);
         break;
 
       case 'message':
-        final msg = TranscriptMessage(
-          from: data['from'] as String,
-          fromSession: data['from_session'] as String?,
-          text: data['text'] as String,
-          ts: (data['ts'] as num).toDouble(),
-          clientId: data['client_id'] as String?,
-          replyTo: data['reply_to'] as String?,
-          replyText: data['reply_text'] as String?,
-          replyFrom: data['reply_from'] as String?,
-        );
-        state = state.copyWith(transcript: _merge(state.transcript, [msg]));
-        if (msg.from != username) {
-          state = state.copyWith(peerUsername: msg.from, peerTyping: false);
-        }
+        _handleMessageWs(data, username);
         break;
 
       case 'typing_start':
@@ -257,7 +282,6 @@ class ChatNotifier extends StateNotifier<ChatState> {
       case 'timer_status':
         final started = data['started'] as bool? ?? false;
         if (started && !state.timerStarted) {
-          // Timer just started — insert marker immediately
           _appendMarkerIfMissing('started');
         }
         state = state.copyWith(timerStarted: started, remaining: (data['remaining'] as num).toInt());
@@ -292,30 +316,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
         break;
 
       case 'continue_request':
-        // Peer wants to continue — the UI will let this user respond
         break;
 
       case 'continue_accepted':
         state = state.copyWith(continueWaiting: false);
-        // New room created — navigation handled by the screen
         _continueRoomId = data['room_id'] as String?;
         break;
 
       case 'reaction':
-        final msgClientId = data['message_client_id'] as String?;
-        final emoji = data['emoji'] as String?;
-        final reactFrom = data['from'] as String?;
-        if (msgClientId != null && emoji != null && reactFrom != null) {
-          final updated = Map<String, List<ReactionEntry>>.from(state.reactions);
-          final existing = List<ReactionEntry>.from(updated[msgClientId] ?? []);
-          final alreadyExists = existing.any((r) => r.emoji == emoji && r.from == reactFrom);
-          if (!alreadyExists) {
-            final reactTs = (data['ts'] as num?)?.toInt();
-            existing.add(ReactionEntry(emoji: emoji, from: reactFrom, ts: reactTs));
-            updated[msgClientId] = existing;
-            state = state.copyWith(reactions: updated);
-          }
-        }
+        _handleReactionWs(data);
         break;
 
       case 'error':

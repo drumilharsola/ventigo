@@ -13,6 +13,10 @@ import '../widgets/pill.dart';
 
 enum _Mode { login, register, checkEmail, forgotPassword, resetPassword }
 
+const _kEmailPlaceholder = 'you@example.com';
+const _kPasswordMask = '••••••••';
+const _kSignInLabel = 'Sign in →';
+
 class VerifyScreen extends ConsumerStatefulWidget {
   final String? resetToken;
   const VerifyScreen({super.key, this.resetToken});
@@ -380,7 +384,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
             children: [
               FlowInput(
                 label: 'Email',
-                placeholder: 'you@example.com',
+                placeholder: _kEmailPlaceholder,
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
                 autofocus: true,
@@ -391,7 +395,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
               const SizedBox(height: 14),
               FlowInput(
                 label: 'Password',
-                placeholder: '••••••••',
+                placeholder: _kPasswordMask,
                 controller: _passCtrl,
                 obscureText: true,
                 autofillHints: const [AutofillHints.password],
@@ -404,7 +408,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         const SizedBox(height: 14),
         _errorBanner(),
         FlowButton(
-          label: _loading ? 'Signing in…' : 'Sign in →',
+          label: _loading ? 'Signing in…' : _kSignInLabel,
           onPressed: canSubmit && !_loading ? _handleLogin : null,
           expand: true,
           loading: _loading,
@@ -450,7 +454,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
             children: [
               FlowInput(
                 label: 'Email',
-                placeholder: 'you@example.com',
+                placeholder: _kEmailPlaceholder,
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
                 autofocus: true,
@@ -471,7 +475,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
               const SizedBox(height: 14),
               FlowInput(
                 label: 'Confirm password',
-                placeholder: '••••••••',
+                placeholder: _kPasswordMask,
                 controller: _confirmCtrl,
                 obscureText: true,
                 autofillHints: const [AutofillHints.newPassword],
@@ -499,7 +503,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
               Text('Already have an account? ', style: AppTypography.ui(fontSize: 13, color: AppColors.slate)),
               GestureDetector(
                 onTap: () => _switchMode(_Mode.login),
-                child: Text('Sign in →', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                child: Text(_kSignInLabel, style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
               ),
             ],
           ),
@@ -567,7 +571,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         if (!_forgotSent) ...[
           FlowInput(
             label: 'Email',
-            placeholder: 'you@example.com',
+            placeholder: _kEmailPlaceholder,
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             autofocus: true,
@@ -630,7 +634,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           const SizedBox(height: 14),
           FlowInput(
             label: 'Confirm new password',
-            placeholder: '••••••••',
+            placeholder: _kPasswordMask,
             controller: _newConfirmCtrl,
             obscureText: true,
             textInputAction: TextInputAction.done,
@@ -652,7 +656,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           Text('You can now sign in with your new password.', style: AppTypography.body(fontSize: 15, color: AppColors.graphite)),
           const SizedBox(height: 20),
           FlowButton(
-            label: 'Sign in →',
+            label: _kSignInLabel,
             onPressed: () => _switchMode(_Mode.login),
             expand: true,
           ),

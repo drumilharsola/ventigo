@@ -70,68 +70,55 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     super.dispose();
   }
 
+  Future<List<TranscriptItem>> _loadRoomTranscript(String token, RoomSummary room) async {
+    final items = <TranscriptItem>[];
+    final data = await ref.read(apiClientProvider).getRoomMessages(token, room.roomId);
+
+    final startTs = int.tryParse(data.startedAt.isNotEmpty ? data.startedAt : room.matchedAt) ?? 0;
+    items.add(TranscriptMarker(event: 'started', roomId: room.roomId, ts: startTs.toDouble()));
+
+    for (final m in data.messages) {
+      items.add(TranscriptMessage(from: m.from, text: m.text, ts: m.ts, clientId: m.clientId));
+    }
+
+    if (room.status == 'ended') {
+      final endTs = int.tryParse(room.endedAt) ?? 0;
+      items.add(TranscriptMarker(
+        event: 'ended',
+        roomId: room.roomId,
+        ts: endTs > 0 ? endTs.toDouble() : (startTs + int.parse(room.duration)).toDouble(),
+      ));
+    }
+    return items;
+  }
+
   Future<void> _load() async {
     final token = ref.read(authProvider).token;
     if (token == null) return;
     try {
       final allRooms = await ref.read(apiClientProvider).getChatRooms(token);
-      // Filter to this peer
       final peerRooms = allRooms
           .where((r) =>
               r.peerSessionId == widget.peerSessionId ||
               (widget.peerSessionId.isEmpty && r.peerUsername == widget.peerUsername))
           .toList();
 
-      // Sort oldest first
       peerRooms.sort((a, b) {
         final aTs = int.tryParse(a.startedAt.isNotEmpty ? a.startedAt : a.matchedAt) ?? 0;
         final bTs = int.tryParse(b.startedAt.isNotEmpty ? b.startedAt : b.matchedAt) ?? 0;
         return aTs.compareTo(bTs);
       });
 
-      // Check for active room
       final active = peerRooms.where((r) => r.status == 'active').toList();
       final activeId = active.isNotEmpty ? active.last.roomId : null;
 
-      // Load messages for each room
       final transcript = <TranscriptItem>[];
       for (final room in peerRooms) {
         try {
-          final data = await ref.read(apiClientProvider).getRoomMessages(token, room.roomId);
-
-          // Add "Session started" marker
-          final startTs = int.tryParse(data.startedAt.isNotEmpty ? data.startedAt : room.matchedAt) ?? 0;
-          transcript.add(TranscriptMarker(
-            event: 'started',
-            roomId: room.roomId,
-            ts: startTs.toDouble(),
-          ));
-
-          // Add messages
-          for (final m in data.messages) {
-            transcript.add(TranscriptMessage(
-              from: m.from,
-              text: m.text,
-              ts: m.ts,
-              clientId: m.clientId,
-            ));
-          }
-
-          // Add "Session ended" marker if ended
-          if (room.status == 'ended') {
-            final endTs = int.tryParse(room.endedAt) ?? 0;
-            transcript.add(TranscriptMarker(
-              event: 'ended',
-              roomId: room.roomId,
-              ts: endTs > 0 ? endTs.toDouble() : (startTs + int.parse(room.duration)).toDouble(),
-            ));
-          }
-        } catch (_) {
-          // Skip rooms that fail to load
-        }
+          transcript.addAll(await _loadRoomTranscript(token, room));
+        } catch (_) {}
       }
 
-      // Sort entire transcript by timestamp
       transcript.sort((a, b) => a.ts.compareTo(b.ts));
 
       if (mounted) {
@@ -189,6 +176,27 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     });
   }
 
+  List<TranscriptItem> _mergeWithLiveTranscript(ChatState? liveChat) {
+    final result = <TranscriptItem>[..._unifiedTranscript];
+    if (liveChat == null || _activeRoomId == null) return result;
+    for (final item in liveChat.transcript) {
+      bool exists = false;
+      if (item is TranscriptMessage) {
+        exists = result.any((e) {
+          if (e is! TranscriptMessage) return false;
+          if (item.clientId != null && e.clientId != null && item.clientId == e.clientId) return true;
+          return e.from == item.from && e.text == item.text && (e.ts - item.ts).abs() < 2;
+        });
+      } else if (item is TranscriptMarker) {
+        exists = result.any((e) =>
+            e is TranscriptMarker && e.roomId == item.roomId && e.event == item.event);
+      }
+      if (!exists) result.add(item);
+    }
+    result.sort((a, b) => a.ts.compareTo(b.ts));
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
@@ -202,26 +210,7 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
       _scrollToBottom();
     }
 
-    // Build the combined transcript: static historical + live messages for active room
-    final displayTranscript = <TranscriptItem>[..._unifiedTranscript];
-    if (liveChat != null && _activeRoomId != null) {
-      // Merge live transcript items not already in the unified list
-      for (final item in liveChat.transcript) {
-        bool exists = false;
-        if (item is TranscriptMessage) {
-          exists = displayTranscript.any((e) {
-            if (e is! TranscriptMessage) return false;
-            if (item.clientId != null && e.clientId != null && item.clientId == e.clientId) return true;
-            return e.from == item.from && e.text == item.text && (e.ts - item.ts).abs() < 2;
-          });
-        } else if (item is TranscriptMarker) {
-          exists = displayTranscript.any((e) =>
-              e is TranscriptMarker && e.roomId == item.roomId && e.event == item.event);
-        }
-        if (!exists) displayTranscript.add(item);
-      }
-      displayTranscript.sort((a, b) => a.ts.compareTo(b.ts));
-    }
+    final displayTranscript = _mergeWithLiveTranscript(liveChat);
 
     return PopScope(
       canPop: false,

@@ -8,9 +8,11 @@ import '../models/user_profile.dart';
 import '../models/current_speaker_request.dart';
 
 /// Thrown on 401 responses - mirrors AuthError from api.ts.
+const _kNotAuthenticated = 'Not authenticated';
+
 class AuthException implements Exception {
   final String message;
-  const AuthException([this.message = 'Not authenticated']);
+  const AuthException([this.message = _kNotAuthenticated]);
   @override
   String toString() => message;
 }
@@ -34,8 +36,8 @@ class ApiClient {
       onError: (error, handler) {
         if (error.response?.statusCode == 401) {
           final detail = error.response?.data is Map
-              ? (error.response!.data as Map)['detail'] ?? 'Not authenticated'
-              : 'Not authenticated';
+              ? (error.response!.data as Map)['detail'] ?? _kNotAuthenticated
+              : _kNotAuthenticated;", "oldString": "          final detail = error.response?.data is Map
           return handler.reject(DioException(
             requestOptions: error.requestOptions,
             error: AuthException(detail.toString()),

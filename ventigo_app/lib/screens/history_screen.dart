@@ -39,14 +39,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       try {
         conns = await ref.read(apiClientProvider).getConnections(token);
       } catch (_) {}
-      if (mounted) setState(() {
-        _rooms = rooms;
-        if (conns != null) {
-          _connections = (conns['connections'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          _pendingRequests = (conns['pending_requests'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-        }
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _rooms = rooms;
+          if (conns != null) {
+            _connections = (conns['connections'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+            _pendingRequests = (conns['pending_requests'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          }
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -67,6 +69,62 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   String _formatTime(DateTime dt) => DateFormat('h:mm a').format(dt);
+
+  Widget _buildPendingRequestTile(Map<String, dynamic> req) {
+    final peerUsername = req['peer_username'] as String? ?? 'Anonymous';
+    final peerAvatarId = req['peer_avatar_id'] as int? ?? 0;
+    final peerSessionId = req['peer_session_id'] as String? ?? '';
+    return ListTile(
+      leading: ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(peerAvatarId, size: 72), width: 44, height: 44)),
+      title: Text(peerUsername, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w600)),
+      subtitle: Text('Wants to connect', style: AppTypography.body(fontSize: 12, color: AppColors.slate)),
+      trailing: FilledButton(
+        onPressed: () async {
+          final token = ref.read(authProvider).token;
+          if (token == null) return;
+          await ref.read(apiClientProvider).acceptConnectionRequest(token, peerSessionId);
+          _load();
+        },
+        style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+        child: Text('Accept', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white)),
+      ),
+    );
+  }
+
+  Widget _buildConnectedUserTile(Map<String, dynamic> conn) {
+    final peerUsername = conn['peer_username'] as String? ?? 'Anonymous';
+    final peerAvatarId = conn['peer_avatar_id'] as int? ?? 0;
+    final peerSessionId = conn['peer_session_id'] as String? ?? '';
+    return ListTile(
+      leading: ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(peerAvatarId, size: 72), width: 44, height: 44)),
+      title: Text(peerUsername, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w600)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton(
+            onPressed: () async {
+              final token = ref.read(authProvider).token;
+              if (token == null) return;
+              final roomId = await ref.read(apiClientProvider).directChat(token, peerSessionId);
+              if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(roomId)}');
+            },
+            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            child: Text('Chat', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white)),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: Icon(Icons.close_rounded, size: 18, color: AppColors.danger),
+            onPressed: () async {
+              final token = ref.read(authProvider).token;
+              if (token == null) return;
+              await ref.read(apiClientProvider).removeConnection(token, peerSessionId);
+              _load();
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildConnectionsTab() {
     if (_connections.isEmpty && _pendingRequests.isEmpty) {
@@ -92,26 +150,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Text('PENDING REQUESTS', style: AppTypography.label(color: AppColors.accent)),
           ),
-          ..._pendingRequests.map((req) {
-            final peerUsername = req['peer_username'] as String? ?? 'Anonymous';
-            final peerAvatarId = req['peer_avatar_id'] as int? ?? 0;
-            final peerSessionId = req['peer_session_id'] as String? ?? '';
-            return ListTile(
-              leading: ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(peerAvatarId, size: 72), width: 44, height: 44)),
-              title: Text(peerUsername, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w600)),
-              subtitle: Text('Wants to connect', style: AppTypography.body(fontSize: 12, color: AppColors.slate)),
-              trailing: FilledButton(
-                onPressed: () async {
-                  final token = ref.read(authProvider).token;
-                  if (token == null) return;
-                  await ref.read(apiClientProvider).acceptConnectionRequest(token, peerSessionId);
-                  _load();
-                },
-                style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-                child: Text('Accept', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white)),
-              ),
-            );
-          }),
+          ..._pendingRequests.map(_buildPendingRequestTile),
           const Divider(height: 24, indent: 20, endIndent: 20),
         ],
         if (_connections.isNotEmpty) ...[
@@ -119,40 +158,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Text('CONNECTED', style: AppTypography.label(color: AppColors.slate)),
           ),
-          ..._connections.map((conn) {
-            final peerUsername = conn['peer_username'] as String? ?? 'Anonymous';
-            final peerAvatarId = conn['peer_avatar_id'] as int? ?? 0;
-            final peerSessionId = conn['peer_session_id'] as String? ?? '';
-            return ListTile(
-              leading: ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(peerAvatarId, size: 72), width: 44, height: 44)),
-              title: Text(peerUsername, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w600)),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FilledButton(
-                    onPressed: () async {
-                      final token = ref.read(authProvider).token;
-                      if (token == null) return;
-                      final roomId = await ref.read(apiClientProvider).directChat(token, peerSessionId);
-                      if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(roomId)}');
-                    },
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-                    child: Text('Chat', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white)),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(Icons.close_rounded, size: 18, color: AppColors.danger),
-                    onPressed: () async {
-                      final token = ref.read(authProvider).token;
-                      if (token == null) return;
-                      await ref.read(apiClientProvider).removeConnection(token, peerSessionId);
-                      _load();
-                    },
-                  ),
-                ],
-              ),
-            );
-          }),
+          ..._connections.map(_buildConnectedUserTile),
         ],
       ],
     );

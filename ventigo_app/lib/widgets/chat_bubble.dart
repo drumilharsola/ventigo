@@ -55,30 +55,39 @@ class ChatBubble extends StatelessWidget {
     });
   }
 
+  ({Color bg, Color text, Color border}) _bubbleColors() {
+    // The sender sees their own role color; the peer sees the opposite.
+    final isSpeaker = isMe
+        ? myRole != CharacterRole.listener
+        : myRole == CharacterRole.listener;
+    return (
+      bg: isSpeaker ? AppColors.venterBubble : AppColors.listenerBubble,
+      text: AppColors.ink,
+      border: isSpeaker ? AppColors.venterBorder : AppColors.listenerBorder,
+    );
+  }
+
+  Widget _buildReactionsRow() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: reactions.map((r) => Container(
+          margin: const EdgeInsets.only(right: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+          decoration: BoxDecoration(
+            color: AppColors.accentDim,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(r, style: const TextStyle(fontSize: 14)),
+        )).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Determine bubble colors based on who sent and their role
-    final Color bubbleBg;
-    final Color textColor;
-    final Color borderCol;
-
-    if (isMe) {
-      bubbleBg = myRole == CharacterRole.listener
-          ? AppColors.listenerBubble
-          : AppColors.venterBubble;
-      textColor = AppColors.ink;
-      borderCol = myRole == CharacterRole.listener
-          ? AppColors.listenerBorder
-          : AppColors.venterBorder;
-    } else {
-      bubbleBg = myRole == CharacterRole.listener
-          ? AppColors.venterBubble
-          : AppColors.listenerBubble;
-      textColor = AppColors.ink;
-      borderCol = myRole == CharacterRole.listener
-          ? AppColors.venterBorder
-          : AppColors.listenerBorder;
-    }
+    final colors = _bubbleColors();
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -93,7 +102,6 @@ class ChatBubble extends StatelessWidget {
           GestureDetector(
             onLongPressStart: (details) => _showReactionPicker(context, details.globalPosition),
             onDoubleTap: () {
-              // Quick react with first emoji (heart)
               if (onReaction != null) {
                 HapticFeedback.lightImpact();
                 onReaction?.call('❤️');
@@ -103,14 +111,14 @@ class ChatBubble extends StatelessWidget {
               constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: bubbleBg,
+                color: colors.bg,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
                   bottomLeft: Radius.circular(isMe ? 20 : 4),
                   bottomRight: Radius.circular(isMe ? 4 : 20),
                 ),
-                border: Border.all(color: borderCol),
+                border: Border.all(color: colors.border),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -119,26 +127,10 @@ class ChatBubble extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Text(text, style: AppTypography.body(fontSize: 14, color: textColor)),
+              child: Text(text, style: AppTypography.body(fontSize: 14, color: colors.text)),
             ),
           ),
-          // Reactions row
-          if (reactions.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: reactions.map((r) => Container(
-                  margin: const EdgeInsets.only(right: 2),
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentDim,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(r, style: const TextStyle(fontSize: 14)),
-                )).toList(),
-              ),
-            ),
+          if (reactions.isNotEmpty) _buildReactionsRow(),
           Padding(
             padding: const EdgeInsets.only(top: 3, left: 4, right: 4, bottom: 6),
             child: Text(time, style: AppTypography.body(fontSize: 10, color: AppColors.fog)),

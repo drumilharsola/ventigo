@@ -19,6 +19,7 @@ from services.moderation import check_content
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
+POSTS_FEED_KEY = "posts:feed"
 POST_MAX_CHARS = 400
 POST_TTL_SECONDS = 24 * 3600  # 24 hours
 MAX_POSTS_SHOWN = 50
@@ -43,7 +44,7 @@ class CreatePostRequest(BaseModel):
 async def get_posts():
     redis = await get_redis()
     now = int(time.time())
-    raw = await redis.zrevrange("posts:feed", 0, MAX_POSTS_SHOWN * 2 - 1, withscores=False)
+    raw = await redis.zrevrange(POSTS_FEED_KEY, 0, MAX_POSTS_SHOWN * 2 - 1, withscores=False)
     posts = []
     expired_entries = []
     for item in raw:
@@ -62,7 +63,7 @@ async def get_posts():
     if expired_entries:
         pipe = redis.pipeline(transaction=False)
         for entry in expired_entries:
-            pipe.zrem("posts:feed", entry)
+            pipe.zrem(POSTS_FEED_KEY, entry)
         await pipe.execute()
 
     return {"posts": posts}
@@ -107,8 +108,8 @@ async def create_post(body: CreatePostRequest, payload: Annotated[dict, Depends(
     }
 
     pipe = redis.pipeline(transaction=False)
-    pipe.zadd("posts:feed", {json.dumps(post): now})
-    pipe.expire("posts:feed", POST_TTL_SECONDS + 3600)  # buffer
+    pipe.zadd(POSTS_FEED_KEY, {json.dumps(post): now})
+    pipe.expire(POSTS_FEED_KEY, POST_TTL_SECONDS + 3600)  # buffer
     # Track user's own posts for deletion
     pipe.sadd(f"user_posts:{session_id}", post_id)
     pipe.expire(f"user_posts:{session_id}", POST_TTL_SECONDS + 3600)
@@ -123,14 +124,14 @@ async def delete_post(post_id: str, payload: Annotated[dict, Depends(require_aut
     redis = await get_redis()
 
     # Find and remove the post from the sorted set
-    all_posts_raw = await redis.zrange("posts:feed", 0, -1)
+    all_posts_raw = await redis.zrange(POSTS_FEED_KEY, 0, -1)
     for raw in all_posts_raw:
         try:
             post = json.loads(raw)
             if post["post_id"] == post_id:
                 if post["session_id"] != session_id:
                     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your post")
-                await redis.zrem("posts:feed", raw)
+                await redis.zrem(POSTS_FEED_KEY, raw)
                 await redis.srem(f"user_posts:{session_id}", post_id)
                 return
         except (json.JSONDecodeError, KeyError):

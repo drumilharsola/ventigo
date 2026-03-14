@@ -36,7 +36,8 @@ router = APIRouter(prefix="/board", tags=["board"])
 
 # ── REST endpoints ────────────────────────────────────────────────────────────
 
-@router.post("/speak")
+@router.post("/speak", responses={400: {"description": "Profile not set up"},
+                                   409: {"description": "Already in matchmaking queue"}})
 async def speak(session: Annotated[dict, Depends(require_auth)]):
     """Post a speaker request to the public board."""
     session_id = session["sub"]
@@ -76,7 +77,9 @@ async def list_requests(session: Annotated[dict, Depends(require_auth)]):
     return {"requests": board, "my_request_id": own_request_id}
 
 
-@router.get("/request/{request_id}")
+@router.get("/request/{request_id}",
+            responses={404: {"description": "Request not found or expired"},
+                       403: {"description": "Access denied"}})
 async def get_request_status(request_id: str, session: Annotated[dict, Depends(require_auth)]):
     """Return the caller's active speaker request metadata."""
     data = await get_request(request_id)
@@ -88,7 +91,10 @@ async def get_request_status(request_id: str, session: Annotated[dict, Depends(r
     return data
 
 
-@router.post("/accept/{request_id}")
+@router.post("/accept/{request_id}",
+             responses={400: {"description": "Profile not set up"},
+                        403: {"description": "Blocked or email not verified"},
+                        409: {"description": "Request already taken or in queue"}})
 async def accept(request_id: str, session: Annotated[dict, Depends(require_auth)]):
     """Accept a speaker request. Requires verified email - creates a chat room."""
     settings = get_settings()
@@ -125,6 +131,51 @@ async def accept(request_id: str, session: Annotated[dict, Depends(require_auth)
 
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 
+async def _board_ws_authenticate(websocket: WebSocket, token: str) -> str | None:
+    """Validate JWT and device token for board WS. Returns session_id or None (closes WS)."""
+    try:
+        claims = decode_session_token(token)
+    except Exception:
+        await websocket.send_json({"event": "error", "detail": "token_invalid"})
+        await websocket.close(code=4401)
+        return None
+    session_id = claims["sub"]
+    device_token = claims.get("dt")
+    if device_token:
+        redis_check = await get_redis()
+        active_dt = await redis_check.get(f"active_device:{session_id}")
+        if active_dt and active_dt != device_token:
+            await websocket.send_json({"event": "error", "detail": "session_replaced"})
+            await websocket.close(code=4401)
+            return None
+    return session_id
+
+
+async def _board_ws_pump(pubsub, websocket: WebSocket, session_id: str) -> None:
+    """Relay pubsub board updates to the WebSocket."""
+    try:
+        async for message in pubsub.listen():
+            if message["type"] != "message":
+                continue
+            data = json.loads(message["data"])
+            if data.get("event") == "new_request" and data.get("session_id") == session_id:
+                continue
+            await websocket.send_json(data)
+            if data.get("event") == "matched":
+                return
+    except Exception:
+        pass
+
+
+async def _board_ws_keepalive(websocket: WebSocket) -> None:
+    """Keep-alive loop: listen for client frames, send pings on timeout."""
+    while True:
+        try:
+            await asyncio.wait_for(websocket.receive_text(), timeout=30)
+        except asyncio.TimeoutError:
+            await websocket.send_json({"event": "ping"})
+
+
 @router.websocket("/ws")
 async def board_ws(websocket: WebSocket, token: str = ""):
     """
@@ -140,33 +191,16 @@ async def board_ws(websocket: WebSocket, token: str = ""):
       {"event": "removed_request", "request_id": ...}
       {"event": "matched",         "room_id": ...}
     """
-    # Accept first so the browser gets a proper WebSocket close frame on auth failure
     await websocket.accept()
 
-    try:
-        claims = decode_session_token(token)
-    except Exception:
-        await websocket.send_json({"event": "error", "detail": "token_invalid"})
-        await websocket.close(code=4401)
+    session_id = await _board_ws_authenticate(websocket, token)
+    if not session_id:
         return
-
-    session_id = claims["sub"]
-
-    # Single-device enforcement
-    device_token = claims.get("dt")
-    if device_token:
-        redis_check = await get_redis()
-        active_dt = await redis_check.get(f"active_device:{session_id}")
-        if active_dt and active_dt != device_token:
-            await websocket.send_json({"event": "error", "detail": "session_replaced"})
-            await websocket.close(code=4401)
-            return
 
     redis = await get_redis()
     pubsub = redis.pubsub()
     await pubsub.subscribe("board:updates", f"session:{session_id}")
 
-    # Send current board state immediately
     board = await get_board()
     own_request_id = await get_request_for_session(session_id)
     await websocket.send_json({
@@ -175,29 +209,10 @@ async def board_ws(websocket: WebSocket, token: str = ""):
         "my_request_id": own_request_id,
     })
 
-    async def pump():
-        try:
-            async for message in pubsub.listen():
-                if message["type"] == "message":
-                    data = json.loads(message["data"])
-                    if data.get("event") == "new_request" and data.get("session_id") == session_id:
-                        continue
-                    await websocket.send_json(data)
-                    if data.get("event") == "matched":
-                        return
-        except Exception:
-            pass
-
-    pump_task = asyncio.create_task(pump())
+    pump_task = asyncio.create_task(_board_ws_pump(pubsub, websocket, session_id))
 
     try:
-        # Keep alive - client sends nothing, we relay pubsub
-        while True:
-            try:
-                await asyncio.wait_for(websocket.receive_text(), timeout=30)
-            except asyncio.TimeoutError:
-                # Send heartbeat ping
-                await websocket.send_json({"event": "ping"})
+        await _board_ws_keepalive(websocket)
     except (WebSocketDisconnect, Exception):
         pass
     finally:

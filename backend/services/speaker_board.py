@@ -16,6 +16,8 @@ from db.redis_client import get_redis, hset_with_ttl
 
 SPEAK_TTL = 300  # auto-expire speaker hash after 5 minutes
 MATCH_RESULT_TTL = 300
+SPEAK_BOARD_KEY = "speak:board"
+BOARD_UPDATES_CHANNEL = "board:updates"
 
 
 async def post_request(session_id: str, username: str, avatar_id: str = "0") -> str:
@@ -42,13 +44,13 @@ async def post_request(session_id: str, username: str, avatar_id: str = "0") -> 
     await hset_with_ttl(f"speak:req:{request_id}", req_fields, SPEAK_TTL)
 
     # Add to sorted set, score = timestamp for chronological order
-    await redis.zadd("speak:board", {request_id: now})
+    await redis.zadd(SPEAK_BOARD_KEY, {request_id: now})
 
     # Map session → request for easy cancel
     await redis.setex(f"speak:by_session:{session_id}", SPEAK_TTL, request_id)
 
     # Notify all board WebSocket subscribers
-    await redis.publish("board:updates", json.dumps({
+    await redis.publish(BOARD_UPDATES_CHANNEL, json.dumps({
         "event": "new_request",
         "request_id": request_id,
         "session_id": session_id,
@@ -68,10 +70,10 @@ async def cancel_request(session_id: str) -> None:
         return
 
     await redis.delete(f"speak:req:{request_id}")
-    await redis.zrem("speak:board", request_id)
+    await redis.zrem(SPEAK_BOARD_KEY, request_id)
     await redis.delete(f"speak:by_session:{session_id}")
 
-    await redis.publish("board:updates", json.dumps({
+    await redis.publish(BOARD_UPDATES_CHANNEL, json.dumps({
         "event": "removed_request",
         "request_id": request_id,
     }))
@@ -80,7 +82,7 @@ async def cancel_request(session_id: str) -> None:
 async def get_board() -> list[dict]:
     """Return all active speaker requests, oldest first. Prunes stale entries."""
     redis = await get_redis()
-    request_ids = await redis.zrange("speak:board", 0, -1)
+    request_ids = await redis.zrange(SPEAK_BOARD_KEY, 0, -1)
 
     result = []
     stale = []
@@ -93,7 +95,7 @@ async def get_board() -> list[dict]:
 
     # Clean up stale ZSET entries whose hashes have expired
     if stale:
-        await redis.zrem("speak:board", *stale)
+        await redis.zrem(SPEAK_BOARD_KEY, *stale)
 
     return result
 
@@ -132,7 +134,7 @@ async def accept_request(request_id: str, listener_session_id: str) -> Optional[
     redis = await get_redis()
 
     # zrem returns number of removed elements - 1 = we got it, 0 = someone else did
-    removed = await redis.zrem("speak:board", request_id)
+    removed = await redis.zrem(SPEAK_BOARD_KEY, request_id)
     if not removed:
         return None
 
@@ -162,7 +164,7 @@ async def accept_request(request_id: str, listener_session_id: str) -> Optional[
     await redis.publish(f"session:{listener_session_id}", payload)
 
     # Notify board that this request is gone
-    await redis.publish("board:updates", json.dumps({
+    await redis.publish(BOARD_UPDATES_CHANNEL, json.dumps({
         "event": "removed_request",
         "request_id": request_id,
     }))

@@ -114,6 +114,53 @@ class _UserProfileModalState extends ConsumerState<UserProfileModal> {
     );
   }
 
+  Widget _buildBlockSection(UserProfile p) {
+    if (widget.peerSessionId == null || widget.peerSessionId!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        if (_confirmingBlock && !_blocked)
+          Column(
+            children: [
+              Text(
+                'Block ${p.username}?',
+                style: AppTypography.ui(color: AppColors.danger),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FlowButton(
+                    label: 'Cancel',
+                    variant: FlowButtonVariant.ghost,
+                    size: FlowButtonSize.sm,
+                    onPressed: () => setState(() => _confirmingBlock = false),
+                  ),
+                  const SizedBox(width: 8),
+                  FlowButton(
+                    label: 'Block',
+                    variant: FlowButtonVariant.danger,
+                    size: FlowButtonSize.sm,
+                    onPressed: _block,
+                    loading: _blocking,
+                  ),
+                ],
+              ),
+            ],
+          )
+        else
+          FlowButton(
+            label: _blocked ? 'Blocked' : 'Block this person',
+            variant: _blocked ? FlowButtonVariant.ghost : FlowButtonVariant.danger,
+            size: FlowButtonSize.sm,
+            onPressed: _blocked ? null : () => setState(() => _confirmingBlock = true),
+          ),
+      ],
+    );
+  }
+
   Widget _buildContent() {
     final p = _profile!;
     return Column(
@@ -144,45 +191,7 @@ class _UserProfileModalState extends ConsumerState<UserProfileModal> {
             _stat('Total', p.speakCount + p.listenCount),
           ],
         ),
-        if (widget.peerSessionId != null && widget.peerSessionId!.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          if (_confirmingBlock && !_blocked)
-            Column(
-              children: [
-                Text(
-                  'Block ${p.username}?',
-                  style: AppTypography.ui(color: AppColors.danger),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FlowButton(
-                      label: 'Cancel',
-                      variant: FlowButtonVariant.ghost,
-                      size: FlowButtonSize.sm,
-                      onPressed: () => setState(() => _confirmingBlock = false),
-                    ),
-                    const SizedBox(width: 8),
-                    FlowButton(
-                      label: 'Block',
-                      variant: FlowButtonVariant.danger,
-                      size: FlowButtonSize.sm,
-                      onPressed: _block,
-                      loading: _blocking,
-                    ),
-                  ],
-                ),
-              ],
-            )
-          else
-            FlowButton(
-              label: _blocked ? 'Blocked' : 'Block this person',
-              variant: _blocked ? FlowButtonVariant.ghost : FlowButtonVariant.danger,
-              size: FlowButtonSize.sm,
-              onPressed: _blocked ? null : () => setState(() => _confirmingBlock = true),
-            ),
-        ],
+        _buildBlockSection(p),
         if (_error != null && !_loading) ...[
           const SizedBox(height: 8),
           Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 12)),

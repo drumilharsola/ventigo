@@ -18,6 +18,7 @@ import '../widgets/flow_button.dart';
 import '../widgets/timer_widget.dart';
 import '../widgets/breathing_circle.dart';
 import '../utils/time_helpers.dart';
+import '../config/routes.dart' show kPathVerify;
 
 // ── Helpers ──
 
@@ -154,6 +155,51 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     } catch (_) {}
   }
 
+  void _handleBoardWsEvent(Map<String, dynamic> msg) {
+    final event = msg['event'] as String?;
+
+    if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
+      _ws?.sink.close();
+      ref.read(authProvider.notifier).clear();
+      if (mounted) context.go(kPathVerify);
+      return;
+    }
+    if (event == 'board_state') {
+      final list = (msg['requests'] as List?)
+              ?.map((e) => SpeakerRequest.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      setState(() => _board = _filterOwn(list));
+      return;
+    }
+    if (event == 'new_request') {
+      if (msg['session_id'] == _sessionId) return;
+      final id = msg['request_id'] as String;
+      if (_board.any((r) => r.requestId == id)) return;
+      setState(() {
+        _board = [
+          ..._board,
+          SpeakerRequest(
+            requestId: id,
+            sessionId: '',
+            username: msg['username'] as String? ?? '',
+            avatarId: (msg['avatar_id'] ?? 0).toString(),
+            postedAt: msg['posted_at'] as String? ?? '',
+          ),
+        ];
+      });
+      return;
+    }
+    if (event == 'removed_request') {
+      setState(() => _board = _board.where((r) => r.requestId != msg['request_id']).toList());
+      return;
+    }
+    if (event == 'matched') {
+      _ws?.sink.close();
+      if (mounted) context.push('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
+    }
+  }
+
   void _connectBoardWs() {
     final token = _token;
     if (token == null) return;
@@ -164,49 +210,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     _ws = WebSocketChannel.connect(uri);
 
     _wsSub = _ws!.stream.listen(
-      (raw) {
-        final msg = jsonDecode(raw as String) as Map<String, dynamic>;
-        final event = msg['event'] as String?;
-
-        if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
-          _ws?.sink.close();
-          ref.read(authProvider.notifier).clear();
-          if (mounted) context.go('/verify');
-          return;
-        }
-        if (event == 'board_state') {
-          final list = (msg['requests'] as List?)
-                  ?.map((e) => SpeakerRequest.fromJson(e as Map<String, dynamic>))
-                  .toList() ??
-              [];
-          setState(() => _board = _filterOwn(list));
-          return;
-        }
-        if (event == 'new_request') {
-          if (msg['session_id'] == _sessionId) return;
-          final id = msg['request_id'] as String;
-          if (_board.any((r) => r.requestId == id)) return;
-          setState(() {
-            _board = [
-              ..._board,
-              SpeakerRequest(
-                requestId: id,
-                sessionId: '',
-                username: msg['username'] as String? ?? '',
-                avatarId: (msg['avatar_id'] ?? 0).toString(),
-                postedAt: msg['posted_at'] as String? ?? '',
-              ),
-            ];
-          });
-          return;
-        }
-        if (event == 'removed_request') {
-          setState(() => _board = _board.where((r) => r.requestId != msg['request_id']).toList());
-          return;
-        }
-        if (event == 'matched') {
-          _ws?.sink.close();
-          if (mounted) context.push('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
+      (raw) => _handleBoardWsEvent(jsonDecode(raw as String) as Map<String, dynamic>),
         }
       },
       onDone: () {
@@ -261,7 +265,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
       }
     } on AuthException {
       ref.read(authProvider.notifier).clear();
-      if (mounted) context.go('/verify');
+      if (mounted) context.go(kPathVerify);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -278,7 +282,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
       if (mounted) context.push('/chat?room_id=${Uri.encodeComponent(res.roomId)}');
     } on AuthException {
       ref.read(authProvider.notifier).clear();
-      if (mounted) context.go('/verify');
+      if (mounted) context.go(kPathVerify);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     }

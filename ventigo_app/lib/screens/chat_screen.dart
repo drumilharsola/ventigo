@@ -259,6 +259,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  bool _shouldShowLabel(int msgIndex, ChatState chat, AuthState auth) {
+    for (int j = msgIndex - 1; j >= 0; j--) {
+      final prev = chat.transcript[j];
+      if (prev is TranscriptMessage) {
+        final prevIsMe = prev.fromSession != null
+            ? prev.fromSession == auth.sessionId
+            : prev.from == auth.username;
+        return prevIsMe;
+      }
+      if (prev is TranscriptMarker) return true;
+    }
+    return true;
+  }
+
   // ── Message list ──
 
   Widget _buildMessageList(ChatState chat, AuthState auth) {
@@ -311,22 +325,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               : item.from == auth.username;
 
           // Only show username label for first message in a consecutive group
-          bool showLabel = false;
-          if (!isMe) {
-            bool prevWasMe = true; // default: show label
-            for (int j = msgIndex - 1; j >= 0; j--) {
-              final prev = chat.transcript[j];
-              if (prev is TranscriptMessage) {
-                final prevIsMe = prev.fromSession != null
-                    ? prev.fromSession == auth.sessionId
-                    : prev.from == auth.username;
-                prevWasMe = prevIsMe;
-                break;
-              }
-              if (prev is TranscriptMarker) { prevWasMe = true; break; } // after a marker, show label
-            }
-            showLabel = prevWasMe;
-          }
+          final showLabel = !isMe && _shouldShowLabel(msgIndex, chat, auth);
           return _buildBubble(item, isMe, showLabel: showLabel, peerDisplayName: chat.peerUsername);
         }
         return const SizedBox.shrink();

@@ -81,6 +81,93 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 
+  Widget _buildBlockedUserTile(BlockedUser user) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: AppRadii.lgAll,
+        border: Border.all(color: AppColors.border),
+        boxShadow: warmShadow(blur: 18, opacity: 0.08),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.full),
+            child: CachedNetworkImage(
+              imageUrl: avatarUrl(user.avatarId, size: 72),
+              width: 44,
+              height: 44,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.username.isEmpty ? 'Unknown user' : user.username,
+                  style: AppTypography.ui(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Blocked on ${_formatBlockedAt(user.blockedAt)}',
+                  style: AppTypography.body(fontSize: 12, color: AppColors.slate),
+                ),
+              ],
+            ),
+          ),
+          FlowButton(
+            label: _unblockingId == user.sessionId ? 'Unblocking...' : 'Unblock',
+            variant: FlowButtonVariant.ghost,
+            size: FlowButtonSize.sm,
+            loading: _unblockingId == user.sessionId,
+            onPressed: _unblockingId != null ? null : () => _unblock(user.sessionId),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListContent() {
+    if (_error != null && _blockedUsers.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 14)),
+        ],
+      );
+    }
+    if (_blockedUsers.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(
+            'No blocked users.',
+            style: AppTypography.title(fontSize: 20, color: AppColors.ink),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'People you block will appear here, and you can unblock them anytime.',
+            style: AppTypography.body(fontSize: 14, color: AppColors.slate),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _blockedUsers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (_, index) => _buildBlockedUserTile(_blockedUsers[index]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,87 +178,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
           onRefresh: _loadBlockedUsers,
           child: _loading
               ? Center(child: CircularProgressIndicator(color: AppColors.accent))
-              : _error != null && _blockedUsers.isEmpty
-                  ? ListView(
-                      padding: const EdgeInsets.all(24),
-                      children: [
-                        Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 14)),
-                      ],
-                    )
-                  : _blockedUsers.isEmpty
-                      ? ListView(
-                          padding: const EdgeInsets.all(24),
-                          children: [
-                            Text(
-                              'No blocked users.',
-                              style: AppTypography.title(fontSize: 20, color: AppColors.ink),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'People you block will appear here, and you can unblock them anytime.',
-                              style: AppTypography.body(fontSize: 14, color: AppColors.slate),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _blockedUsers.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (_, index) {
-                            final user = _blockedUsers[index];
-                            return Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: AppRadii.lgAll,
-                                border: Border.all(color: AppColors.border),
-                                boxShadow: warmShadow(blur: 18, opacity: 0.08),
-                              ),
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(AppRadii.full),
-                                    child: CachedNetworkImage(
-                                      imageUrl: avatarUrl(user.avatarId, size: 72),
-                                      width: 44,
-                                      height: 44,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          user.username.isEmpty ? 'Unknown user' : user.username,
-                                          style: AppTypography.ui(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.ink,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Blocked on ${_formatBlockedAt(user.blockedAt)}',
-                                          style: AppTypography.body(fontSize: 12, color: AppColors.slate),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  FlowButton(
-                                    label: _unblockingId == user.sessionId ? 'Unblocking...' : 'Unblock',
-                                    variant: FlowButtonVariant.ghost,
-                                    size: FlowButtonSize.sm,
-                                    loading: _unblockingId == user.sessionId,
-                                    onPressed: _unblockingId != null ? null : () => _unblock(user.sessionId),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+              : _buildListContent(),
         ),
       ),
     );

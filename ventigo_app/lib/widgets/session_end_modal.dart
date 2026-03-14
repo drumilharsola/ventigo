@@ -42,6 +42,105 @@ class _SessionEndModalState extends State<SessionEndModal> {
     ('😔', 'Worse', 'worse'),
   ];
 
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        Container(
+          width: 56, height: 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.accentDim,
+            border: Border.all(color: AppColors.accentGlow),
+          ),
+          alignment: Alignment.center,
+          child: Text(widget.peerLeft ? '👋' : '⏱', style: const TextStyle(fontSize: 24)),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          widget.peerLeft ? 'They had to go.' : "Time's up.",
+          style: AppTypography.heading(fontSize: 28),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          widget.peerLeft
+              ? 'Your conversation mattered — even if it was brief.'
+              : 'How are you feeling?',
+          style: AppTypography.body(color: AppColors.slate),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMoodPicker() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: _moods.map((m) {
+        final selected = _selectedMood == m.$3;
+        return GestureDetector(
+          onTap: () {
+            setState(() => _selectedMood = m.$3);
+            widget.onFeedback?.call(m.$3);
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: selected ? AppColors.accentDim : Colors.transparent,
+              border: Border.all(
+                color: selected ? AppColors.accent : Colors.transparent,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(m.$1, style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 4),
+                Text(m.$2, style: AppTypography.body(fontSize: 10, color: AppColors.slate)),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  List<Widget> _buildActionButtons(BuildContext context) {
+    return [
+      if (widget.canContinue && !widget.peerLeft) ...[
+        FlowButton(
+          label: widget.continueWaiting ? 'Waiting for them…' : 'Continue chatting',
+          onPressed: widget.continueWaiting ? null : widget.onContinue,
+          expand: true,
+        ),
+        const SizedBox(height: 10),
+      ],
+      if (widget.canExtend && !widget.peerLeft) ...[
+        FlowButton(
+          label: 'Extend 15 minutes',
+          variant: widget.canContinue ? FlowButtonVariant.ghost : FlowButtonVariant.primary,
+          onPressed: widget.onExtend,
+          expand: true,
+        ),
+        const SizedBox(height: 10),
+      ],
+      FlowButton(
+        label: 'Back to lobby',
+        variant: FlowButtonVariant.ghost,
+        onPressed: () => context.go('/chats'),
+        expand: true,
+      ),
+      const SizedBox(height: 10),
+      FlowButton(
+        label: 'Close',
+        variant: FlowButtonVariant.ghost,
+        size: FlowButtonSize.sm,
+        onPressed: widget.onClose,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -59,99 +158,13 @@ class _SessionEndModalState extends State<SessionEndModal> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Emoji
-              Container(
-                width: 56, height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.accentDim,
-                  border: Border.all(color: AppColors.accentGlow),
-                ),
-                alignment: Alignment.center,
-                child: Text(widget.peerLeft ? '👋' : '⏱', style: const TextStyle(fontSize: 24)),
-              ),
+              _buildHeader(),
               const SizedBox(height: 20),
-              Text(
-                widget.peerLeft ? 'They had to go.' : "Time's up.",
-                style: AppTypography.heading(fontSize: 28),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.peerLeft
-                    ? 'Your conversation mattered — even if it was brief.'
-                    : 'How are you feeling?',
-                style: AppTypography.body(color: AppColors.slate),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-
-              // Mood picker
               if (!widget.peerLeft) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: _moods.map((m) {
-                    final selected = _selectedMood == m.$3;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() => _selectedMood = m.$3);
-                        widget.onFeedback?.call(m.$3);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: selected ? AppColors.accentDim : Colors.transparent,
-                          border: Border.all(
-                            color: selected ? AppColors.accent : Colors.transparent,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(m.$1, style: const TextStyle(fontSize: 24)),
-                            const SizedBox(height: 4),
-                            Text(m.$2, style: AppTypography.body(fontSize: 10, color: AppColors.slate)),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                _buildMoodPicker(),
                 const SizedBox(height: 24),
               ],
-
-              // Actions
-              if (widget.canContinue && !widget.peerLeft) ...[
-                FlowButton(
-                  label: widget.continueWaiting ? 'Waiting for them…' : 'Continue chatting',
-                  onPressed: widget.continueWaiting ? null : widget.onContinue,
-                  expand: true,
-                ),
-                const SizedBox(height: 10),
-              ],
-              if (widget.canExtend && !widget.peerLeft) ...[
-                FlowButton(
-                  label: 'Extend 15 minutes',
-                  variant: widget.canContinue ? FlowButtonVariant.ghost : FlowButtonVariant.primary,
-                  onPressed: widget.onExtend,
-                  expand: true,
-                ),
-                const SizedBox(height: 10),
-              ],
-              FlowButton(
-                label: 'Back to lobby',
-                variant: FlowButtonVariant.ghost,
-                onPressed: () => context.go('/chats'),
-                expand: true,
-              ),
-              const SizedBox(height: 10),
-              FlowButton(
-                label: 'Close',
-                variant: FlowButtonVariant.ghost,
-                size: FlowButtonSize.sm,
-                onPressed: widget.onClose,
-              ),
+              ..._buildActionButtons(context),
             ],
           ),
         ),

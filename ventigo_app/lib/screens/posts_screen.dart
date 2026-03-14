@@ -73,6 +73,35 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
     } catch (_) {}
   }
 
+  Widget _buildComposeField(TextEditingController controller, StateSetter setSheetState) {
+    return TextField(
+      controller: controller,
+      maxLines: 5,
+      maxLength: _postMaxChars,
+      onChanged: (_) => setSheetState(() {}),
+      decoration: InputDecoration(
+        hintText: 'What\'s on your mind?',
+        hintStyle: AppTypography.body(fontSize: 14, color: AppColors.mist),
+        filled: true,
+        fillColor: AppColors.snow,
+        counterText: '',
+        border: OutlineInputBorder(
+          borderRadius: AppRadii.mdAll,
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: AppRadii.mdAll,
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: AppRadii.mdAll,
+          borderSide: BorderSide(color: AppColors.accent, width: 1.5),
+        ),
+      ),
+      style: AppTypography.body(fontSize: 14, color: AppColors.ink),
+    );
+  }
+
   void _showCompose() {
     final controller = TextEditingController();
     String? composeError;
@@ -107,32 +136,7 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
                   style: AppTypography.body(fontSize: 13, color: AppColors.slate),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: controller,
-                  maxLines: 5,
-                  maxLength: _postMaxChars,
-                  onChanged: (_) => setSheetState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'What\'s on your mind?',
-                    hintStyle: AppTypography.body(fontSize: 14, color: AppColors.mist),
-                    filled: true,
-                    fillColor: AppColors.snow,
-                    counterText: '',
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadii.mdAll,
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: AppRadii.mdAll,
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: AppRadii.mdAll,
-                      borderSide: BorderSide(color: AppColors.accent, width: 1.5),
-                    ),
-                  ),
-                  style: AppTypography.body(fontSize: 14, color: AppColors.ink),
-                ),
+                _buildComposeField(controller, setSheetState),
                 const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -280,49 +284,68 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
         backgroundColor: AppColors.accent,
         child: const Icon(Icons.edit_rounded, color: Colors.white),
       ),
+  Widget _buildPostsList() {
+    if (_loading) {
+      return Center(child: CircularProgressIndicator(color: AppColors.accent));
+    }
+    if (_error != null && _posts.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 14)),
+        ],
+      );
+    }
+    if (_posts.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(32),
+        children: [
+          const SizedBox(height: 48),
+          Icon(Icons.eco_rounded, size: 48, color: AppColors.mist),
+          const SizedBox(height: 16),
+          Text(
+            'No posts yet',
+            style: AppTypography.title(fontSize: 20, color: AppColors.ink),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Be the first to share something.\nPosts disappear after 24 hours.',
+            style: AppTypography.body(fontSize: 14, color: AppColors.slate),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+      itemCount: _posts.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) => _buildPostCard(_posts[i]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.snow,
+      appBar: AppBar(
+        title: Text('Community Board',
+            style: AppTypography.title(fontSize: 20, color: AppColors.ink)),
+        backgroundColor: AppColors.snow,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _token != null ? _showCompose : null,
+        backgroundColor: AppColors.accent,
+        child: const Icon(Icons.edit_rounded, color: Colors.white),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadPosts,
           color: AppColors.accent,
-          child: _loading
-              ? Center(child: CircularProgressIndicator(color: AppColors.accent))
-              : _error != null && _posts.isEmpty
-                  ? ListView(
-                      padding: const EdgeInsets.all(24),
-                      children: [
-                        Text(_error!,
-                            style: TextStyle(color: AppColors.danger, fontSize: 14)),
-                      ],
-                    )
-                  : _posts.isEmpty
-                      ? ListView(
-                          padding: const EdgeInsets.all(32),
-                          children: [
-                            const SizedBox(height: 48),
-                            Icon(Icons.eco_rounded,
-                                size: 48, color: AppColors.mist),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No posts yet',
-                              style: AppTypography.title(
-                                  fontSize: 20, color: AppColors.ink),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Be the first to share something.\nPosts disappear after 24 hours.',
-                              style: AppTypography.body(
-                                  fontSize: 14, color: AppColors.slate),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                          itemCount: _posts.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (_, i) => _buildPostCard(_posts[i]),
-                        ),
+          child: _buildPostsList(),
         ),
       ),
     );
