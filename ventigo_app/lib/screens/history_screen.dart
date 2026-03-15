@@ -8,6 +8,9 @@ import '../models/room_summary.dart';
 import '../services/avatars.dart';
 import '../state/auth_provider.dart';
 
+int _historyRoomTs(RoomSummary r) =>
+    int.tryParse(r.startedAt.isNotEmpty ? r.startedAt : r.matchedAt) ?? 0;
+
 class HistoryScreen extends ConsumerStatefulWidget {
   final String? tab;
   const HistoryScreen({super.key, this.tab});
@@ -164,20 +167,54 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Group rooms by date
-    final sorted = List<RoomSummary>.from(_rooms)
-      ..sort((a, b) {
-        final aTs = int.tryParse(a.startedAt.isNotEmpty ? a.startedAt : a.matchedAt) ?? 0;
-        final bTs = int.tryParse(b.startedAt.isNotEmpty ? b.startedAt : b.matchedAt) ?? 0;
-        return bTs.compareTo(aTs); // newest first
-      });
+  Widget _buildBody() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_tab == 'connections') return _buildConnectionsTab();
+    if (_rooms.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('💬', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 16),
+            Text('No conversations yet', style: AppTypography.title(fontSize: 20, color: AppColors.charcoal)),
+            const SizedBox(height: 8),
+            Text('Your chats will appear here.', style: AppTypography.body(fontSize: 14, color: AppColors.slate), textAlign: TextAlign.center),
+          ]),
+        ),
+      );
+    }
+    return _buildChatList();
+  }
 
-    // Active rooms on top
+  Widget _buildChatList() {
+    final sorted = List<RoomSummary>.from(_rooms)
+      ..sort((a, b) => _historyRoomTs(b).compareTo(_historyRoomTs(a)));
     final active = sorted.where((r) => r.status == 'active').toList();
     final ended = sorted.where((r) => r.status != 'active').toList();
 
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        if (active.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Text('ACTIVE NOW', style: AppTypography.label(color: AppColors.accent)),
+          ),
+          ...active.map((r) => _ChatTile(room: r, isActive: true, onTap: () {
+            context.go('/chat?room_id=${Uri.encodeComponent(r.roomId)}');
+          })),
+          const Divider(height: 24, indent: 20, endIndent: 20),
+        ],
+        if (ended.isNotEmpty) ...[
+          ..._buildDateGrouped(ended),
+        ],
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.snow,
       appBar: AppBar(
@@ -200,44 +237,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _tab == 'connections'
-              ? _buildConnectionsTab()
-              : _rooms.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('💬', style: TextStyle(fontSize: 48)),
-                      const SizedBox(height: 16),
-                      Text('No conversations yet', style: AppTypography.title(fontSize: 20, color: AppColors.charcoal)),
-                      const SizedBox(height: 8),
-                      Text('Your chats will appear here.', style: AppTypography.body(fontSize: 14, color: AppColors.slate), textAlign: TextAlign.center),
-                    ]),
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  children: [
-                    // Active conversations section
-                    if (active.isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        child: Text('ACTIVE NOW', style: AppTypography.label(color: AppColors.accent)),
-                      ),
-                      ...active.map((r) => _ChatTile(room: r, isActive: true, onTap: () {
-                        context.go('/chat?room_id=${Uri.encodeComponent(r.roomId)}');
-                      })),
-                      const Divider(height: 24, indent: 20, endIndent: 20),
-                    ],
-
-                    // Past conversations grouped by date
-                    if (ended.isNotEmpty) ...[
-                      ..._buildDateGrouped(ended),
-                    ],
-                  ],
-                ),
+      body: _buildBody(),
     );
   }
 

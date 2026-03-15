@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 os.environ.setdefault("APP_SECRET_KEY", "test_secret_key_for_ci_only_32chars!!")
 
 
-# ── Settings ──────────────────────────────────────────────────────────────────
+# -- Settings ------------------------------------------------------------------
 
 def test_settings_loads():
     from config import get_settings
@@ -30,7 +30,7 @@ def test_settings_expose_brevo_api_key_field():
     assert hasattr(get_settings(), "BREVO_API_KEY")
 
 
-# ── Email hash ────────────────────────────────────────────────────────────────
+# -- Email hash ----------------------------------------------------------------
 
 def test_email_hash_is_deterministic():
     from services.otp import _hash_email
@@ -49,7 +49,7 @@ def test_email_hash_is_sha256_hex():
     assert all(c in "0123456789abcdef" for c in h)
 
 
-# ── Session token ─────────────────────────────────────────────────────────────
+# -- Session token -------------------------------------------------------------
 
 def test_session_token_is_valid_jwt():
     from services.session_token import create_session_token

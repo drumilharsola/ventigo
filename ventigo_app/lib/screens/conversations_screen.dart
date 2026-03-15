@@ -20,7 +20,10 @@ import '../widgets/breathing_circle.dart';
 import '../utils/time_helpers.dart';
 import '../config/routes.dart' show kPathVerify;
 
-// ── Helpers ──
+// -- Helpers --
+
+int _convRoomTs(RoomSummary r) =>
+    int.tryParse(r.startedAt.isNotEmpty ? r.startedAt : r.matchedAt) ?? 0;
 
 class _PeerGroup {
   final String peerSessionId;
@@ -44,13 +47,8 @@ List<_PeerGroup> _groupByPeer(List<RoomSummary> rooms) {
     final key = r.peerSessionId.isNotEmpty ? r.peerSessionId : r.peerUsername;
     (map[key] ??= []).add(r);
   }
-  // Sort each group newest first
   for (final list in map.values) {
-    list.sort((a, b) {
-      final aTs = int.tryParse(a.startedAt.isNotEmpty ? a.startedAt : a.matchedAt) ?? 0;
-      final bTs = int.tryParse(b.startedAt.isNotEmpty ? b.startedAt : b.matchedAt) ?? 0;
-      return bTs.compareTo(aTs);
-    });
+    list.sort((a, b) => _convRoomTs(b).compareTo(_convRoomTs(a)));
   }
   final groups = map.entries.map((e) {
     final latest = e.value.first;
@@ -62,18 +60,14 @@ List<_PeerGroup> _groupByPeer(List<RoomSummary> rooms) {
     );
   }).toList();
 
-  // Sort groups: active first, then by latest timestamp
   groups.sort((a, b) {
-    if (a.hasActive && !b.hasActive) return -1;
-    if (!a.hasActive && b.hasActive) return 1;
-    final aTs = int.tryParse(a.latest.startedAt.isNotEmpty ? a.latest.startedAt : a.latest.matchedAt) ?? 0;
-    final bTs = int.tryParse(b.latest.startedAt.isNotEmpty ? b.latest.startedAt : b.latest.matchedAt) ?? 0;
-    return bTs.compareTo(aTs);
+    if (a.hasActive != b.hasActive) return a.hasActive ? -1 : 1;
+    return _convRoomTs(b.latest).compareTo(_convRoomTs(a.latest));
   });
   return groups;
 }
 
-// ── Screen ──
+// -- Screen --
 
 class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
@@ -271,6 +265,18 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     }
   }
 
+  void _handleVenterMatch() {
+    final wait = ref.read(pendingWaitProvider);
+    if (wait.matchedRoomId == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final roomId = ref.read(pendingWaitProvider).matchedRoomId;
+      if (roomId != null && mounted) {
+        ref.read(pendingWaitProvider.notifier).clearMatch();
+        context.push('/chat?room_id=${Uri.encodeComponent(roomId)}');
+      }
+    });
+  }
+
   Future<void> _handleAccept(String requestId) async {
     final token = _token;
     if (token == null) return;
@@ -378,22 +384,13 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     );
   }
 
-  // ── Venter Tab ──
+  // -- Venter Tab --
 
   Widget _venterTab(List<RoomSummary> rooms) {
     final groups = _groupByPeer(rooms);
     final wait = ref.watch(pendingWaitProvider);
 
-    // Handle match from pending wait provider
-    if (wait.matchedRoomId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final roomId = ref.read(pendingWaitProvider).matchedRoomId;
-        if (roomId != null && mounted) {
-          ref.read(pendingWaitProvider.notifier).clearMatch();
-          context.push('/chat?room_id=${Uri.encodeComponent(roomId)}');
-        }
-      });
-    }
+    _handleVenterMatch();
 
     return Stack(
       children: [
@@ -566,7 +563,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     );
   }
 
-  // ── Listener Tab ──
+  // -- Listener Tab --
 
   Widget _listenerTab(List<RoomSummary> rooms) {
     final groups = _groupByPeer(rooms);
@@ -617,133 +614,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
               ),
               child: SingleChildScrollView(
                 controller: scrollCtrl,
-                child: Column(
-                  children: [
-                    // Grab handle
-                    Center(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onDoubleTap: () => _toggleSheet(
-                          _listenerSheetCtrl,
-                          collapsed: 0.12,
-                          expanded: 0.6,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.mist,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          const Text('🤝', style: TextStyle(fontSize: 20)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _board.isEmpty
-                                  ? 'All is quiet right now'
-                                  : '${_board.length} ${_board.length == 1 ? "person" : "people"} need to be heard',
-                              style: AppTypography.title(fontSize: 16, color: AppColors.ink),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              _syncBoard();
-                              _syncRooms();
-                            },
-                            icon: const Icon(Icons.refresh_rounded, size: 20),
-                            color: AppColors.slate,
-                            tooltip: 'Refresh',
-                            splashRadius: 18,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                          ),
-                          if (!emailVerified)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.danger.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text('🔒', style: TextStyle(fontSize: 12)),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    if (!emailVerified) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
-                        child: Text('Verify your email to listen.',
-                            style: AppTypography.body(fontSize: 13, color: AppColors.danger)),
-                      ),
-                    ],
-
-                    const SizedBox(height: 10),
-
-                    // Request list
-                    if (_board.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Text('Stay here - new requests appear automatically.',
-                            style: AppTypography.body(fontSize: 13, color: AppColors.slate)),
-                      )
-                    else
-                      ...List.generate(_board.length, (i) {
-                        final req = _board[i];
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.snow,
-                            borderRadius: AppRadii.mdAll,
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            children: [
-                              ClipOval(
-                                child: CachedNetworkImage(
-                                  imageUrl: avatarUrl(req.avatarId, size: 72),
-                                  width: 36,
-                                  height: 36,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(req.username,
-                                        style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                                    Text(timeAgo(req.postedAt),
-                                        style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
-                                  ],
-                                ),
-                              ),
-                              FlowButton(
-                                label: 'Show up',
-                                size: FlowButtonSize.sm,
-                                onPressed: !emailVerified ? null : () => _handleAccept(req.requestId),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    const SizedBox(height: 20),
-                  ],
-                ),
+                child: _buildListenerSheetContent(emailVerified),
               ),
             );
           },
@@ -751,9 +622,134 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
       ],
     );
   }
+
+  Widget _buildListenerSheetContent(bool emailVerified) {
+    return Column(
+      children: [
+        // Grab handle
+        Center(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onDoubleTap: () => _toggleSheet(
+              _listenerSheetCtrl,
+              collapsed: 0.12,
+              expanded: 0.6,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.mist,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              const Text('🤝', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _board.isEmpty
+                      ? 'All is quiet right now'
+                      : '${_board.length} ${_board.length == 1 ? "person" : "people"} need to be heard',
+                  style: AppTypography.title(fontSize: 16, color: AppColors.ink),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  _syncBoard();
+                  _syncRooms();
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                color: AppColors.slate,
+                tooltip: 'Refresh',
+                splashRadius: 18,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+              if (!emailVerified)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('🔒', style: TextStyle(fontSize: 12)),
+                ),
+            ],
+          ),
+        ),
+        if (!emailVerified) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+            child: Text('Verify your email to listen.',
+                style: AppTypography.body(fontSize: 13, color: AppColors.danger)),
+          ),
+        ],
+        const SizedBox(height: 10),
+        if (_board.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text('Stay here - new requests appear automatically.',
+                style: AppTypography.body(fontSize: 13, color: AppColors.slate)),
+          )
+        else
+          ...List.generate(_board.length, (i) {
+            final req = _board[i];
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.snow,
+                borderRadius: AppRadii.mdAll,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: avatarUrl(req.avatarId, size: 72),
+                      width: 36,
+                      height: 36,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(req.username,
+                            style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                        Text(timeAgo(req.postedAt),
+                            style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
+                      ],
+                    ),
+                  ),
+                  FlowButton(
+                    label: 'Show up',
+                    size: FlowButtonSize.sm,
+                    onPressed: !emailVerified ? null : () => _handleAccept(req.requestId),
+                  ),
+                ],
+              ),
+            );
+          }),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
 }
 
-// ── Peer conversation tile ──
+// -- Peer conversation tile --
 
 class _PeerTile extends StatelessWidget {
   final _PeerGroup group;

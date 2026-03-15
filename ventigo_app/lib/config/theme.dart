@@ -20,7 +20,7 @@ class AppColors {
   static const _envDanger    = String.fromEnvironment('BRAND_COLOR_DANGER');
   static const _envSuccess   = String.fromEnvironment('BRAND_COLOR_SUCCESS');
 
-  // ── Core neutrals (warm) ──
+  // -- Core neutrals (warm) --
   static final Color ink       = _envInk.isNotEmpty ? _hex(_envInk) : const Color(0xFF3B3335);
   static const Color ink80     = Color(0xCC3B3335);
   static final Color charcoal  = _envCharcoal.isNotEmpty ? _hex(_envCharcoal) : const Color(0xFF4D4448);
@@ -32,12 +32,12 @@ class AppColors {
   static const Color snow      = Color(0xFFFFF8F0);
   static const Color white     = Color(0xFFFFFFFF);
 
-  // ── Brand trio ──
+  // -- Brand trio --
   static const Color peach     = Color(0xFFF4A68C);  // venter / warmth
   static const Color lavender  = Color(0xFFC4B5E3);  // listener / calm
   static const Color amber     = Color(0xFFE8A84A);  // connection / bridge
 
-  // ── Poster palette (warm) ──
+  // -- Poster palette (warm) --
   static const Color flow1 = Color(0xFFFFF0E8);
   static const Color flow2 = Color(0xFFFFE0D0);
   static const Color flow3 = Color(0xFFF4A68C);
@@ -48,7 +48,7 @@ class AppColors {
   static const Color sunflower = Color(0xFFF0C060);
   static const Color paper = Color(0xFFFFF4E8);
 
-  // ── Semantic ──
+  // -- Semantic --
   static final Color accent     = _envAccent.isNotEmpty ? _hex(_envAccent) : const Color(0xFFF4A68C);
   static const Color accentDim  = Color(0x21F4A68C);
   static const Color accentGlow = Color(0x47F4A68C);
@@ -56,7 +56,7 @@ class AppColors {
   static final Color danger     = _envDanger.isNotEmpty ? _hex(_envDanger) : const Color(0xFFE88888);
   static final Color success    = _envSuccess.isNotEmpty ? _hex(_envSuccess) : const Color(0xFF7ECAA0);
 
-  // ── Role colours ──
+  // -- Role colours --
   static const Color venterPrimary = Color(0xFFF4A68C);
   static const Color venterLight   = Color(0xFFFFF0E8);
   static const Color venterBubble  = Color(0xFFFFF8F4);
@@ -67,14 +67,14 @@ class AppColors {
   static const Color listenerBubble  = Color(0xFFF8F5FC);
   static const Color listenerBorder  = Color(0x40C4B5E3);
 
-  // ── Surface / card ──
+  // -- Surface / card --
   static const Color card       = Color(0xFFFFFCF6);
   static const Color cardLight  = Color(0xFFFFF6EA);
   static const Color border     = Color(0x173B3335);
   static const Color borderLight = Color(0x0F3B3335);
   static const Color grid = Color(0x10FFFFFF);
 
-  // ── Dark-mode surface overrides ──
+  // -- Dark-mode surface overrides --
   static const Color darkSurface  = Color(0xFF1F1A1C);
   static const Color darkCard     = Color(0xFF2D2628);
   static const Color darkBorder   = Color(0x24FFFFFF);

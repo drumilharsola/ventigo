@@ -23,7 +23,7 @@ import '../screens/admin/admin_tenants_screen.dart';
 import '../screens/privacy_screen.dart';
 import '../screens/terms_screen.dart';
 
-// ── Route path constants ─────────────────────────────────────────────────────
+// -- Route path constants -----------------------------------------------------
 const kPathVerify = '/verify';
 const kPathOnboarding = '/onboarding';
 const kPathHome = '/home';
@@ -65,7 +65,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final hasProfile = auth.hasProfile;
 
       // If logged in with profile and on landing/verify/onboarding → go to home
-      if (loggedIn && hasProfile && (path == '/' || path == kPathVerify || path == kPathOnboarding)) {
+      if (loggedIn && hasProfile && const {'/', kPathVerify, kPathOnboarding}.contains(path)) {
         return kPathHome;
       }
       // Legacy lobby redirect
@@ -101,14 +101,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: kPathProfile, builder: (_, __) => const ProfileScreen()),
       GoRoute(path: '/blocked-users', builder: (_, __) => const BlockedUsersScreen()),
 
-      // ── Main shell with bottom navigation ──
+      // -- Main shell with bottom navigation --
       GoRoute(path: kPathHome, builder: (_, __) => const MainShell(initialIndex: 0)),
       GoRoute(path: '/chats', builder: (_, __) => const MainShell(initialIndex: 1)),
       GoRoute(path: '/posts', builder: (_, __) => const MainShell(initialIndex: 2)),
       GoRoute(path: '/help', builder: (_, __) => const MainShell(initialIndex: 3)),
       GoRoute(path: '/me', builder: (_, __) => const MainShell(initialIndex: 4)),
 
-      // ── Full-screen routes (no bottom nav) ──
+      // -- Full-screen routes (no bottom nav) --
       GoRoute(path: '/chat', builder: (_, state) {
         final roomId = state.uri.queryParameters['room_id'] ?? '';
         final peerSessionId = state.uri.queryParameters['peer_session_id'] ?? '';
@@ -120,14 +120,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         return UnifiedChatScreen(peerSessionId: peerSessionId, peerUsername: peerUsername);
       }),
 
-      // ── Admin ──
+      // -- Admin --
       GoRoute(path: '/admin', builder: (_, __) => const AdminDashboardScreen()),
       GoRoute(path: '/admin/analytics', builder: (_, __) => const AdminAnalyticsScreen()),
       GoRoute(path: '/admin/reports', builder: (_, __) => const AdminReportsScreen()),
       GoRoute(path: '/admin/users', builder: (_, __) => const AdminUserDetailScreen()),
       GoRoute(path: '/admin/tenants', builder: (_, __) => const AdminTenantsScreen()),
 
-      // ── Static pages ──
+      // -- Static pages --
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyScreen()),
       GoRoute(path: '/terms', builder: (_, __) => const TermsScreen()),
     ],

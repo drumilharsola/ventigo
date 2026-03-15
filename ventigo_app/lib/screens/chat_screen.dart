@@ -120,10 +120,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
           Column(
             children: [
-              // ── Header ──
+              // -- Header --
               _buildHeader(chat, notifier, auth),
 
-              // ── Messages ──
+              // -- Messages --
               // Ending soon banner
               if (chat.endingSoon && !chat.sessionEnded && chat.mode == 'live')
                 Container(
@@ -131,46 +131,52 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   color: const Color(0xFFE8B450).withValues(alpha: 0.1),
                   child: Text(
-                    'Session ending soon — make the most of this moment',
+                    'Session ending soon - make the most of this moment',
                     style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFFE8B450)),
                     textAlign: TextAlign.center,
                   ),
                 ),
               Expanded(child: _buildMessageList(chat, auth)),
 
-              // ── Input or footer ──
+              // -- Input or footer --
               if (chat.mode == 'live') _buildInput(chat, notifier)
               else if (chat.mode == 'readonly' || chat.mode == 'expired') _buildReadonlyFooter(chat),
             ],
           ),
 
-          // ── Modals ──
-          if (chat.sessionEnded)
-            SessionEndModal(
-              canExtend: chat.canExtend,
-              canContinue: !chat.peerLeft,
-              peerLeft: chat.peerLeft,
-              continueWaiting: chat.continueWaiting,
-              onExtend: notifier.extend,
-              onContinue: notifier.requestContinue,
-              onClose: notifier.dismissSessionEnd,
-              onFeedback: (mood) => notifier.sendFeedback(mood),
-            ),
-          if (_showReport) ReportModal(onClose: () => setState(() => _showReport = false)),
-          if (_showPeerProfile && chat.peerUsername != null && auth.token != null)
-            UserProfileModal(
-              username: chat.peerUsername!,
-              peerSessionId: chat.peerSessionId,
-              roomId: widget.roomId,
-              onClose: () => setState(() => _showPeerProfile = false),
-            ),
+          // -- Modals --
+          ..._buildModals(chat, notifier, auth),
         ],
       ),
       ),
     );
   }
 
-  // ── Header ──
+  List<Widget> _buildModals(ChatState chat, ChatNotifier notifier, AuthState auth) {
+    return [
+      if (chat.sessionEnded)
+        SessionEndModal(
+          canExtend: chat.canExtend,
+          canContinue: !chat.peerLeft,
+          peerLeft: chat.peerLeft,
+          continueWaiting: chat.continueWaiting,
+          onExtend: notifier.extend,
+          onContinue: notifier.requestContinue,
+          onClose: notifier.dismissSessionEnd,
+          onFeedback: (mood) => notifier.sendFeedback(mood),
+        ),
+      if (_showReport) ReportModal(onClose: () => setState(() => _showReport = false)),
+      if (_showPeerProfile && chat.peerUsername != null && auth.token != null)
+        UserProfileModal(
+          username: chat.peerUsername!,
+          peerSessionId: chat.peerSessionId,
+          roomId: widget.roomId,
+          onClose: () => setState(() => _showPeerProfile = false),
+        ),
+    ];
+  }
+
+  // -- Header --
 
   Widget _buildHeader(ChatState chat, ChatNotifier notifier, AuthState auth) {
     return Container(
@@ -273,7 +279,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return true;
   }
 
-  // ── Message list ──
+  // -- Message list --
 
   Widget _buildMessageList(ChatState chat, AuthState auth) {
     if (chat.mode == 'checking' && chat.transcript.isEmpty) {
@@ -291,46 +297,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     }
 
+    final itemCount = chat.transcript.length + (chat.peerTyping ? 1 : 0) + (chat.mode == 'live' ? 1 : 0);
     return ListView.builder(
       controller: _scrollCtrl,
       padding: const EdgeInsets.all(20),
-      itemCount: chat.transcript.length + (chat.peerTyping ? 1 : 0) + (chat.mode == 'live' ? 1 : 0), // +1 for hint
-      itemBuilder: (_, i) {
-        // Hint pill at top
-        if (chat.mode == 'live' && i == 0) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Pill(text: 'Listen first. Respond honestly.', variant: PillVariant.plain),
-            ),
-          );
-        }
-
-        final msgIndex = chat.mode == 'live' ? i - 1 : i;
-
-        // Typing indicator at end
-        if (chat.peerTyping && msgIndex == chat.transcript.length) {
-          return TypingIndicator(username: chat.peerUsername ?? '');
-        }
-
-        if (msgIndex < 0 || msgIndex >= chat.transcript.length) return const SizedBox.shrink();
-        final item = chat.transcript[msgIndex];
-
-        if (item is TranscriptMarker) {
-          return _buildMarker(item);
-        }
-        if (item is TranscriptMessage) {
-          final isMe = item.fromSession != null
-              ? item.fromSession == auth.sessionId
-              : item.from == auth.username;
-
-          // Only show username label for first message in a consecutive group
-          final showLabel = !isMe && _shouldShowLabel(msgIndex, chat, auth);
-          return _buildBubble(item, isMe, showLabel: showLabel, peerDisplayName: chat.peerUsername);
-        }
-        return const SizedBox.shrink();
-      },
+      itemCount: itemCount,
+      itemBuilder: (_, i) => _buildChatListItem(i, chat, auth),
     );
+  }
+
+  Widget _buildChatListItem(int i, ChatState chat, AuthState auth) {
+    // Hint pill at top
+    if (chat.mode == 'live' && i == 0) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Pill(text: 'Listen first. Respond honestly.', variant: PillVariant.plain),
+        ),
+      );
+    }
+
+    final msgIndex = chat.mode == 'live' ? i - 1 : i;
+
+    // Typing indicator at end
+    if (chat.peerTyping && msgIndex == chat.transcript.length) {
+      return TypingIndicator(username: chat.peerUsername ?? '');
+    }
+
+    if (msgIndex < 0 || msgIndex >= chat.transcript.length) return const SizedBox.shrink();
+    final item = chat.transcript[msgIndex];
+
+    if (item is TranscriptMarker) return _buildMarker(item);
+    if (item is TranscriptMessage) {
+      final isMe = item.fromSession != null
+          ? item.fromSession == auth.sessionId
+          : item.from == auth.username;
+      final showLabel = !isMe && _shouldShowLabel(msgIndex, chat, auth);
+      return _buildBubble(item, isMe, showLabel: showLabel, peerDisplayName: chat.peerUsername);
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildMarker(TranscriptMarker marker) {
@@ -435,7 +440,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // ── Input bar ──
+  // -- Input bar --
 
   Widget _buildInput(ChatState chat, ChatNotifier notifier) {
     final disabled = !chat.connected || chat.peerLeft || chat.sessionEnded;
@@ -539,7 +544,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // ── Readonly / expired footer ──
+  // -- Readonly / expired footer --
 
   Widget _buildReadonlyFooter(ChatState chat) {
     return Container(

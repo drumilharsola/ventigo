@@ -28,7 +28,7 @@ ROOM_TTL_ACTIVE = 7 * 24 * 3600 + 3600  # 7 days + 1h buffer while active
 ROOM_TTL_AFTER  = 7 * 24 * 3600        # 7 days for history
 
 
-# ─── Profile (PostgreSQL) ─────────────────────────────────────────────────────
+# --- Profile (PostgreSQL) -----------------------------------------------------
 
 async def save_profile(
     session_id: str,
@@ -72,7 +72,7 @@ async def set_email_verified(session_id: str) -> None:
         )
         await db.commit()
         if result.rowcount == 0:
-            # Profile not created yet — store flag in Redis for save_profile to pick up
+            # Profile not created yet - store flag in Redis for save_profile to pick up
             redis = await get_redis()
             await redis.setex(f"early_email_verified:{session_id}", 86400, "1")
 
@@ -97,7 +97,7 @@ async def get_profile(session_id: str) -> Optional[dict]:
         }
 
 
-# ─── Room ─────────────────────────────────────────────────────────────────────
+# --- Room ---------------------------------------------------------------------
 
 async def create_room(session_a: str, session_b: str) -> str:
     redis = await get_redis()
@@ -272,7 +272,7 @@ async def close_room(room_id: str) -> None:
         await redis.srem(f"active_rooms:{session_id}", room_id)
 
 
-# ─── Messages ─────────────────────────────────────────────────────────────────
+# --- Messages -----------------------------------------------------------------
 
 async def append_message(room_id: str, message: dict) -> None:
     redis = await get_redis()
@@ -321,7 +321,7 @@ async def get_blocked_set(session_id: str) -> set[str]:
         return {row[0] for row in result.all()}
 
 
-# ─── Mutual Continue ──────────────────────────────────────────────────────────
+# --- Mutual Continue ----------------------------------------------------------
 
 CONTINUE_REQUEST_TTL = 120  # 2 minutes
 
@@ -347,7 +347,7 @@ async def request_continue(room_id: str, session_id: str) -> Optional[str]:
     if not peer_requested:
         return None  # still waiting
 
-    # Both want to continue — clean up keys and create new room
+    # Both want to continue - clean up keys and create new room
     await redis.delete(f"continue_request:{room_id}:{session_id}")
     await redis.delete(f"continue_request:{room_id}:{peer_id}")
 
@@ -355,7 +355,7 @@ async def request_continue(room_id: str, session_id: str) -> Optional[str]:
     return new_room_id
 
 
-# ─── Reactions ─────────────────────────────────────────────────────────────────
+# --- Reactions -----------------------------------------------------------------
 
 ALLOWED_REACTIONS = {"❤️", "🫂", "💪", "🙏", "😢"}
 
@@ -384,7 +384,7 @@ async def get_reactions(room_id: str) -> list[dict]:
     return [json.loads(r) for r in raw]
 
 
-# ─── Feedback ──────────────────────────────────────────────────────────────────
+# --- Feedback ------------------------------------------------------------------
 
 async def save_feedback(room_id: str, session_id: str, mood: str, text: str = "") -> None:
     """Store mood feedback for a room (ephemeral, 7-day TTL)."""
@@ -396,7 +396,7 @@ async def save_feedback(room_id: str, session_id: str, mood: str, text: str = ""
     await redis.expire(f"room:{room_id}:feedback:{session_id}", ROOM_TTL_AFTER)
 
 
-# ─── Connections (PostgreSQL) ──────────────────────────────────────────────────
+# --- Connections (PostgreSQL) --------------------------------------------------
 
 async def get_connection(session_id_a: str, session_id_b: str) -> Optional[dict]:
     """Return connection row between two users (normalized order), or None."""

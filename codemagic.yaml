@@ -1,6 +1,6 @@
 workflows:
 
-  # ── Android APK (debug + release) ─────────────────────────────────────────
+  # -- Android APK (debug + release) -----------------------------------------
   android-release:
     name: Android Release
     max_build_duration: 30
@@ -38,7 +38,7 @@ workflows:
           success: true
           failure: true
 
-  # ── iOS (requires Apple Developer account + certificates in Codemagic) ────
+  # -- iOS (requires Apple Developer account + certificates in Codemagic) ----
   ios-release:
     name: iOS Release
     max_build_duration: 30
@@ -81,7 +81,7 @@ workflows:
           success: true
           failure: true
 
-  # ── Flutter Web (optional — Vercel handles this, but useful for testing) ──
+  # -- Flutter Web (optional - Vercel handles this, but useful for testing) --
   web-build:
     name: Web Build
     max_build_duration: 15

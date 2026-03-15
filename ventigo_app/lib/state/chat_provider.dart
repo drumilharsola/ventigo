@@ -8,7 +8,7 @@ import '../models/room_messages.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
 
-// ── State ──
+// -- State --
 
 class ChatState {
   final List<TranscriptItem> transcript;
@@ -95,7 +95,7 @@ class ReactionEntry {
   const ReactionEntry({required this.emoji, required this.from, this.ts});
 }
 
-// ── Notifier ──
+// -- Notifier --
 
 class ChatNotifier extends StateNotifier<ChatState> {
   final Ref ref;
@@ -118,7 +118,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   /// Expose continue room ID for navigation by the chat screen.
   String? get continueRoomId => _continueRoomId;
 
-  // ── Lifecycle ──
+  // -- Lifecycle --
 
   Future<void> initialize() async {
     final token = _token;
@@ -186,7 +186,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     return duration;
   }
 
-  // ── WebSocket ──
+  // -- WebSocket --
 
   void _connectWs() {
     final token = _token;
@@ -280,11 +280,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         break;
 
       case 'timer_status':
-        final started = data['started'] as bool? ?? false;
-        if (started && !state.timerStarted) {
-          _appendMarkerIfMissing('started');
-        }
-        state = state.copyWith(timerStarted: started, remaining: (data['remaining'] as num).toInt());
+        _handleTimerStatusWs(data);
         break;
 
       case 'tick':
@@ -333,7 +329,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
-  // ── Actions ──
+  void _handleTimerStatusWs(Map<String, dynamic> data) {
+    final started = data['started'] as bool? ?? false;
+    if (started && !state.timerStarted) {
+      _appendMarkerIfMissing('started');
+    }
+    state = state.copyWith(timerStarted: started, remaining: (data['remaining'] as num).toInt());
+  }
+
+  // -- Actions --
 
   void sendMessage(String text, {TranscriptMessage? replyTo}) {
     if (text.isEmpty || _channel == null || _username == null) return;
@@ -418,7 +422,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(sessionEnded: false);
   }
 
-  // ── Helpers ──
+  // -- Helpers --
 
   void _appendMarker(String event) {
     final marker = TranscriptMarker(event: event, roomId: roomId, ts: (DateTime.now().millisecondsSinceEpoch / 1000));
@@ -482,7 +486,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 }
 
-// ── Provider family (keyed by roomId) ──
+// -- Provider family (keyed by roomId) --
 
 final chatProvider = StateNotifierProvider.family<ChatNotifier, ChatState, String>((ref, roomId) {
   final notifier = ChatNotifier(ref, roomId: roomId);

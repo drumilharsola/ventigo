@@ -105,7 +105,7 @@ class _LogoIconPainter extends CustomPainter {
     // Breathing factor
     final breathe = 0.95 + 0.05 * sin(progress * 2 * pi);
 
-    // ── Left bubble - peach/coral (the Venter, speaking) ──
+    // -- Left bubble - peach/coral (the Venter, speaking) --
     final peachPaint = Paint()..color = AppColors.peach.withValues(alpha: 0.92);
     final lr = w * 0.30 * breathe;
     final lx = cx - w * 0.10;
@@ -123,7 +123,7 @@ class _LogoIconPainter extends CustomPainter {
       ..close();
     canvas.drawPath(tailPath, peachPaint);
 
-    // ── Right bubble - lavender (the Listener) ──
+    // -- Right bubble - lavender (the Listener) --
     final lavPaint = Paint()..color = AppColors.lavender.withValues(alpha: 0.88);
     final rr = w * 0.26 * breathe;
     final rx = cx + w * 0.12;

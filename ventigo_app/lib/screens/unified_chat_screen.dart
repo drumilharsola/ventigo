@@ -92,34 +92,39 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     return items;
   }
 
+  List<RoomSummary> _filterPeerRooms(List<RoomSummary> allRooms) {
+    return allRooms.where((r) =>
+        r.peerSessionId == widget.peerSessionId ||
+        (widget.peerSessionId.isEmpty && r.peerUsername == widget.peerUsername))
+        .toList()
+      ..sort((a, b) {
+        final aTs = int.tryParse(a.startedAt.isNotEmpty ? a.startedAt : a.matchedAt) ?? 0;
+        final bTs = int.tryParse(b.startedAt.isNotEmpty ? b.startedAt : b.matchedAt) ?? 0;
+        return aTs.compareTo(bTs);
+      });
+  }
+
+  Future<List<TranscriptItem>> _loadAllTranscripts(String token, List<RoomSummary> rooms) async {
+    final transcript = <TranscriptItem>[];
+    for (final room in rooms) {
+      try {
+        transcript.addAll(await _loadRoomTranscript(token, room));
+      } catch (_) {}
+    }
+    transcript.sort((a, b) => a.ts.compareTo(b.ts));
+    return transcript;
+  }
+
   Future<void> _load() async {
     final token = ref.read(authProvider).token;
     if (token == null) return;
     try {
       final allRooms = await ref.read(apiClientProvider).getChatRooms(token);
-      final peerRooms = allRooms
-          .where((r) =>
-              r.peerSessionId == widget.peerSessionId ||
-              (widget.peerSessionId.isEmpty && r.peerUsername == widget.peerUsername))
-          .toList();
-
-      peerRooms.sort((a, b) {
-        final aTs = int.tryParse(a.startedAt.isNotEmpty ? a.startedAt : a.matchedAt) ?? 0;
-        final bTs = int.tryParse(b.startedAt.isNotEmpty ? b.startedAt : b.matchedAt) ?? 0;
-        return aTs.compareTo(bTs);
-      });
+      final peerRooms = _filterPeerRooms(allRooms);
 
       final active = peerRooms.where((r) => r.status == 'active').toList();
       final activeId = active.isNotEmpty ? active.last.roomId : null;
-
-      final transcript = <TranscriptItem>[];
-      for (final room in peerRooms) {
-        try {
-          transcript.addAll(await _loadRoomTranscript(token, room));
-        } catch (_) {}
-      }
-
-      transcript.sort((a, b) => a.ts.compareTo(b.ts));
+      final transcript = await _loadAllTranscripts(token, peerRooms);
 
       if (mounted) {
         setState(() {
@@ -128,15 +133,7 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
           _activeRoomId = activeId;
           _loading = false;
         });
-
-        // Initialize the chat provider for the active room
-        if (activeId != null) {
-          // The chatProvider auto-initializes via the family provider
-          // Just watching it will trigger initialization
-          ref.read(chatProvider(activeId));
-        }
-
-        // Scroll to bottom after load
+        if (activeId != null) ref.read(chatProvider(activeId));
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollCtrl.hasClients) {
             _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
@@ -176,22 +173,30 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     });
   }
 
+  bool _isDuplicateMessage(TranscriptMessage item, List<TranscriptItem> existing) {
+    return existing.any((e) {
+      if (e is! TranscriptMessage) return false;
+      if (item.clientId != null && e.clientId != null && item.clientId == e.clientId) return true;
+      return e.from == item.from && e.text == item.text && (e.ts - item.ts).abs() < 2;
+    });
+  }
+
+  bool _isDuplicateMarker(TranscriptMarker item, List<TranscriptItem> existing) {
+    return existing.any((e) =>
+        e is TranscriptMarker && e.roomId == item.roomId && e.event == item.event);
+  }
+
+  bool _existsInTranscript(TranscriptItem item, List<TranscriptItem> list) {
+    if (item is TranscriptMessage) return _isDuplicateMessage(item, list);
+    if (item is TranscriptMarker) return _isDuplicateMarker(item, list);
+    return false;
+  }
+
   List<TranscriptItem> _mergeWithLiveTranscript(ChatState? liveChat) {
     final result = <TranscriptItem>[..._unifiedTranscript];
     if (liveChat == null || _activeRoomId == null) return result;
     for (final item in liveChat.transcript) {
-      bool exists = false;
-      if (item is TranscriptMessage) {
-        exists = result.any((e) {
-          if (e is! TranscriptMessage) return false;
-          if (item.clientId != null && e.clientId != null && item.clientId == e.clientId) return true;
-          return e.from == item.from && e.text == item.text && (e.ts - item.ts).abs() < 2;
-        });
-      } else if (item is TranscriptMarker) {
-        exists = result.any((e) =>
-            e is TranscriptMarker && e.roomId == item.roomId && e.event == item.event);
-      }
-      if (!exists) result.add(item);
+      if (!_existsInTranscript(item, result)) result.add(item);
     }
     result.sort((a, b) => a.ts.compareTo(b.ts));
     return result;

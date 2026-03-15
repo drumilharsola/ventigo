@@ -20,7 +20,7 @@ def get_engine():
         if url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        # Strip sslmode from URL — asyncpg doesn't support it as a query param;
+        # Strip sslmode from URL - asyncpg doesn't support it as a query param;
         # SSL is configured via connect_args below instead.
         import re
         url = re.sub(r'[?&]sslmode=[^&]*', '', url)

@@ -13,14 +13,14 @@ import 'state/auth_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── OneSignal ────────────────────────────────────────────────────────────
+  // -- OneSignal ------------------------------------------------------------
   if (Env.onesignalAppId.isNotEmpty) {
     OneSignal.Debug.setLogLevel(OSLogLevel.warn);
     OneSignal.initialize(Env.onesignalAppId);
     OneSignal.Notifications.requestPermission(true);
   }
 
-  // ── PostHog (product analytics) ──────────────────────────────────────────
+  // -- PostHog (product analytics) ------------------------------------------
   if (Env.posthogApiKey.isNotEmpty) {
     final config = PostHogConfig(Env.posthogApiKey);
     config.host = Env.posthogHost;
@@ -28,7 +28,7 @@ void main() async {
     await Posthog().setup(config);
   }
 
-  // ── Sentry ───────────────────────────────────────────────────────────────
+  // -- Sentry ---------------------------------------------------------------
   if (Env.sentryDsn.isNotEmpty) {
     await SentryFlutter.init(
       (options) {

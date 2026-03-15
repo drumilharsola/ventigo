@@ -95,7 +95,7 @@ def _timer_status_payload(room: dict) -> dict:
     return {"type": "timer_status", "started": True, "remaining": remaining}
 
 
-# ── WebSocket helper functions ────────────────────────────────────────────────
+# -- WebSocket helper functions ------------------------------------------------
 
 async def _ws_authenticate(websocket: WebSocket, token: str) -> dict | None:
     """Validate JWT and single-device token. Returns payload or None (closes WS)."""
@@ -344,7 +344,7 @@ async def chat_ws(websocket: WebSocket, token: str = "", room_id: str = ""):
             pass
 
 
-# ── REST endpoints for chat history ───────────────────────────────────────────
+# -- REST endpoints for chat history -------------------------------------------
 
 @router.get("/active")
 async def get_active_room(session: Annotated[dict, Depends(require_auth)]):
@@ -431,7 +431,7 @@ async def get_room_messages_endpoint(
     }
 
 
-# ── Feedback ──────────────────────────────────────────────────────────────────
+# -- Feedback ------------------------------------------------------------------
 
 class FeedbackRequest(BaseModel):
     mood: str            # e.g. "calm", "better", "same", "worse"
@@ -457,7 +457,7 @@ async def post_feedback(
     return {"message": "ok"}
 
 
-# ── Connections ───────────────────────────────────────────────────────────────
+# -- Connections ---------------------------------------------------------------
 
 @router.post("/connect/{peer_session_id}",
              responses={400: {"description": "Invalid connection request"}})

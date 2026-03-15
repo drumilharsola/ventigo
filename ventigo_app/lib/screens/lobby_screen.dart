@@ -18,8 +18,16 @@ import '../widgets/flow_button.dart';
 import '../widgets/pill.dart';
 import '../widgets/safety_dialog.dart';
 
-// ── Helpers ──
+// -- Helpers --
 
+String _roomPeerKey(RoomSummary room) {
+  if (room.peerSessionId.isNotEmpty) return room.peerSessionId;
+  if (room.peerUsername.isNotEmpty) return room.peerUsername;
+  return room.roomId;
+}
+
+int _lobbyRoomTs(RoomSummary room) =>
+    int.tryParse(room.startedAt.isNotEmpty ? room.startedAt : room.matchedAt) ?? 0;
 
 class _GroupedRoom {
   final RoomSummary latest;
@@ -30,12 +38,11 @@ class _GroupedRoom {
 List<_GroupedRoom> _groupRoomsByPeer(List<RoomSummary> rooms) {
   final grouped = <String, _GroupedRoom>{};
   for (final room in rooms) {
-    final key = room.peerSessionId.isNotEmpty ? room.peerSessionId : room.peerUsername.isNotEmpty ? room.peerUsername : room.roomId;
+    final key = _roomPeerKey(room);
     final existing = grouped[key];
     if (existing != null) {
-      final existTs = int.tryParse(existing.latest.startedAt.isNotEmpty ? existing.latest.startedAt : existing.latest.matchedAt) ?? 0;
-      final newTs = int.tryParse(room.startedAt.isNotEmpty ? room.startedAt : room.matchedAt) ?? 0;
-      grouped[key] = _GroupedRoom(newTs > existTs ? room : existing.latest, existing.count + 1);
+      final latest = _lobbyRoomTs(room) > _lobbyRoomTs(existing.latest) ? room : existing.latest;
+      grouped[key] = _GroupedRoom(latest, existing.count + 1);
     } else {
       grouped[key] = _GroupedRoom(room, 1);
     }
@@ -43,7 +50,7 @@ List<_GroupedRoom> _groupRoomsByPeer(List<RoomSummary> rooms) {
   return grouped.values.toList();
 }
 
-// ── Screen ──
+// -- Screen --
 
 class LobbyScreen extends ConsumerStatefulWidget {
   final String? requestId;

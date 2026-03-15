@@ -369,7 +369,7 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
             Text("No one connected this time.", style: AppTypography.heading(fontSize: 24, color: AppColors.ink)),
             const SizedBox(height: 8),
             Text(
-              "That's okay — you still showed up for yourself. Listeners are most active in the evenings.",
+              "That's okay - you still showed up for yourself. Listeners are most active in the evenings.",
               style: AppTypography.body(fontSize: 14, color: AppColors.slate),
               textAlign: TextAlign.center,
             ),
@@ -386,7 +386,7 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('WRITE IT OUT — JUST FOR YOU', style: AppTypography.label(fontSize: 10, color: AppColors.lavender)),
+                  Text('WRITE IT OUT - JUST FOR YOU', style: AppTypography.label(fontSize: 10, color: AppColors.lavender)),
                   const SizedBox(height: 8),
                   TextField(
                     maxLines: 4,

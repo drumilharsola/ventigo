@@ -13,7 +13,7 @@ on:
           - all
 
 jobs:
-  # ── Android → Codemagic ────────────────────────────────────────────────────
+  # -- Android → Codemagic ----------------------------------------------------
   build-android:
     name: Build → Android
     if: inputs.target == 'android' || inputs.target == 'all'
@@ -56,17 +56,17 @@ jobs:
             sleep 30
           done
 
-          # ── Print full build log ──
+          # -- Print full build log --
           echo ""
           echo "════════════════════════════════════════════"
           echo "  CODEMAGIC BUILD LOG (Android)"
           echo "════════════════════════════════════════════"
           echo "$RESP" | jq -r '
             .build.steps[]? |
-            "── \(.name) [\(.status)] ──\n\(.log // "")\n"
+            "-- \(.name) [\(.status)] --\n\(.log // "")\n"
           ' 2>/dev/null || echo "(logs not available in API response)"
 
-          # ── Print artifact links ──
+          # -- Print artifact links --
           echo ""
           echo "════════════════════════════════════════════"
           echo "  BUILD ARTIFACTS"
@@ -78,7 +78,7 @@ jobs:
             echo "$ARTIFACTS"
           fi
 
-          # ── Set output for summary ──
+          # -- Set output for summary --
           APK_URL=$(echo "$RESP" | jq -r '[.build.artefacts[]? | select(.name | test("\\.(apk|aab)$"))] | first | .url // empty')
           echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
           echo "status=$STATUS" >> "$GITHUB_OUTPUT"
@@ -98,7 +98,7 @@ jobs:
             echo "- **📥 Download APK:** ${{ steps.wait.outputs.apk_url }}" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  # ── iOS → Codemagic ────────────────────────────────────────────────────────
+  # -- iOS → Codemagic --------------------------------------------------------
   build-ios:
     name: Build → iOS
     if: inputs.target == 'ios' || inputs.target == 'all'
@@ -141,17 +141,17 @@ jobs:
             sleep 30
           done
 
-          # ── Print full build log ──
+          # -- Print full build log --
           echo ""
           echo "════════════════════════════════════════════"
           echo "  CODEMAGIC BUILD LOG (iOS)"
           echo "════════════════════════════════════════════"
           echo "$RESP" | jq -r '
             .build.steps[]? |
-            "── \(.name) [\(.status)] ──\n\(.log // "")\n"
+            "-- \(.name) [\(.status)] --\n\(.log // "")\n"
           ' 2>/dev/null || echo "(logs not available in API response)"
 
-          # ── Print artifact links ──
+          # -- Print artifact links --
           echo ""
           echo "════════════════════════════════════════════"
           echo "  BUILD ARTIFACTS"
@@ -163,7 +163,7 @@ jobs:
             echo "$ARTIFACTS"
           fi
 
-          # ── Set output for summary ──
+          # -- Set output for summary --
           IPA_URL=$(echo "$RESP" | jq -r '[.build.artefacts[]? | select(.name | test("\\.(ipa)$"))] | first | .url // empty')
           echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
           echo "status=$STATUS" >> "$GITHUB_OUTPUT"

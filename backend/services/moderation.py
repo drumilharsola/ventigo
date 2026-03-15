@@ -6,7 +6,7 @@ Returns (flagged: bool, reason: str).
 
 import re
 
-# ── English bad words (core list — extend as needed) ────────────────────────
+# -- English bad words (core list - extend as needed) ------------------------
 _EN_WORDS = {
     # Sexual
     "fuck", "fucker", "fucking", "fucked", "fucks",
@@ -25,7 +25,7 @@ _EN_WORDS = {
     "i will kill", "i'll kill", "going to kill you", "gonna kill you",
 }
 
-# ── Hindi bad words (Devanagari + romanised transliterations) ────────────────
+# -- Hindi bad words (Devanagari + romanised transliterations) ----------------
 _HI_WORDS = {
     # Romanised
     "madarchod", "madarjaat", "bhenchod", "behen ke lode", "bsdk",
@@ -36,7 +36,7 @@ _HI_WORDS = {
     "mchd", "bnchd",
 }
 
-# ── Devanagari Unicode ──────────────────────────────────────────────────────
+# -- Devanagari Unicode ------------------------------------------------------
 _DEVANAGARI_WORDS = {
     "मादरचोद", "भेनचोद", "रंडी", "चुतिया", "लंड", "गांड",
     "हरामी", "कमीना", "साला", "चक्का",

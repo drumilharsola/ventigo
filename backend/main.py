@@ -34,7 +34,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ── Sentry (error tracking) ──────────────────────────────────────────────────
+# -- Sentry (error tracking) --------------------------------------------------
 _settings_boot = get_settings()
 if _settings_boot.SENTRY_DSN:
     sentry_sdk.init(
@@ -48,7 +48,7 @@ if _settings_boot.SENTRY_DSN:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup ───────────────────────────────────────────────────────────────
+    # -- Startup ---------------------------------------------------------------
     settings = get_settings()
     logger.info(f"Starting Ventigo ({settings.APP_ENV})")
     try:
@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"PostgreSQL init failed: {exc}")
     start_matchmaker()
     yield
-    # ── Shutdown ──────────────────────────────────────────────────────────────
+    # -- Shutdown --------------------------------------------------------------
     stop_matchmaker()
     await close_redis()
     await close_db()
@@ -82,7 +82,7 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# ── Rate limiting ──────────────────────────────────────────────────────────────
+# -- Rate limiting --------------------------------------------------------------
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -104,7 +104,7 @@ async def handle_timeout_error(_: Request, exc: AsyncTimeoutError):
         content={"detail": "The service timed out while processing your request. Please try again."},
     )
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
+# -- CORS ----------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
@@ -113,7 +113,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────────────────────
+# -- Routers -------------------------------------------------------------------
 app.include_router(auth_router)
 app.include_router(block_router)
 app.include_router(board_router)
@@ -123,13 +123,13 @@ app.include_router(report_router)
 app.include_router(posts_router)
 
 
-# ── Debug: Sentry test (remove after confirming) ─────────────────────────────
+# -- Debug: Sentry test (remove after confirming) -----------------------------
 @app.get("/debug-sentry", tags=["meta"])
 async def debug_sentry():
-    raise RuntimeError("Sentry test — this error confirms the integration works!")
+    raise RuntimeError("Sentry test - this error confirms the integration works!")
 
 
-# ── Health ────────────────────────────────────────────────────────────────────
+# -- Health --------------------------------------------------------------------
 @app.get("/health", tags=["meta"])
 async def health():
     status = {"status": "ok"}
@@ -141,7 +141,7 @@ async def health():
     return status
 
 
-# ── Security headers ──────────────────────────────────────────────────────────
+# -- Security headers ----------------------------------------------------------
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)

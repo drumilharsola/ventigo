@@ -63,7 +63,7 @@ class _SessionEndModalState extends State<SessionEndModal> {
         const SizedBox(height: 8),
         Text(
           widget.peerLeft
-              ? 'Your conversation mattered — even if it was brief.'
+              ? 'Your conversation mattered - even if it was brief.'
               : 'How are you feeling?',
           style: AppTypography.body(color: AppColors.slate),
           textAlign: TextAlign.center,

@@ -20,7 +20,7 @@ class TermsScreen extends StatelessWidget {
             Text(
               'By using ${Brand.appName}, you agree to engage respectfully with other users.\n\n'
               '${Brand.appName} provides anonymous peer support. It is not a substitute for professional mental health services.\n\n'
-              'You must be at least 13 years old to use this service.\n\n'
+              'You must be at least 18 years old to use this service.\n\n'
               'We reserve the right to suspend accounts that violate community guidelines.\n\n'
               'For questions, contact ${Brand.supportEmail}.',
               style: AppTypography.body(),

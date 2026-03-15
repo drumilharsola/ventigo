@@ -68,7 +68,7 @@ class ApiClient {
     throw e;
   }
 
-  // ────────────────────────── AUTH ──────────────────────────
+  // -------------------------- AUTH --------------------------
 
   Future<AuthResponse> register(String email, String password) async {
     try {
@@ -145,7 +145,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── BOARD ──────────────────────────
+  // -------------------------- BOARD --------------------------
 
   Future<BoardResponse> getBoard(String token) async {
     try {
@@ -183,7 +183,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── REPORT ──────────────────────────
+  // -------------------------- REPORT --------------------------
 
   Future<void> submitReport(String token, String reason, {String? detail, String? roomId}) async {
     try {
@@ -195,7 +195,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── BLOCK ──────────────────────────
+  // -------------------------- BLOCK --------------------------
 
   Future<void> blockUser(String token, String peerSessionId, String username, int avatarId) async {
     try {
@@ -223,7 +223,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── CHAT / ROOMS ──────────────────────────
+  // -------------------------- CHAT / ROOMS --------------------------
 
   Future<String?> getActiveRoom(String token) async {
     try {
@@ -249,7 +249,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── FEEDBACK ──────────────────────────
+  // -------------------------- FEEDBACK --------------------------
 
   Future<void> postFeedback(String token, String roomId, String mood, {String text = ''}) async {
     try {
@@ -259,7 +259,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── CONNECTIONS ──────────────────────────
+  // -------------------------- CONNECTIONS --------------------------
 
   Future<Map<String, dynamic>> sendConnectionRequest(String token, String peerSessionId) async {
     try {
@@ -299,7 +299,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── POSTS ──────────────────────────
+  // -------------------------- POSTS --------------------------
 
   Future<List<Map<String, dynamic>>> getPosts() async {
     try {
@@ -325,7 +325,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── GDPR ──────────────────────────
+  // -------------------------- GDPR --------------------------
 
   Future<Map<String, dynamic>> exportData(String token) async {
     try {
@@ -342,7 +342,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  // ────────────────────────── ADMIN ──────────────────────────
+  // -------------------------- ADMIN --------------------------
 
   Future<AdminStats> adminStats(String token) async {
     try {
@@ -418,7 +418,7 @@ class ApiClient {
     } catch (e) { _rethrow(e); rethrow; }
   }
 
-  // ────────────────────────── TENANT MANAGEMENT ──────────────────────────
+  // -------------------------- TENANT MANAGEMENT --------------------------
 
   Map<String, String> _adminKeyHeader(String adminKey) =>
       {'X-Admin-Key': adminKey};
@@ -464,7 +464,7 @@ class ApiClient {
   }
 }
 
-// ────────────────────────── Response DTOs ──────────────────────────
+// -------------------------- Response DTOs --------------------------
 
 class AuthResponse {
   final String token;
@@ -535,7 +535,7 @@ class AcceptResponse {
       AcceptResponse(roomId: json['room_id'] as String);
 }
 
-// ────────────────────────── Admin Response DTOs ──────────────────────────
+// -------------------------- Admin Response DTOs --------------------------
 
 class AdminStats {
   final int activeRooms;

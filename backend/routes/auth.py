@@ -41,7 +41,7 @@ _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _RESET_LINK_SENT = "If an account exists, a reset link has been sent."
 
 
-# ─── Models ───────────────────────────────────────────────────────────────────
+# --- Models -------------------------------------------------------------------
 
 def _validate_password(v: str) -> str:
     if len(v) < 8:
@@ -81,7 +81,7 @@ class UpdateProfileRequest(BaseModel):
     reroll_username: bool = False
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# --- Helpers ------------------------------------------------------------------
 
 def _calculate_age(dob: date) -> int:
     today = date.today()
@@ -114,7 +114,7 @@ async def _send_verify_link(email: str, session_id: str, redis) -> None:
         raise
 
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
+# --- Routes -------------------------------------------------------------------
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/hour")
@@ -380,7 +380,7 @@ async def get_user_profile(username: str, payload: Annotated[dict, Depends(requi
     }
 
 
-# ─── Password Reset ──────────────────────────────────────────────────────────
+# --- Password Reset ----------------------------------------------------------
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
@@ -460,7 +460,7 @@ async def reset_password(request: Request, body: ResetPasswordRequest):
     return {"message": "Password has been reset. You can now sign in."}
 
 
-# ─── GDPR / Account Management ───────────────────────────────────────────────
+# --- GDPR / Account Management -----------------------------------------------
 
 @router.get("/export", responses={404: {"description": "Account not found"}})
 async def export_data(payload: Annotated[dict, Depends(require_auth)]):

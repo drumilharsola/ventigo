@@ -116,96 +116,118 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
       ),
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setSheetState) {
-          final remaining = _postMaxChars - controller.text.length;
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 24,
-              right: 24,
-              top: 20,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Share something',
-                    style: AppTypography.title(fontSize: 18, color: AppColors.ink)),
-                const SizedBox(height: 4),
-                Text(
-                  'Anonymous. Disappears in 24 hours.',
-                  style: AppTypography.body(fontSize: 13, color: AppColors.slate),
-                ),
-                const SizedBox(height: 12),
-                _buildComposeField(controller, setSheetState),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    if (composeError != null)
-                      Expanded(
-                        child: Text(composeError!,
-                            style: AppTypography.body(fontSize: 12, color: AppColors.danger)),
-                      )
-                    else
-                      const Spacer(),
-                    Text(
-                      '$remaining',
-                      style: AppTypography.body(
-                        fontSize: 12,
-                        color: remaining <= 50 ? AppColors.danger : AppColors.slate,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: posting || controller.text.trim().isEmpty
-                      ? null
-                      : () async {
-                          setSheetState(() { posting = true; composeError = null; });
-                          try {
-                            final token = _token;
-                            if (token == null) return;
-                            await ref
-                                .read(apiClientProvider)
-                                .createPost(token, controller.text.trim());
-                            if (ctx.mounted) Navigator.of(ctx).pop();
-                            _loadPosts();
-                          } on AuthException {
-                            if (ctx.mounted) Navigator.of(ctx).pop();
-                            ref.read(authProvider.notifier).clear();
-                            if (mounted) context.go('/verify');
-                          } catch (e) {
-                            setSheetState(() {
-                              composeError = e.toString().replaceFirst('Exception: ', '');
-                              posting = false;
-                            });
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: AppRadii.mdAll),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: posting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child:
-                              CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text('Post',
-                          style: AppTypography.ui(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white)),
-                ),
-              ],
-            ),
+          return _buildComposeContent(
+            ctx: ctx,
+            setSheetState: setSheetState,
+            controller: controller,
+            composeError: composeError,
+            posting: posting,
+            onPost: () async {
+              setSheetState(() { posting = true; composeError = null; });
+              final err = await _handleCreatePost(controller.text.trim(), ctx);
+              if (err != null) {
+                setSheetState(() { composeError = err; posting = false; });
+              }
+            },
           );
         });
       },
+    );
+  }
+
+  Future<String?> _handleCreatePost(String text, BuildContext sheetCtx) async {
+    try {
+      final token = _token;
+      if (token == null) return null;
+      await ref.read(apiClientProvider).createPost(token, text);
+      if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
+      _loadPosts();
+      return null;
+    } on AuthException {
+      if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
+      ref.read(authProvider.notifier).clear();
+      if (mounted) context.go('/verify');
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  Widget _buildComposeContent({
+    required BuildContext ctx,
+    required StateSetter setSheetState,
+    required TextEditingController controller,
+    required String? composeError,
+    required bool posting,
+    required VoidCallback onPost,
+  }) {
+    final remaining = _postMaxChars - controller.text.length;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 20,
+        bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Share something',
+              style: AppTypography.title(fontSize: 18, color: AppColors.ink)),
+          const SizedBox(height: 4),
+          Text(
+            'Anonymous. Disappears in 24 hours.',
+            style: AppTypography.body(fontSize: 13, color: AppColors.slate),
+          ),
+          const SizedBox(height: 12),
+          _buildComposeField(controller, setSheetState),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (composeError != null)
+                Expanded(
+                  child: Text(composeError,
+                      style: AppTypography.body(fontSize: 12, color: AppColors.danger)),
+                )
+              else
+                const Spacer(),
+              Text(
+                '$remaining',
+                style: AppTypography.body(
+                  fontSize: 12,
+                  color: remaining <= 50 ? AppColors.danger : AppColors.slate,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: posting || controller.text.trim().isEmpty
+                ? null
+                : onPost,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: AppRadii.mdAll),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: posting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child:
+                        CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text('Post',
+                    style: AppTypography.ui(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 

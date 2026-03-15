@@ -7,7 +7,7 @@ import '../models/speaker_request.dart';
 
 import '../state/auth_provider.dart';
 
-// ── State ──
+// -- State --
 
 class BoardState {
   final List<SpeakerRequest> requests;
@@ -25,7 +25,7 @@ class BoardState {
   }
 }
 
-// ── Notifier ──
+// -- Notifier --
 
 class BoardNotifier extends StateNotifier<BoardState> {
   final Ref ref;
@@ -164,7 +164,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
   }
 }
 
-// ── Provider ──
+// -- Provider --
 
 final boardProvider = StateNotifierProvider<BoardNotifier, BoardState>((ref) {
   return BoardNotifier(ref);

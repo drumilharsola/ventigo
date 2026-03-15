@@ -13,14 +13,14 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     DATABASE_URL: str = ""  # set via env var or backend/.env
 
-    # ── Brevo (transactional email) ─────────────────────────────────────────
+    # -- Brevo (transactional email) -----------------------------------------
     BREVO_API_KEY: str = ""
     EMAIL_FROM: str = "Ventigo <dhruharsola@gmail.com>"
 
-    # ── Sentry (error tracking) ─────────────────────────────────────────────
+    # -- Sentry (error tracking) ---------------------------------------------
     SENTRY_DSN: str = ""
 
-    # ── OneSignal (push notifications) ──────────────────────────────────────
+    # -- OneSignal (push notifications) --------------------------------------
     ONESIGNAL_APP_ID: str = ""
     ONESIGNAL_API_KEY: str = ""
 

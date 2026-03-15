@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  # ── 1. CVE & dependency security scan ───────────────────────────────────────
+  # -- 1. CVE & dependency security scan ---------------------------------------
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
           pip install pip-audit --quiet
           pip-audit -r backend/requirements.txt --desc on
 
-  # ── 2. Backend unit tests + coverage ─────────────────────────────────────────
+  # -- 2. Backend unit tests + coverage -----------------------------------------
   test-backend:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -55,7 +55,7 @@ jobs:
           name: backend-coverage
           path: backend/coverage.xml
 
-  # ── 3. Flutter tests + coverage ──────────────────────────────────────────────
+  # -- 3. Flutter tests + coverage ----------------------------------------------
   test-flutter:
     name: Flutter Tests
     runs-on: ubuntu-latest
@@ -82,7 +82,7 @@ jobs:
           name: flutter-coverage
           path: ventigo_app/coverage/lcov.info
 
-  # ── 4. SonarCloud analysis ──────────────────────────────────────────────────
+  # -- 4. SonarCloud analysis --------------------------------------------------
   sonarcloud:
     name: SonarCloud
     needs: [test-backend, test-flutter]

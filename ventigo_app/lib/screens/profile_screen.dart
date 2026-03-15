@@ -207,7 +207,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // ── Setup view ──
+  // -- Setup view --
   Widget _setupView(bool wide) {
     final currentAvatar = getAvatar(_setupAvatarId);
     final avatarWidget = ClipRRect(
@@ -306,7 +306,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // ── Profile view / edit ──
+  // -- Profile view / edit --
   Widget _profileView(AuthState auth, bool wide) {
     final currentAvatarId = _editAvatarId ?? auth.avatarId ?? 0;
 

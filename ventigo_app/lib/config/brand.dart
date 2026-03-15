@@ -37,7 +37,7 @@ class Brand {
   /// The active flavor name.
   static const String flavor = _brandFlavor;
 
-  // ── Identity ────────────────────────────────────────────────────────────
+  // -- Identity ------------------------------------------------------------
 
   static const String appName = String.fromEnvironment(
     'BRAND_APP_NAME',
@@ -64,7 +64,7 @@ class Brand {
     defaultValue: 'support@ventigo.app',
   );
 
-  // ── Logo ────────────────────────────────────────────────────────────────
+  // -- Logo ----------------------------------------------------------------
 
   static const logo = BrandLogo(
     text: String.fromEnvironment('BRAND_LOGO_TEXT', defaultValue: 'ventigo'),
@@ -73,7 +73,7 @@ class Brand {
     suffix: String.fromEnvironment('BRAND_LOGO_SUFFIX', defaultValue: ''),
   );
 
-  // ── Copy ────────────────────────────────────────────────────────────────
+  // -- Copy ----------------------------------------------------------------
 
   static String get safetyThankYou =>
       'Thank you for helping keep $appName safe.';
@@ -84,7 +84,7 @@ class Brand {
 
   static String get onboardingTitle => 'How $appNamePlain works';
 
-  // ── Runtime asset loading (optional) ────────────────────────────────────
+  // -- Runtime asset loading (optional) ------------------------------------
 
   /// Load the per-flavor brand.json from assets at runtime.
   /// Useful for reading additional config values not covered by dart-define.

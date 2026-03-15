@@ -19,7 +19,7 @@ _USER_SESSION_ID_FK = "users.session_id"
 
 
 class User(Base):
-    """Account credentials — replaces email_account:{hash}, pwd:{sid}, acct_email:{sid}, session_ehash:{sid}"""
+    """Account credentials - replaces email_account:{hash}, pwd:{sid}, acct_email:{sid}, session_ehash:{sid}"""
     __tablename__ = "users"
 
     session_id = Column(String(64), primary_key=True)
@@ -33,7 +33,7 @@ class User(Base):
 
 
 class Profile(Base):
-    """User profile — replaces profile:{session_id} hash and username:{name} keys."""
+    """User profile - replaces profile:{session_id} hash and username:{name} keys."""
     __tablename__ = "profiles"
 
     session_id = Column(
@@ -51,7 +51,7 @@ class Profile(Base):
 
 
 class BlockedUser(Base):
-    """Blocked peer — replaces blocked:{session_id} set and block_info:{sid}:{peer} hashes."""
+    """Blocked peer - replaces blocked:{session_id} set and block_info:{sid}:{peer} hashes."""
     __tablename__ = "blocked_users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)

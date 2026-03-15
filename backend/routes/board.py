@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/board", tags=["board"])
 
 
-# ── REST endpoints ────────────────────────────────────────────────────────────
+# -- REST endpoints ------------------------------------------------------------
 
 @router.post("/speak", responses={400: {"description": "Profile not set up"},
                                    409: {"description": "Already in matchmaking queue"}})
@@ -129,7 +129,7 @@ async def accept(request_id: str, session: Annotated[dict, Depends(require_auth)
     return {"room_id": room_id}
 
 
-# ── WebSocket ─────────────────────────────────────────────────────────────────
+# -- WebSocket -----------------------------------------------------------------
 
 async def _board_ws_authenticate(websocket: WebSocket, token: str) -> str | None:
     """Validate JWT and device token for board WS. Returns session_id or None (closes WS)."""

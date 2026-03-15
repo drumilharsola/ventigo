@@ -8,16 +8,16 @@ def draw_icon(size):
     draw = ImageDraw.Draw(img)
     s = size
 
-    # ── Brand colours ──
+    # -- Brand colours --
     cream  = (255, 248, 240)       # #FFF8F0
     peach  = (244, 166, 140, 235)  # #F4A68C @ 92%
     lav    = (196, 181, 227, 224)  # #C4B5E3 @ 88%
 
-    # ── Rounded-rect background - cream ──
+    # -- Rounded-rect background - cream --
     radius = int(s * 0.21)
     draw.rounded_rectangle([(0, 0), (s - 1, s - 1)], radius=radius, fill=cream)
 
-    # ── Left bubble - peach (Venter, speaking) ──
+    # -- Left bubble - peach (Venter, speaking) --
     peach_img = Image.new('RGBA', (s, s), (0, 0, 0, 0))
     pd = ImageDraw.Draw(peach_img)
     lcx, lcy = int(s * 0.41), int(s * 0.47)
@@ -32,7 +32,7 @@ def draw_icon(size):
     pd.polygon(tail_pts, fill=peach)
     img = Image.alpha_composite(img, peach_img)
 
-    # ── Right bubble - lavender (Listener) ──
+    # -- Right bubble - lavender (Listener) --
     lav_img = Image.new('RGBA', (s, s), (0, 0, 0, 0))
     ld = ImageDraw.Draw(lav_img)
     rcx, rcy = int(s * 0.60), int(s * 0.53)

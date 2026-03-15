@@ -107,7 +107,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-// ────────────────────────── Providers ──────────────────────────
+// -------------------------- Providers --------------------------
 
 final authStorageProvider = Provider<AuthStorage>((_) => AuthStorage());
 
