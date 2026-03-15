@@ -109,6 +109,13 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
         _syncRooms();
         _refreshAppreciationCount();
       });
+      // Listen for match events
+      ref.listenManual(pendingWaitProvider, (_, next) {
+        if (next.matchedRoomId != null && mounted) {
+          ref.read(pendingWaitProvider.notifier).clearMatch();
+          context.push('/chat?room_id=${Uri.encodeComponent(next.matchedRoomId!)}');
+        }
+      });
     });
   }
 
@@ -142,7 +149,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     if (token == null) return;
     try {
       final rooms = await ref.read(apiClientProvider).getChatRooms(token);
-      if (mounted) setState(() => _rooms = rooms);
+      if (mounted && rooms.length != _rooms.length) setState(() => _rooms = rooms);
     } catch (_) {}
   }
 
@@ -271,18 +278,6 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     }
   }
 
-  void _handleVenterMatch() {
-    final wait = ref.read(pendingWaitProvider);
-    if (wait.matchedRoomId == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final roomId = ref.read(pendingWaitProvider).matchedRoomId;
-      if (roomId != null && mounted) {
-        ref.read(pendingWaitProvider.notifier).clearMatch();
-        context.push('/chat?room_id=${Uri.encodeComponent(roomId)}');
-      }
-    });
-  }
-
   Future<void> _handleAccept(String requestId) async {
     final token = _token;
     if (token == null) return;
@@ -406,8 +401,6 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
   Widget _venterTab(List<RoomSummary> rooms) {
     final groups = _groupByPeer(rooms);
     final wait = ref.watch(pendingWaitProvider);
-
-    _handleVenterMatch();
 
     return Stack(
       children: [

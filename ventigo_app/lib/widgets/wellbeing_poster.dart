@@ -76,13 +76,13 @@ class WellbeingPoster extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: compact ? 220 : 300),
+                constraints: BoxConstraints(maxWidth: compact ? 200 : 260),
                 child: Text(
                   subtitle,
                   style: AppTypography.body(fontSize: compact ? 13 : 15, color: AppColors.ink80),
                 ),
               ),
-              SizedBox(height: compact ? 24 : 60),
+              SizedBox(height: compact ? 28 : 80),
               Row(
                 children: [
                   _PosterToken(color: palette.accent, label: 'talk'),

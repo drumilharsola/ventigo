@@ -53,6 +53,7 @@ class VentigoApp extends ConsumerStatefulWidget {
 
 class _VentigoAppState extends ConsumerState<VentigoApp> {
   bool _ready = false;
+  late final ThemeData _theme = buildAppTheme();
 
   @override
   void initState() {
@@ -67,7 +68,7 @@ class _VentigoAppState extends ConsumerState<VentigoApp> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = buildAppTheme();
+    final theme = _theme;
 
     if (!_ready) {
       return MaterialApp(

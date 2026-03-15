@@ -37,10 +37,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _verificationSending = false;
   String _email = '';
 
-  // SOP (Statement of Purpose / bio)
-  final _sopCtrl = TextEditingController();
-  bool _sopEditing = false;
-  bool _sopSaving = false;
+  // SOP — anonymous-safe mood & intent tags instead of free-text bio
+  final List<String> _selectedTags = [];
+  static const _moodTags = [
+    '😌 Feeling calm', '😔 Going through it', '🌱 Healing', '💪 Getting stronger',
+    '🫂 Here to listen', '🧠 Working on myself', '✨ Hopeful', '😶 Just existing',
+  ];
+  static const _whyTags = [
+    'To vent safely', 'To support others', 'To feel less alone',
+    'To process emotions', 'Curiosity', 'Self-growth',
+  ];
 
   bool get _isSetup => !ref.read(authProvider).hasProfile;
 
@@ -52,7 +58,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   void dispose() {
-    _sopCtrl.dispose();
     super.dispose();
   }
 
@@ -461,57 +466,62 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           Row(
             children: [
-              const Text('✨', style: TextStyle(fontSize: 18)),
+              const Text('🎭', style: TextStyle(fontSize: 18)),
               const SizedBox(width: 8),
-              Text('About Me', style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {
-                  if (_sopEditing) {
-                    _saveSop();
-                  } else {
-                    setState(() => _sopEditing = true);
-                  }
-                },
-                child: Text(
-                  _sopEditing ? (_sopSaving ? 'Saving…' : 'Save') : 'Edit',
-                  style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accent),
-                ),
-              ),
+              Text('My Vibe', style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
             ],
           ),
-          const SizedBox(height: 10),
-          if (_sopEditing)
-            TextField(
-              controller: _sopCtrl,
-              maxLines: 4,
-              maxLength: 200,
-              style: AppTypography.body(fontSize: 13, color: AppColors.ink),
-              decoration: InputDecoration(
-                hintText: 'Tell people about yourself…',
-                hintStyle: AppTypography.body(fontSize: 13, color: AppColors.mist),
-                filled: true,
-                fillColor: AppColors.snow,
-                border: OutlineInputBorder(borderRadius: AppRadii.mdAll, borderSide: BorderSide(color: AppColors.border)),
-                enabledBorder: OutlineInputBorder(borderRadius: AppRadii.mdAll, borderSide: BorderSide(color: AppColors.border)),
-                contentPadding: const EdgeInsets.all(12),
-              ),
-            )
-          else
-            Text(
-              _sopCtrl.text.isEmpty ? 'Tap Edit to add a bio…' : _sopCtrl.text,
-              style: AppTypography.body(fontSize: 13, color: _sopCtrl.text.isEmpty ? AppColors.mist : AppColors.charcoal),
-            ),
+          const SizedBox(height: 6),
+          Text('Pick what resonates — stays anonymous', style: AppTypography.body(fontSize: 11, color: AppColors.mist)),
+          const SizedBox(height: 12),
+          Text('HOW I\'M FEELING', style: AppTypography.label(fontSize: 10)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _moodTags.map((tag) => _tagChip(tag)).toList(),
+          ),
+          const SizedBox(height: 14),
+          Text('WHY I\'M HERE', style: AppTypography.label(fontSize: 10)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _whyTags.map((tag) => _tagChip(tag)).toList(),
+          ),
         ],
       ),
     );
   }
 
-  Future<void> _saveSop() async {
-    setState(() => _sopSaving = true);
-    // SOP save is local-only for now (no backend endpoint yet)
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) setState(() { _sopEditing = false; _sopSaving = false; });
+  Widget _tagChip(String tag) {
+    final selected = _selectedTags.contains(tag);
+    return GestureDetector(
+      onTap: () => setState(() {
+        if (selected) {
+          _selectedTags.remove(tag);
+        } else {
+          _selectedTags.add(tag);
+        }
+      }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent.withValues(alpha: 0.12) : AppColors.snow,
+          borderRadius: AppRadii.fullAll,
+          border: Border.all(color: selected ? AppColors.accent : AppColors.border),
+        ),
+        child: Text(
+          tag,
+          style: AppTypography.ui(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? AppColors.accent : AppColors.slate,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _quickActionTile({required IconData icon, required String label, String? subtitle, required VoidCallback onTap}) {

@@ -61,7 +61,7 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
   Future<void> _loadPosts() async {
     try {
       final posts = await ref.read(apiClientProvider).getPosts();
-      if (mounted) setState(() { _posts = posts; _loading = false; _error = null; });
+      if (mounted && (posts.length != _posts.length || _loading)) setState(() { _posts = posts; _loading = false; _error = null; });
     } on AuthException {
       ref.read(authProvider.notifier).clear();
       if (mounted) context.go('/verify');
@@ -294,7 +294,7 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          Text(text, style: AppTypography.body(fontSize: 14, color: AppColors.ink)),
+          Text(text, style: AppTypography.body(fontSize: 14, color: AppColors.ink), maxLines: 15, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 8),
           Text(_timeLeft(expiresAt),
               style: AppTypography.body(fontSize: 12, color: AppColors.mist)),

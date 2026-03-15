@@ -18,6 +18,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _speakCount = 0;
   int _listenCount = 0;
   int _appreciationCount = 0;
+  late final String _quote = quoteOfTheDay();
 
   @override
   void initState() {
@@ -43,7 +44,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final quote = quoteOfTheDay();
     final narrow = MediaQuery.sizeOf(context).width < 720;
 
     return Scaffold(
@@ -54,7 +54,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Positioned(
             top: -120,
             right: -120,
-            child: Container(
+            child: RepaintBoundary(child: Container(
               width: 400,
               height: 400,
               decoration: BoxDecoration(
@@ -64,20 +64,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Colors.transparent,
                 ]),
               ),
-            ),
+            )),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  // -- Header row --
-                  Row(
+            child: Column(
+              children: [
+                // ── Sticky header (does not scroll) ──
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const FlowLogo(dark: true),
@@ -87,10 +83,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                ),
+                // ── Scrollable body ──
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
 
                   // Greeting
                   RichText(
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                     text: TextSpan(
                       style: AppTypography.display(
                         fontSize: narrow ? 26 : 38,
@@ -142,7 +148,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 style: AppTypography.label(color: AppColors.peach)),
                             const SizedBox(height: 16),
                             Text(
-                              '"$quote"',
+                              '"$_quote"',
+                              maxLines: 5,
+                              overflow: TextOverflow.ellipsis,
                               style: AppTypography.title(
                                 fontSize: 18,
                                 color: AppColors.white,
@@ -298,6 +306,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
           ),
         ],
       ),
