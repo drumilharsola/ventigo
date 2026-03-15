@@ -211,8 +211,6 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
 
     _wsSub = _ws!.stream.listen(
       (raw) => _handleBoardWsEvent(jsonDecode(raw as String) as Map<String, dynamic>),
-        }
-      },
       onDone: () {
         _reconnectTimer?.cancel();
         _reconnectTimer = Timer(const Duration(seconds: 3), _connectBoardWs);

@@ -37,7 +37,7 @@ class ApiClient {
         if (error.response?.statusCode == 401) {
           final detail = error.response?.data is Map
               ? (error.response!.data as Map)['detail'] ?? _kNotAuthenticated
-              : _kNotAuthenticated;", "oldString": "          final detail = error.response?.data is Map
+              : _kNotAuthenticated;
           return handler.reject(DioException(
             requestOptions: error.requestOptions,
             error: AuthException(detail.toString()),

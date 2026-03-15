@@ -268,22 +268,6 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.snow,
-      appBar: AppBar(
-        title: Text('Community Board',
-            style: AppTypography.title(fontSize: 20, color: AppColors.ink)),
-        backgroundColor: AppColors.snow,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _token != null ? _showCompose : null,
-        backgroundColor: AppColors.accent,
-        child: const Icon(Icons.edit_rounded, color: Colors.white),
-      ),
   Widget _buildPostsList() {
     if (_loading) {
       return Center(child: CircularProgressIndicator(color: AppColors.accent));
