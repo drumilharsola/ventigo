@@ -557,7 +557,7 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
           if (!isMe)
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 4),
-              child: Text(msg.from, style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
+              child: Text(msg.from, style: AppTypography.micro(fontSize: 11, color: AppColors.slate)),
             ),
           // Reply preview
           if (msg.replyText != null && msg.replyText!.isNotEmpty)
@@ -584,10 +584,10 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
             decoration: BoxDecoration(
               color: isMe ? AppColors.venterBubble : AppColors.listenerBubble,
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(20),
-                topRight: const Radius.circular(20),
-                bottomLeft: Radius.circular(isMe ? 20 : 4),
-                bottomRight: Radius.circular(isMe ? 4 : 20),
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(isMe ? 18 : 4),
+                bottomRight: Radius.circular(isMe ? 4 : 18),
               ),
               border: Border.all(color: isMe ? AppColors.venterBorder : AppColors.listenerBorder),
             ),
@@ -595,7 +595,7 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 3, left: 4, right: 4, bottom: 6),
-            child: Text(_formatTime(msg.ts), style: AppTypography.body(fontSize: 10, color: AppColors.mist)),
+            child: Text(_formatTime(msg.ts), style: AppTypography.micro(fontSize: 10, color: AppColors.fog)),
           ),
         ],
       ),
@@ -686,8 +686,8 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
                       hintStyle: AppTypography.body(fontSize: 14, color: AppColors.slate),
                       filled: true,
                       fillColor: AppColors.snow,
-                      border: OutlineInputBorder(borderRadius: AppRadii.mdAll, borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
-                      enabledBorder: OutlineInputBorder(borderRadius: AppRadii.mdAll, borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                     onChanged: (_) => notifier.resetTypingTimer(),
@@ -711,9 +711,10 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(13),
-                    decoration: BoxDecoration(color: AppColors.accent, borderRadius: AppRadii.mdAll),
-                    child: Text('↑', style: TextStyle(fontSize: 16, color: AppColors.ink, fontWeight: FontWeight.bold)),
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
+                    child: Icon(Icons.arrow_upward_rounded, size: 20, color: AppColors.white),
                   ),
                 ),
               ],

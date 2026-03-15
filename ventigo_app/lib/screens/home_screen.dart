@@ -5,12 +5,43 @@ import '../config/theme.dart';
 import '../data/quotes.dart';
 import '../state/auth_provider.dart';
 import '../widgets/warm_card.dart';
+import '../widgets/flow_logo.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _speakCount = 0;
+  int _listenCount = 0;
+  int _appreciationCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final token = ref.read(authProvider).token;
+    if (token == null) return;
+    try {
+      final me = await ref.read(apiClientProvider).getMe(token);
+      if (mounted) {
+        setState(() {
+          _speakCount = me.speakCount;
+          _listenCount = me.listenCount;
+          _appreciationCount = me.appreciationCount;
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final quote = quoteOfTheDay();
     final narrow = MediaQuery.sizeOf(context).width < 720;
@@ -37,18 +68,32 @@ class HomeScreen extends ConsumerWidget {
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: narrow ? 20 : 40,
-                vertical: 32,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 16),
+                  // -- Header row --
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const FlowLogo(dark: true),
+                      IconButton(
+                        onPressed: () {},
+                        icon: Icon(Icons.notifications_none_rounded, color: AppColors.ink, size: 24),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
                   // Greeting
                   RichText(
                     text: TextSpan(
                       style: AppTypography.display(
-                        fontSize: narrow ? 28 : 40,
+                        fontSize: narrow ? 26 : 38,
                         color: AppColors.ink,
                       ),
                       children: [
@@ -63,136 +108,172 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
-                  // Quote of the day
-                  WarmCard(
+                  // -- Quote card (dark) --
+                  Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.format_quote_rounded,
-                                size: 22, color: AppColors.accent),
-                            const SizedBox(width: 8),
-                            Text('THOUGHT OF THE DAY',
-                                style: AppTypography.label(
-                                    color: AppColors.accent)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '"$quote"',
-                          style: AppTypography.title(
-                            fontSize: 20,
-                            color: AppColors.ink,
-                          ).copyWith(
-                            fontStyle: FontStyle.italic,
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
+                    decoration: BoxDecoration(
+                      color: AppColors.ink,
+                      borderRadius: AppRadii.lgAll,
                     ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // About section
-                  WarmCard(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Stack(
                       children: [
-                        Row(
-                          children: [
-                            Icon(Icons.info_outline_rounded,
-                                size: 20, color: AppColors.lavender),
-                            const SizedBox(width: 8),
-                            Text('ABOUT VENTIGO',
-                                style: AppTypography.label(
-                                    color: AppColors.lavender)),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Ventigo is a calm space for emotional release, reflection, and '
-                          'support. It is designed to help you slow down, let heavy thoughts '
-                          'out, and feel a little less alone.',
-                          style: AppTypography.body(
-                            fontSize: 14,
-                            color: AppColors.graphite,
-                          ).copyWith(height: 1.6),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Use it when you need a gentle outlet, a grounding pause, or a quiet '
-                          'way to show up for someone else.',
-                          style: AppTypography.body(
-                            fontSize: 14,
-                            color: AppColors.graphite,
-                          ).copyWith(height: 1.6),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // How it works
-                  WarmCard(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.lightbulb_outline_rounded,
-                                size: 20, color: AppColors.amber),
-                            const SizedBox(width: 8),
-                            Text('HOW IT WORKS',
-                                style: AppTypography.label(
-                                    color: AppColors.amber)),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        _howStep(
-                            '1', 'Vent', 'Share what\'s on your mind anonymously.'),
-                        const SizedBox(height: 10),
-                        _howStep('2', 'Listen',
-                            'Be there for someone who needs to be heard.'),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () => context.go('/chats'),
-                            icon: const Icon(Icons.chat_bubble_outline_rounded),
-                            label: const Text('Open chat space'),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.accent,
-                              foregroundColor: AppColors.ink,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
+                        Positioned(
+                          top: -20,
+                          right: -20,
+                          child: Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(colors: [
+                                AppColors.peach.withValues(alpha: 0.1),
+                                Colors.transparent,
+                              ]),
                             ),
                           ),
                         ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('\u2726 THOUGHT OF THE DAY',
+                                style: AppTypography.label(color: AppColors.peach)),
+                            const SizedBox(height: 16),
+                            Text(
+                              '"$quote"',
+                              style: AppTypography.title(
+                                fontSize: 18,
+                                color: AppColors.white,
+                              ).copyWith(
+                                fontStyle: FontStyle.italic,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+
+                  // -- Action cards --
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => context.go('/chats'),
+                          child: Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: AppColors.venterLight,
+                              borderRadius: AppRadii.lgAll,
+                              border: Border.all(color: AppColors.venterBorder),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('\ud83c\udf99', style: TextStyle(fontSize: 28)),
+                                const SizedBox(height: 12),
+                                Text('Need to vent?', style: AppTypography.title(fontSize: 16, color: AppColors.ink)),
+                                const SizedBox(height: 4),
+                                Text('15-min anonymous session', style: AppTypography.body(fontSize: 12, color: AppColors.graphite)),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.peach,
+                                    borderRadius: AppRadii.fullAll,
+                                  ),
+                                  child: Text('Start \u2192', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => context.go('/chats'),
+                          child: Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: AppColors.listenerLight,
+                              borderRadius: AppRadii.lgAll,
+                              border: Border.all(color: AppColors.listenerBorder),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('\ud83e\udd0d', style: TextStyle(fontSize: 28)),
+                                const SizedBox(height: 12),
+                                Text('Hold space', style: AppTypography.title(fontSize: 16, color: AppColors.ink)),
+                                const SizedBox(height: 4),
+                                Text("Be someone's listener today", style: AppTypography.body(fontSize: 12, color: AppColors.graphite)),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.lavender,
+                                    borderRadius: AppRadii.fullAll,
+                                  ),
+                                  child: Text('Browse \u2192', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // -- Stats row --
+                  Row(
+                    children: [
+                      Expanded(child: WarmCard(
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        child: Column(children: [
+                          Text('$_speakCount', style: AppTypography.display(fontSize: 24)),
+                          const SizedBox(height: 4),
+                          Text('VENTED', style: AppTypography.micro(fontSize: 10)),
+                        ]),
+                      )),
+                      const SizedBox(width: 8),
+                      Expanded(child: WarmCard(
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        child: Column(children: [
+                          Text('$_listenCount', style: AppTypography.display(fontSize: 24)),
+                          const SizedBox(height: 4),
+                          Text('LISTENED', style: AppTypography.micro(fontSize: 10)),
+                        ]),
+                      )),
+                      const SizedBox(width: 8),
+                      Expanded(child: WarmCard(
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        child: Column(children: [
+                          Text('$_appreciationCount', style: AppTypography.display(fontSize: 24)),
+                          const SizedBox(height: 4),
+                          Text('APPREC. \u2726', style: AppTypography.micro(fontSize: 10)),
+                        ]),
+                      )),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
                   // Wellbeing tip
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppColors.lavender.withValues(alpha: 0.12),
+                      color: AppColors.listenerLight,
                       borderRadius: AppRadii.lgAll,
-                      border: Border.all(
-                          color: AppColors.lavender.withValues(alpha: 0.25)),
+                      border: Border.all(color: AppColors.listenerBorder),
                     ),
                     child: Row(
                       children: [
-                        const Text('🧘', style: TextStyle(fontSize: 28)),
+                        const Text('\ud83e\uddd8', style: TextStyle(fontSize: 28)),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -213,51 +294,13 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  static Widget _howStep(String num, String title, String desc) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: AppColors.accent.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-          ),
-          alignment: Alignment.center,
-          child: Text(num,
-              style: AppTypography.ui(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: AppTypography.ui(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink)),
-              Text(desc,
-                  style:
-                      AppTypography.body(fontSize: 13, color: AppColors.slate)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

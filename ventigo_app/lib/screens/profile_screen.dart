@@ -31,14 +31,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _rerollName = false;
   bool _saving = false;
   String? _saveError;
-  int _speakCount = 0;
-  int _listenCount = 0;
-  int _appreciationCount = 0;
   String _memberSince = '';
   bool _deleting = false;
   bool? _emailVerified;
   bool _verificationSending = false;
   String _email = '';
+
+  // SOP (Statement of Purpose / bio)
+  final _sopCtrl = TextEditingController();
+  bool _sopEditing = false;
+  bool _sopSaving = false;
 
   bool get _isSetup => !ref.read(authProvider).hasProfile;
 
@@ -48,15 +50,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (!_isSetup) _loadStats();
   }
 
+  @override
+  void dispose() {
+    _sopCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadStats() async {
     final token = ref.read(authProvider).token;
     if (token == null) return;
     try {
       final me = await ref.read(apiClientProvider).getMe(token);
       setState(() {
-        _speakCount = me.speakCount;
-        _listenCount = me.listenCount;
-        _appreciationCount = me.appreciationCount;
         _memberSince = me.memberSince;
         _emailVerified = me.emailVerified;
         _email = me.email;
@@ -317,86 +322,84 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+
+          // Settings gear in top-right
+          Align(
+            alignment: Alignment.topRight,
+            child: IconButton(
+              onPressed: _showSettingsSheet,
+              icon: Icon(Icons.settings_outlined, color: AppColors.ink, size: 24),
+              tooltip: 'Settings',
+            ),
+          ),
+
+          // Avatar (tap to edit)
           Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadii.full),
-              child: CachedNetworkImage(
-                imageUrl: avatarUrl(currentAvatarId, size: 100),
-                width: 100,
-                height: 100,
-                placeholder: (_, __) => Container(
-                  width: 100,
-                  height: 100,
-                  color: AppColors.pale,
-                  child: Icon(Icons.person, size: 48, color: AppColors.fog),
-                ),
-                errorWidget: (_, __, ___) => Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.pale,
+            child: GestureDetector(
+              onTap: () => setState(() => _editing = true),
+              child: Stack(
+                children: [
+                  ClipRRect(
                     borderRadius: BorderRadius.circular(AppRadii.full),
+                    child: CachedNetworkImage(
+                      imageUrl: avatarUrl(currentAvatarId, size: 100),
+                      width: 88,
+                      height: 88,
+                      placeholder: (_, __) => Container(
+                        width: 88, height: 88, color: AppColors.pale,
+                        child: Icon(Icons.person, size: 48, color: AppColors.fog),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 88, height: 88,
+                        decoration: BoxDecoration(color: AppColors.pale, borderRadius: BorderRadius.circular(AppRadii.full)),
+                        child: Icon(Icons.person, size: 48, color: AppColors.fog),
+                      ),
+                    ),
                   ),
-                  child: Icon(Icons.person, size: 48, color: AppColors.fog),
-                ),
+                  Positioned(
+                    bottom: 0, right: 0,
+                    child: Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.snow, width: 2),
+                      ),
+                      child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 14),
           Center(child: Text(auth.username ?? '', style: AppTypography.title(fontSize: 22))),
           if (_email.isNotEmpty) Center(child: Text(_email, style: AppTypography.ui(fontSize: 13, color: AppColors.slate))),
           if (_memberSince.isNotEmpty) Center(child: Text('Member since ${_formatMemberSince(_memberSince)}', style: AppTypography.label(color: AppColors.slate))),
-          const SizedBox(height: 16),
-          _emailRow(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
 
-          // Stats
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
-              child: WarmCard(
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-                child: Column(
-                  children: [
-                    // Appreciation row (tappable)
-                    GestureDetector(
-                      onTap: () => context.push('/appreciations'),
-                      child: Column(
-                        children: [
-                          Text(_appreciationCount.toString(), style: AppTypography.title(fontSize: 28)),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('Appreciations 💛', style: AppTypography.label(fontSize: 13, color: AppColors.slate)),
-                              const SizedBox(width: 4),
-                              Icon(Icons.chevron_right, size: 16, color: AppColors.slate),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Divider(color: AppColors.border, height: 1),
-                    const SizedBox(height: 16),
-                    // Vent / Listen row
-                    IntrinsicHeight(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _stat('Vent 🎤', _speakCount),
-                          VerticalDivider(color: AppColors.border, thickness: 1, width: 1),
-                          _stat('Support 🤝', _listenCount),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          // SOP / Statement of Purpose (bio)
+          _sopSection(),
+
+          const SizedBox(height: 24),
+
+          // Quick actions
+          _quickActionTile(
+            icon: Icons.favorite_border_rounded,
+            label: 'My Appreciations',
+            onTap: () => context.push('/appreciations'),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 10),
+          _quickActionTile(
+            icon: Icons.emoji_events_outlined,
+            label: 'Achievements',
+            subtitle: 'Coming soon',
+            onTap: () {},
+          ),
+
+          const SizedBox(height: 24),
 
           if (_editing) ...[
             Text('CHOOSE AVATAR', style: AppTypography.label()),
@@ -426,59 +429,282 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             FlowButton(label: 'Cancel', variant: FlowButtonVariant.ghost, onPressed: () => setState(() { _editing = false; _editAvatarId = null; _rerollName = false; }), expand: true),
           ] else ...[
             Center(child: FlowButton(label: 'Edit profile', variant: FlowButtonVariant.ghost, onPressed: () => setState(() => _editing = true))),
-            const SizedBox(height: 24),
-            Center(
-              child: FlowButton(
-                label: 'Blocked users',
-                variant: FlowButtonVariant.ghost,
-                icon: Icons.block_outlined,
-                onPressed: () => context.push('/blocked-users'),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Divider(color: AppColors.border),
-            const SizedBox(height: 16),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 220),
-                child: OutlinedButton(
-                  onPressed: _showDeleteSheet,
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
-                  child: const Text('Delete account'),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () => context.push('/privacy'),
-                  child: const Text('Privacy Policy', style: TextStyle(fontSize: 12)),
-                ),
-                const SizedBox(width: 16),
-                TextButton(
-                  onPressed: () => context.push('/terms'),
-                  child: const Text('Terms of Service', style: TextStyle(fontSize: 12)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Divider(color: AppColors.border),
-            const SizedBox(height: 16),
-            Center(
-              child: FlowButton(
-                label: 'Sign out',
-                variant: FlowButtonVariant.ghost,
-                onPressed: () {
-                  ref.read(authProvider.notifier).clear();
-                  context.go('/');
-                },
-              ),
-            ),
           ],
+
+          const SizedBox(height: 24),
+          // Privacy & Terms
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(
+                onPressed: () => context.push('/privacy'),
+                child: const Text('Privacy Policy', style: TextStyle(fontSize: 12)),
+              ),
+              const SizedBox(width: 16),
+              TextButton(
+                onPressed: () => context.push('/terms'),
+                child: const Text('Terms of Service', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
         ],
       ),
+    );
+  }
+
+  Widget _sopSection() {
+    return WarmCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('✨', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Text('About Me', style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  if (_sopEditing) {
+                    _saveSop();
+                  } else {
+                    setState(() => _sopEditing = true);
+                  }
+                },
+                child: Text(
+                  _sopEditing ? (_sopSaving ? 'Saving…' : 'Save') : 'Edit',
+                  style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accent),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_sopEditing)
+            TextField(
+              controller: _sopCtrl,
+              maxLines: 4,
+              maxLength: 200,
+              style: AppTypography.body(fontSize: 13, color: AppColors.ink),
+              decoration: InputDecoration(
+                hintText: 'Tell people about yourself…',
+                hintStyle: AppTypography.body(fontSize: 13, color: AppColors.mist),
+                filled: true,
+                fillColor: AppColors.snow,
+                border: OutlineInputBorder(borderRadius: AppRadii.mdAll, borderSide: BorderSide(color: AppColors.border)),
+                enabledBorder: OutlineInputBorder(borderRadius: AppRadii.mdAll, borderSide: BorderSide(color: AppColors.border)),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            )
+          else
+            Text(
+              _sopCtrl.text.isEmpty ? 'Tap Edit to add a bio…' : _sopCtrl.text,
+              style: AppTypography.body(fontSize: 13, color: _sopCtrl.text.isEmpty ? AppColors.mist : AppColors.charcoal),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveSop() async {
+    setState(() => _sopSaving = true);
+    // SOP save is local-only for now (no backend endpoint yet)
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) setState(() { _sopEditing = false; _sopSaving = false; });
+  }
+
+  Widget _quickActionTile({required IconData icon, required String label, String? subtitle, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: AppRadii.mdAll,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.slate),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                  if (subtitle != null) Text(subtitle, style: AppTypography.body(fontSize: 11, color: AppColors.mist)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.slate),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSettingsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.65),
+        decoration: BoxDecoration(
+          color: AppColors.snow,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).padding.bottom + 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+              Text('Settings', style: AppTypography.title(fontSize: 20, color: AppColors.ink)),
+              const SizedBox(height: 20),
+
+              // Email verification status
+              _emailRow(),
+              const SizedBox(height: 16),
+
+              // Settings items
+              _settingsItem(Icons.lock_outline_rounded, 'Change Password', () {
+                Navigator.of(context).pop();
+                _showChangePasswordSheet();
+              }),
+              _settingsItem(Icons.email_outlined, 'Change Email', () {
+                Navigator.of(context).pop();
+                _showChangeEmailSheet();
+              }),
+              _settingsItem(Icons.person_outline_rounded, 'Change Username', () {
+                Navigator.of(context).pop();
+                setState(() { _editing = true; _rerollName = true; });
+              }),
+
+              const SizedBox(height: 12),
+              Divider(color: AppColors.border),
+              const SizedBox(height: 12),
+
+              _settingsItem(Icons.block_outlined, 'Blocked Users', () {
+                Navigator.of(context).pop();
+                context.push('/blocked-users');
+              }),
+
+              const SizedBox(height: 12),
+              Divider(color: AppColors.border),
+              const SizedBox(height: 12),
+
+              _settingsItem(Icons.logout_rounded, 'Sign Out', () {
+                Navigator.of(context).pop();
+                ref.read(authProvider.notifier).clear();
+                context.go('/');
+              }, color: AppColors.slate),
+              _settingsItem(Icons.delete_forever_rounded, 'Delete Account', () {
+                Navigator.of(context).pop();
+                _showDeleteSheet();
+              }, color: AppColors.danger),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsItem(IconData icon, String label, VoidCallback onTap, {Color? color}) {
+    final c = color ?? AppColors.ink;
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: c),
+            const SizedBox(width: 14),
+            Expanded(child: Text(label, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w500, color: c))),
+            Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.mist),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showChangePasswordSheet() {
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheetState) {
+        return Container(
+          decoration: BoxDecoration(color: AppColors.snow, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+          padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+              Text('Change Password', style: AppTypography.title(fontSize: 18)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: currentCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Current password',
+                  border: OutlineInputBorder(borderRadius: AppRadii.mdAll),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: newCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'New password',
+                  border: OutlineInputBorder(borderRadius: AppRadii.mdAll),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FlowButton(label: 'Update Password', onPressed: () => Navigator.of(ctx).pop(), expand: true),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  void _showChangeEmailSheet() {
+    final emailCtrl = TextEditingController(text: _email);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheetState) {
+        return Container(
+          decoration: BoxDecoration(color: AppColors.snow, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+          padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+              Text('Change Email', style: AppTypography.title(fontSize: 18)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'New email address',
+                  border: OutlineInputBorder(borderRadius: AppRadii.mdAll),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FlowButton(label: 'Update Email', onPressed: () => Navigator.of(ctx).pop(), expand: true),
+            ],
+          ),
+        );
+      }),
     );
   }
 
@@ -543,7 +769,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _avatarGrid({required int selected, required ValueChanged<int> onSelect}) {
     return LayoutBuilder(builder: (context, constraints) {
-      final crossAxisCount = constraints.maxWidth > 400 ? 8 : 4;
+      final crossAxisCount = constraints.maxWidth > 400 ? 6 : 4;
       return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -567,10 +793,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: ClipOval(
                 child: CachedNetworkImage(
                   imageUrl: avatarUrl(a, size: 56),
-                  width: 56,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   errorWidget: (_, __, ___) => Container(
-                    width: 56, height: 56, color: AppColors.pale,
+                    width: 48, height: 48, color: AppColors.pale,
                     child: Icon(Icons.person, size: 24, color: AppColors.fog),
                   ),
                 ),
@@ -582,16 +808,4 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     });
   }
 
-  Widget _stat(String label, int value) {
-    return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(value.toString(), style: AppTypography.title(fontSize: 28)),
-          const SizedBox(height: 4),
-          Text(label, style: AppTypography.label(fontSize: 11, color: AppColors.slate)),
-        ],
-      ),
-    );
-  }
 }

@@ -106,12 +106,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppreciationsScreen(username: username);
       }),
 
-      // -- Main shell with bottom navigation --
+      // -- Main shell with bottom navigation (5 tabs) --
       GoRoute(path: kPathHome, builder: (_, __) => const MainShell(initialIndex: 0)),
       GoRoute(path: '/chats', builder: (_, __) => const MainShell(initialIndex: 1)),
-      GoRoute(path: '/posts', builder: (_, __) => const MainShell(initialIndex: 2)),
-      GoRoute(path: '/help', builder: (_, __) => const MainShell(initialIndex: 3)),
+      GoRoute(path: '/community', builder: (_, __) => const MainShell(initialIndex: 2)),
+      GoRoute(path: '/therapy', builder: (_, __) => const MainShell(initialIndex: 3)),
       GoRoute(path: '/me', builder: (_, __) => const MainShell(initialIndex: 4)),
+
+      // Legacy redirects → remap old tabs
+      GoRoute(path: '/board', redirect: (_, __) => '/community'),
+      GoRoute(path: '/posts', redirect: (_, __) => '/community'),
+      GoRoute(path: '/help', redirect: (_, __) => kPathHome),
 
       // -- Full-screen routes (no bottom nav) --
       GoRoute(path: '/chat', builder: (_, state) {

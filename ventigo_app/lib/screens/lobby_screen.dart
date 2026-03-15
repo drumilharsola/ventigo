@@ -399,7 +399,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                     const SizedBox(width: 6),
                     Text(
                       '${_board.length} listener${_board.length != 1 ? "s" : ""} available now',
-                      style: AppTypography.body(fontSize: 12, color: Colors.white60),
+                      style: AppTypography.micro(fontSize: 12, color: Colors.white60),
                     ),
                   ],
                 ),
@@ -413,7 +413,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
   Widget _listenCard(AuthState auth) {
     return GestureDetector(
-      onTap: auth.emailVerified != true ? null : () => context.go('/board'),
+      onTap: auth.emailVerified != true ? null : () => context.go('/community'),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -444,7 +444,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                   style: AppTypography.body(fontSize: 13, color: AppColors.slate),
                 ),
                 if (auth.emailVerified != true)
-                  Text('Verify email to unlock', style: AppTypography.body(fontSize: 11, color: AppColors.danger)),
+                  Text('Verify email to unlock', style: AppTypography.micro(fontSize: 11, color: AppColors.danger)),
               ],
             )),
             Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.slate),

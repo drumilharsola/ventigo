@@ -12,8 +12,7 @@ import '../services/api_client.dart';
 import '../state/auth_provider.dart';
 import '../widgets/flow_button.dart';
 import '../widgets/orb_background.dart';
-import '../widgets/timer_widget.dart';
-import '../widgets/breathing_circle.dart';
+import '../widgets/warm_card.dart';
 
 const _waitWindowSeconds = 10 * 60;
 
@@ -246,21 +245,58 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
 
   Widget _buildBreathingCircle() {
     return SizedBox(
-      width: 180,
-      height: 180,
+      width: 200,
+      height: 200,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          const BreathingCircle(size: 140),
-          AnimatedOpacity(
-            opacity: 1.0,
-            duration: const Duration(milliseconds: 500),
-            child: Text(
-              _breatheIn ? 'Breathe in' : 'Breathe out',
-              style: AppTypography.ui(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.accent,
+          // Outer ring
+          ScaleTransition(
+            scale: Tween<double>(begin: 1.0, end: 1.07).animate(_breatheCtrl),
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.peach.withValues(alpha: 0.07),
+                border: Border.all(color: AppColors.peach.withValues(alpha: 0.18), width: 1.5),
+              ),
+            ),
+          ),
+          // Middle ring
+          ScaleTransition(
+            scale: Tween<double>(begin: 1.07, end: 1.0).animate(_breatheCtrl),
+            child: Container(
+              width: 108,
+              height: 108,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.peach.withValues(alpha: 0.11),
+                border: Border.all(color: AppColors.peach.withValues(alpha: 0.28), width: 1.5),
+              ),
+            ),
+          ),
+          // Core
+          ScaleTransition(
+            scale: Tween<double>(begin: 1.0, end: 1.16).animate(_breatheCtrl),
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.peach.withValues(alpha: 0.75),
+              ),
+            ),
+          ),
+          // Breathe text below
+          Positioned(
+            bottom: 0,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              child: Text(
+                _breatheIn ? 'BREATHE IN' : 'BREATHE OUT',
+                key: ValueKey(_breatheIn),
+                style: AppTypography.micro(fontSize: 10, color: AppColors.peach),
               ),
             ),
           ),
@@ -272,26 +308,20 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
   Widget _buildFunFactCard() {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
-      child: Container(
+      child: WarmCard(
         key: ValueKey(_funFact),
-        width: double.infinity,
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.lavender.withValues(alpha: 0.1),
-          borderRadius: AppRadii.lgAll,
-          border: Border.all(color: AppColors.lavender.withValues(alpha: 0.2)),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'FUN FACT',
-              style: AppTypography.label(fontSize: 10, color: AppColors.lavender),
+              '\u2726 FUN FACT WHILE YOU WAIT',
+              style: AppTypography.micro(fontSize: 10, color: AppColors.amber),
             ),
             const SizedBox(height: 6),
             Text(
               _funFact,
-              style: AppTypography.body(fontSize: 13, color: AppColors.graphite),
+              style: AppTypography.body(fontSize: 14, color: AppColors.graphite),
             ),
           ],
         ),
@@ -307,13 +337,24 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              FlowButton(
-                label: '← Cancel',
-                variant: FlowButtonVariant.ghost,
-                size: FlowButtonSize.sm,
+              OutlinedButton(
                 onPressed: _handleCancel,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                  side: BorderSide(color: AppColors.danger.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: Text('Cancel request', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600)),
               ),
-              TimerWidget(remainingSeconds: _remaining, onEnd: _handleTimeout),
+              // Role badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.venterLight,
+                  borderRadius: AppRadii.fullAll,
+                ),
+                child: Text('\ud83c\udf99 VENTER MODE', style: AppTypography.label(fontSize: 10, color: AppColors.venterPrimary)),
+              ),
             ],
           ),
         ),
@@ -321,32 +362,25 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
           child: Center(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildBreathingCircle(),
                     const SizedBox(height: 24),
+                    // Large timer
                     Text(
-                      'Your space is ready.',
-                      style: AppTypography.title(fontSize: 22, color: AppColors.ink),
-                      textAlign: TextAlign.center,
+                      '${(_remaining ~/ 60).toString().padLeft(2, '0')}:${(_remaining % 60).toString().padLeft(2, '0')}',
+                      style: AppTypography.hero(fontSize: 52),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
-                      'Someone will be here soon.',
+                      'Your space is ready. Someone will be here soon.',
                       style: AppTypography.body(fontSize: 14, color: AppColors.slate),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 28),
                     _buildFunFactCard(),
-                    const SizedBox(height: 20),
-                    FlowButton(
-                      label: 'Cancel',
-                      variant: FlowButtonVariant.danger,
-                      size: FlowButtonSize.sm,
-                      onPressed: _handleCancel,
-                    ),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -386,7 +420,7 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('WRITE IT OUT - JUST FOR YOU', style: AppTypography.label(fontSize: 10, color: AppColors.lavender)),
+                  Text('WRITE IT OUT - JUST FOR YOU', style: AppTypography.micro(fontSize: 10, color: AppColors.lavender)),
                   const SizedBox(height: 8),
                   TextField(
                     maxLines: 4,

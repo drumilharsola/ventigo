@@ -16,6 +16,7 @@ import '../widgets/report_modal.dart';
 import '../widgets/user_profile_modal.dart';
 import '../widgets/safety_dialog.dart';
 import '../utils/time_helpers.dart';
+import '../utils/content_filter.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String roomId;
@@ -38,6 +39,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _appreciationCtrl = TextEditingController();
   bool _appreciationSent = false;
   bool _appreciationSending = false;
+  final Set<num> _visibleTimes = {}; // track which msg timestamps are shown
 
   @override
   void dispose() {
@@ -457,55 +459,70 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildBubble(TranscriptMessage msg, bool isMe, {bool canReply = true, bool showLabel = true, String? peerDisplayName}) {
+    final timeVisible = _visibleTimes.contains(msg.ts);
     final bubble = Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          if (!isMe && showLabel)
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 4),
-              child: Text(peerDisplayName ?? msg.from, style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
-            ),
-          // Reply preview
-          if (msg.replyText != null && msg.replyText!.isNotEmpty)
+      child: GestureDetector(
+        onTap: () => setState(() {
+          if (timeVisible) {
+            _visibleTimes.remove(msg.ts);
+          } else {
+            _visibleTimes.add(msg.ts);
+          }
+        }),
+        child: Column(
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            if (!isMe && showLabel)
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 4),
+                child: Text(peerDisplayName ?? msg.from, style: AppTypography.micro(fontSize: 11, color: AppColors.slate)),
+              ),
+            // Reply preview
+            if (msg.replyText != null && msg.replyText!.isNotEmpty)
+              Container(
+                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: (isMe ? AppColors.venterBubble : AppColors.listenerBubble).withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(msg.replyFrom ?? '', style: AppTypography.ui(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accent)),
+                    Text(msg.replyText!, style: AppTypography.body(fontSize: 11, color: AppColors.slate), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
             Container(
               constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
-              margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: (isMe ? AppColors.venterBubble : AppColors.listenerBubble).withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
+                color: isMe ? AppColors.venterBubble : AppColors.listenerBubble,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isMe ? 18 : 4),
+                  bottomRight: Radius.circular(isMe ? 4 : 18),
+                ),
+                border: Border.all(color: isMe ? AppColors.venterBorder : AppColors.listenerBorder),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(msg.replyFrom ?? '', style: AppTypography.ui(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accent)),
-                  Text(msg.replyText!, style: AppTypography.body(fontSize: 11, color: AppColors.slate), maxLines: 2, overflow: TextOverflow.ellipsis),
-                ],
-              ),
+              child: Text(msg.text, style: AppTypography.body(fontSize: 14, color: AppColors.ink)),
             ),
-          Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isMe ? AppColors.venterBubble : AppColors.listenerBubble,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(20),
-                topRight: const Radius.circular(20),
-                bottomLeft: Radius.circular(isMe ? 20 : 4),
-                bottomRight: Radius.circular(isMe ? 4 : 20),
-              ),
-              border: Border.all(color: isMe ? AppColors.venterBorder : AppColors.listenerBorder),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              child: timeVisible
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 3, left: 4, right: 4, bottom: 6),
+                      child: Text(_formatTime(msg.ts), style: AppTypography.micro(fontSize: 10, color: AppColors.fog)),
+                    )
+                  : const SizedBox(height: 6),
             ),
-            child: Text(msg.text, style: AppTypography.body(fontSize: 14, color: AppColors.ink)),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 3, left: 4, right: 4, bottom: 6),
-            child: Text(_formatTime(msg.ts), style: AppTypography.body(fontSize: 10, color: AppColors.mist)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -591,14 +608,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       hintStyle: AppTypography.body(fontSize: 14, color: AppColors.slate),
                       filled: true,
                       fillColor: AppColors.snow,
-                      border: OutlineInputBorder(borderRadius: AppRadii.mdAll, borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
-                      enabledBorder: OutlineInputBorder(borderRadius: AppRadii.mdAll, borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                     onChanged: (_) => notifier.resetTypingTimer(),
                     onSubmitted: (text) {
                       if (text.trim().isNotEmpty) {
-                        notifier.sendMessage(text.trim(), replyTo: _replyTo);
+                        final filtered = ContentFilter.mask(text.trim());
+                        notifier.sendMessage(filtered, replyTo: _replyTo);
                         _inputCtrl.clear();
                         setState(() => _replyTo = null);
                       }
@@ -610,7 +628,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   onTap: () {
                     final text = _inputCtrl.text.trim();
                     if (text.isNotEmpty && !disabled) {
-                      notifier.sendMessage(text, replyTo: _replyTo);
+                      final filtered = ContentFilter.mask(text);
+                      notifier.sendMessage(filtered, replyTo: _replyTo);
                       _inputCtrl.clear();
                       setState(() => _replyTo = null);
                     }
@@ -619,16 +638,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     opacity: _inputCtrl.text.trim().isEmpty || disabled ? 0.35 : 1.0,
                     duration: const Duration(milliseconds: 150),
                     child: Container(
-                      padding: const EdgeInsets.all(13),
-                      decoration: BoxDecoration(color: AppColors.accent, borderRadius: AppRadii.mdAll),
-                      child: Text('↑', style: TextStyle(fontSize: 16, color: AppColors.ink, fontWeight: FontWeight.bold)),
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
+                      child: Icon(Icons.arrow_upward_rounded, size: 20, color: AppColors.white),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            Text('Enter to send · Swipe to reply', style: AppTypography.body(fontSize: 10, color: AppColors.mist)),
+            Text('Enter to send · Swipe to reply', style: AppTypography.micro(fontSize: 10, color: AppColors.mist)),
           ],
         ),
       ),

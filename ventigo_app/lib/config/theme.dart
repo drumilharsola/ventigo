@@ -123,11 +123,14 @@ class AppTypography {
 
   // ------ UI scale ------
 
-  static TextStyle body({double fontSize = 15, Color? color}) =>
+  static TextStyle body({double fontSize = 16, Color? color}) =>
       _ui.copyWith(fontSize: fontSize, fontWeight: FontWeight.w500, height: 1.55, letterSpacing: -0.15, color: color ?? AppColors.slate);
 
   static TextStyle label({double fontSize = 11, Color? color}) =>
       _ui.copyWith(fontSize: fontSize, fontWeight: FontWeight.w800, letterSpacing: 1.4, color: color ?? AppColors.slate);
+
+  static TextStyle micro({double fontSize = 10, Color? color}) =>
+      _ui.copyWith(fontSize: fontSize, fontWeight: FontWeight.w600, height: 1.3, letterSpacing: 0.2, color: color ?? AppColors.fog);
 
   static TextStyle ui({double fontSize = 14, FontWeight fontWeight = FontWeight.w400, Color? color}) =>
       _ui.copyWith(fontSize: fontSize, fontWeight: fontWeight, letterSpacing: -0.1, color: color ?? AppColors.graphite);

@@ -85,6 +85,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
   Timer? _roomSyncTimer;
   bool _ventLoading = false;
   String _error = '';
+  int _appreciationCount = 0;
 
   // Board WS (for listener tab)
   WebSocketChannel? _ws;
@@ -103,17 +104,22 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
       _syncRooms();
       _syncBoard();
       _connectBoardWs();
-      _refreshEmailVerified();
+      _refreshAppreciationCount();
       _roomSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         _syncRooms();
-        _refreshEmailVerified();
+        _refreshAppreciationCount();
       });
     });
   }
 
-  /// Sync email_verified from the server (user may have verified in browser).
-  Future<void> _refreshEmailVerified() async {
-    await ref.read(authProvider.notifier).refreshEmailVerified(ref.read(apiClientProvider));
+  /// Sync appreciation count from the server to check listener eligibility.
+  Future<void> _refreshAppreciationCount() async {
+    final token = ref.read(authProvider).token;
+    if (token == null) return;
+    try {
+      final me = await ref.read(apiClientProvider).getMe(token);
+      if (mounted) setState(() => _appreciationCount = me.appreciationCount);
+    } catch (_) {}
   }
 
   @override
@@ -307,11 +313,17 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
           children: [
             // Tab bar
             Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.snow,
                 border: Border(bottom: BorderSide(color: AppColors.border)),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Chats', style: AppTypography.title(fontSize: 24)),
+                  const SizedBox(height: 12),
+                  Row(
                 children: [
                   Expanded(
                     child: TabBar(
@@ -358,6 +370,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                 ],
               ),
                   ),
+                ],
+              ),
                 ],
               ),
             ),
@@ -571,7 +585,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
   Widget _listenerTab(List<RoomSummary> rooms) {
     final groups = _groupByPeer(rooms);
     final auth = ref.watch(authProvider);
-    final emailVerified = auth.emailVerified == true;
+    final eligible = _appreciationCount >= 15;
 
     return Stack(
       children: [
@@ -617,7 +631,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
               ),
               child: SingleChildScrollView(
                 controller: scrollCtrl,
-                child: _buildListenerSheetContent(emailVerified),
+                child: _buildListenerSheetContent(eligible),
               ),
             );
           },
@@ -626,7 +640,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     );
   }
 
-  Widget _buildListenerSheetContent(bool emailVerified) {
+  Widget _buildListenerSheetContent(bool eligible) {
     return Column(
       children: [
         // Grab handle
@@ -679,7 +693,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
-              if (!emailVerified)
+              if (!eligible)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -691,10 +705,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
             ],
           ),
         ),
-        if (!emailVerified) ...[
+        if (!eligible) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
-            child: Text('Verify your email to listen.',
+            child: Text('You need 15 appreciations to listen ($_appreciationCount/15).',
                 style: AppTypography.body(fontSize: 13, color: AppColors.danger)),
           ),
         ],
@@ -733,14 +747,14 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                         Text(req.username,
                             style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
                         Text(timeAgo(req.postedAt),
-                            style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
+                            style: AppTypography.micro(fontSize: 11, color: AppColors.slate)),
                       ],
                     ),
                   ),
                   FlowButton(
                     label: 'Show up',
                     size: FlowButtonSize.sm,
-                    onPressed: !emailVerified ? null : () => _handleAccept(req.requestId),
+                    onPressed: !eligible ? null : () => _handleAccept(req.requestId),
                   ),
                 ],
               ),

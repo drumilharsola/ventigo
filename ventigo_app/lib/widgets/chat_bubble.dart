@@ -62,9 +62,30 @@ class ChatBubble extends StatelessWidget {
         : myRole == CharacterRole.listener;
     return (
       bg: isSpeaker ? AppColors.venterBubble : AppColors.listenerBubble,
-      text: AppColors.ink,
+      text: AppColors.charcoal,
       border: isSpeaker ? AppColors.venterBorder : AppColors.listenerBorder,
     );
+  }
+
+  BorderRadius _bubbleRadius() {
+    final isSpeaker = isMe
+        ? myRole != CharacterRole.listener
+        : myRole == CharacterRole.listener;
+    if (isSpeaker) {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(18),
+        topRight: Radius.circular(18),
+        bottomRight: Radius.circular(4),
+        bottomLeft: Radius.circular(18),
+      );
+    } else {
+      return const BorderRadius.only(
+        topLeft: Radius.circular(18),
+        topRight: Radius.circular(18),
+        bottomRight: Radius.circular(18),
+        bottomLeft: Radius.circular(4),
+      );
+    }
   }
 
   Widget _buildReactionsRow() {
@@ -97,7 +118,7 @@ class ChatBubble extends StatelessWidget {
           if (!isMe)
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 4),
-              child: Text(from, style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
+              child: Text(from, style: AppTypography.micro(fontSize: 11, color: AppColors.slate)),
             ),
           GestureDetector(
             onLongPressStart: (details) => _showReactionPicker(context, details.globalPosition),
@@ -112,12 +133,7 @@ class ChatBubble extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: colors.bg,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: Radius.circular(isMe ? 20 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 20),
-                ),
+                borderRadius: _bubbleRadius(),
                 border: Border.all(color: colors.border),
                 boxShadow: [
                   BoxShadow(
@@ -132,8 +148,8 @@ class ChatBubble extends StatelessWidget {
           ),
           if (reactions.isNotEmpty) _buildReactionsRow(),
           Padding(
-            padding: const EdgeInsets.only(top: 3, left: 4, right: 4, bottom: 6),
-            child: Text(time, style: AppTypography.body(fontSize: 10, color: AppColors.fog)),
+            padding: EdgeInsets.only(top: 3, left: isMe ? 0 : 4, right: isMe ? 4 : 0, bottom: 6),
+            child: Text(time, style: AppTypography.micro(fontSize: 10, color: AppColors.fog)),
           ),
         ],
       ),

@@ -231,10 +231,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
     return Row(
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.zero,
-            child: _posterPanel(),
-          ),
+          child: _posterPanel(),
         ),
         Container(width: 1, color: AppColors.border),
         Expanded(child: _formPanel(padded: true)),
@@ -256,37 +253,83 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
   }
 
   Widget _posterPanel({bool compact = false}) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 48, vertical: compact ? 0 : 42),
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FlowLogo(dark: true, onTap: () => context.go('/')),
+            const SizedBox(height: 20),
+          ],
+        ),
+      );
+    }
+
+    // Wide: full dark panel
+    return Container(
+      constraints: const BoxConstraints(minHeight: double.infinity),
+      color: AppColors.ink,
+      padding: const EdgeInsets.all(48),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          FlowLogo(dark: true, onTap: () => context.go('/')),
-          SizedBox(height: compact ? 20 : 28),
-          WarmCard(
-            padding: const EdgeInsets.all(18),
-            color: AppColors.paper,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('WHY THIS FEELS DIFFERENT', style: AppTypography.label(color: AppColors.ink)),
-                const SizedBox(height: 10),
-                ..._offerItems.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item.$1, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
-                        const SizedBox(height: 4),
-                        Text(item.$2, style: AppTypography.body(fontSize: 13, color: AppColors.graphite)),
-                      ],
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FlowLogo(dark: false, onTap: () => context.go('/')),
+              const SizedBox(height: 48),
+              RichText(
+                text: TextSpan(
+                  style: AppTypography.hero(fontSize: 42).copyWith(color: AppColors.white),
+                  children: [
+                    const TextSpan(text: 'A place to\n'),
+                    TextSpan(
+                      text: 'exhale.',
+                      style: TextStyle(fontStyle: FontStyle.italic, color: AppColors.peach),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Come in without pretending. Leave without explaining.',
+                style: AppTypography.body(fontSize: 14, color: AppColors.white.withValues(alpha: 0.55)),
+              ),
+              const SizedBox(height: 32),
+              ..._offerItems.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(top: 6, right: 12),
+                        decoration: const BoxDecoration(
+                          color: AppColors.peach,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item.$1, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.white)),
+                            const SizedBox(height: 4),
+                            Text(item.$2, style: AppTypography.body(fontSize: 13, color: AppColors.white.withValues(alpha: 0.55))),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+          Text('VENT · LISTEN · BREATHE', style: AppTypography.label(color: AppColors.white.withValues(alpha: 0.25))),
         ],
       ),
     );
@@ -331,21 +374,17 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
 
     return Row(
       children: List.generate(3, (i) {
-        final active = i < filled;
+        final done = i < filled;
+        final active = i == filled - 1;
         return Expanded(
           child: Container(
             margin: EdgeInsets.only(right: i < 2 ? 8 : 0),
-            padding: const EdgeInsets.all(4),
+            height: 4,
             decoration: BoxDecoration(
-              color: active ? AppColors.ink : AppColors.white,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: active ? AppColors.ink : AppColors.border, width: 1.3),
-            ),
-            child: Center(
-              child: Text(
-                '0${i + 1}',
-                style: AppTypography.label(fontSize: 10, color: active ? AppColors.white : AppColors.slate),
-              ),
+              color: done
+                  ? (active ? AppColors.peach : AppColors.ink)
+                  : AppColors.mist,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
         );
@@ -363,7 +402,13 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         border: Border.all(color: AppColors.danger.withValues(alpha: 0.2), width: 1.3),
         borderRadius: AppRadii.mdAll,
       ),
-      child: Text(_error!, style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.danger)),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, size: 16, color: AppColors.danger),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_error!, style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.danger))),
+        ],
+      ),
     );
   }
 
@@ -374,9 +419,9 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       children: [
         const Pill(text: 'SIGN IN TO CONTINUE', variant: PillVariant.plain),
         const SizedBox(height: 16),
-        Text('Welcome\nback.', style: AppTypography.heading(fontSize: 46)),
+        Text('Welcome\nback.', style: AppTypography.heading(fontSize: MediaQuery.sizeOf(context).width >= 960 ? 46 : 38)),
         const SizedBox(height: 8),
-        Text('Step into a calmer interface with a direct line to support.', style: AppTypography.body(fontSize: 15, color: AppColors.graphite)),
+        Text('Step into a calmer interface with a direct line to support.', style: AppTypography.body(color: AppColors.graphite)),
         const SizedBox(height: 28),
         AutofillGroup(
           child: Column(
@@ -444,9 +489,9 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       children: [
         const Pill(text: 'CREATE ACCOUNT', variant: PillVariant.plain),
         const SizedBox(height: 16),
-        Text('Create\nyour account.', style: AppTypography.heading(fontSize: 46)),
+        Text('Create\nyour account.', style: AppTypography.heading(fontSize: MediaQuery.sizeOf(context).width >= 960 ? 46 : 38)),
         const SizedBox(height: 8),
-        Text('A verification link unlocks the full listener role, while the new UI keeps the process warm and clear.', style: AppTypography.body(fontSize: 15, color: AppColors.graphite)),
+        Text('A verification link unlocks the full listener role, while the new UI keeps the process warm and clear.', style: AppTypography.body(color: AppColors.graphite)),
         const SizedBox(height: 28),
         AutofillGroup(
           child: Column(
@@ -494,7 +539,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           loading: _loading,
         ),
         const SizedBox(height: 20),
-        Center(child: Text('By continuing you confirm you are 18 or older.', style: AppTypography.ui(fontSize: 11, color: AppColors.slate))),
+        Center(child: Text('By continuing you confirm you are 18 or older.', style: AppTypography.micro(color: AppColors.slate))),
         const SizedBox(height: 12),
         Center(
           child: Row(
@@ -533,7 +578,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         const SizedBox(height: 12),
         RichText(
           text: TextSpan(
-            style: AppTypography.body(fontSize: 15, color: AppColors.graphite),
+            style: AppTypography.body(color: AppColors.graphite),
             children: [
               const TextSpan(text: 'We sent a verification link to '),
               TextSpan(text: _emailCtrl.text, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink)),
@@ -566,7 +611,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         const SizedBox(height: 16),
         Text('Reset your\npassword.', style: AppTypography.heading(fontSize: 46)),
         const SizedBox(height: 8),
-        Text('Enter your email and we\u2019ll send you a link to reset your password.', style: AppTypography.body(fontSize: 15, color: AppColors.graphite)),
+        Text('Enter your email and we\u2019ll send you a link to reset your password.', style: AppTypography.body(color: AppColors.graphite)),
         const SizedBox(height: 28),
         if (!_forgotSent) ...[
           FlowInput(
@@ -600,7 +645,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           const SizedBox(height: 20),
           Text('Check your inbox.', style: AppTypography.title(fontSize: 22)),
           const SizedBox(height: 8),
-          Text('If an account exists for that email, we\u2019ve sent a reset link. It expires in 1 hour.', style: AppTypography.body(fontSize: 15, color: AppColors.graphite)),
+          Text('If an account exists for that email, we\u2019ve sent a reset link. It expires in 1 hour.', style: AppTypography.body(color: AppColors.graphite)),
         ],
         const SizedBox(height: 18),
         Center(
@@ -653,7 +698,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           const SizedBox(height: 16),
           Text('Password reset!', style: AppTypography.title(fontSize: 22)),
           const SizedBox(height: 8),
-          Text('You can now sign in with your new password.', style: AppTypography.body(fontSize: 15, color: AppColors.graphite)),
+          Text('You can now sign in with your new password.', style: AppTypography.body(color: AppColors.graphite)),
           const SizedBox(height: 20),
           FlowButton(
             label: _kSignInLabel,

@@ -57,8 +57,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           width: active ? 28 : 8,
           height: 8,
           decoration: BoxDecoration(
-            color: active ? AppColors.accent : AppColors.mist,
-            borderRadius: BorderRadius.circular(4),
+            color: active ? AppColors.peach : AppColors.mist,
+            borderRadius: BorderRadius.circular(AppRadii.full),
           ),
         );
       }),
@@ -67,7 +67,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildNavButtons(bool narrow) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: narrow ? 24 : 80, vertical: 24),
+      padding: EdgeInsets.only(left: narrow ? 24 : 80, right: narrow ? 24 : 80, bottom: 24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -132,13 +132,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(step.$1, style: const TextStyle(fontSize: 48)),
+                                Text(step.$1, style: const TextStyle(fontSize: 52)),
                                 const SizedBox(height: 20),
-                                Text(step.$2, style: AppTypography.label(color: AppColors.accent)),
+                                Text(step.$2, style: AppTypography.micro(color: AppColors.accent)),
                                 const SizedBox(height: 12),
                                 Text(step.$3, style: AppTypography.title(fontSize: 26), textAlign: TextAlign.center),
                                 const SizedBox(height: 12),
-                                Text(step.$4, style: AppTypography.body(fontSize: 15), textAlign: TextAlign.center),
+                                Text(step.$4, style: AppTypography.body(), textAlign: TextAlign.center),
                               ],
                             ),
                           ),

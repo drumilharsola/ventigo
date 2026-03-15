@@ -71,25 +71,23 @@ class _SessionEndModalState extends State<SessionEndModal> {
     return Column(
       children: [
         Container(
-          width: 56, height: 56,
+          width: 100, height: 100,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.accentDim,
-            border: Border.all(color: AppColors.accentGlow),
+            color: AppColors.venterLight,
+            border: Border.all(color: AppColors.venterBorder, width: 2),
           ),
           alignment: Alignment.center,
-          child: Text(widget.peerLeft ? '👋' : '⏱', style: const TextStyle(fontSize: 24)),
+          child: const Text('🌿', style: TextStyle(fontSize: 44)),
         ),
         const SizedBox(height: 20),
         Text(
-          widget.peerLeft ? 'They had to go.' : "Time's up.",
-          style: AppTypography.heading(fontSize: 28),
+          'Session complete.',
+          style: AppTypography.display(fontSize: 28),
         ),
         const SizedBox(height: 8),
         Text(
-          widget.peerLeft
-              ? 'Your conversation mattered - even if it was brief.'
-              : 'How are you feeling?',
+          'You showed up. That matters.\nTake a breath \u2014 you deserve it.',
           style: AppTypography.body(color: AppColors.slate),
           textAlign: TextAlign.center,
         ),
@@ -122,7 +120,7 @@ class _SessionEndModalState extends State<SessionEndModal> {
               children: [
                 Text(m.$1, style: const TextStyle(fontSize: 24)),
                 const SizedBox(height: 4),
-                Text(m.$2, style: AppTypography.body(fontSize: 10, color: AppColors.slate)),
+                Text(m.$2, style: AppTypography.micro(fontSize: 10, color: AppColors.slate)),
               ],
             ),
           ),
@@ -192,7 +190,7 @@ class _SessionEndModalState extends State<SessionEndModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Leave a note for $peer 💛', style: AppTypography.label(color: AppColors.slate)),
+        Text('Leave a note for $peer 💛', style: AppTypography.micro(color: AppColors.amber)),
         const SizedBox(height: 8),
         TextField(
           controller: _appreciationController,

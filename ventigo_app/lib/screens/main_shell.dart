@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
+import '../widgets/bottom_nav_bar.dart';
 import 'home_screen.dart';
 import 'conversations_screen.dart';
 import 'posts_screen.dart';
-import 'help_screen.dart';
+import 'therapy_screen.dart';
 import 'profile_screen.dart';
 
-/// Persistent bottom navigation shell wrapping the 4 main tabs.
+/// Persistent bottom navigation shell wrapping the 5 main tabs.
 /// Uses IndexedStack to preserve tab state across switches.
 class MainShell extends StatefulWidget {
   final int initialIndex;
@@ -47,54 +47,13 @@ class MainShellState extends State<MainShell> {
             HomeScreen(),
             ConversationsScreen(),
             PostsScreen(),
-            HelpScreen(),
+            TherapyScreen(),
             ProfileScreen(),
           ],
         ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: AppColors.border, width: 0.5),
-            ),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            selectedItemColor: AppColors.accent,
-            unselectedItemColor: AppColors.slate,
-            showSelectedLabels: false,
-            showUnselectedLabels: false,
-            iconSize: 24,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_rounded),
-                activeIcon: Icon(Icons.home_rounded),
-                label: '',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.chat_bubble_rounded),
-                activeIcon: Icon(Icons.chat_bubble_rounded),
-                label: '',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.eco_rounded),
-                activeIcon: Icon(Icons.eco_rounded),
-                label: '',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.health_and_safety_rounded),
-                activeIcon: Icon(Icons.health_and_safety_rounded),
-                label: '',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_rounded),
-                activeIcon: Icon(Icons.person_rounded),
-                label: '',
-              ),
-            ],
-          ),
+        bottomNavigationBar: BottomNavBar(
+          currentIndex: _currentIndex,
+          onTap: (i) => setState(() => _currentIndex = i),
         ),
       ),
     );

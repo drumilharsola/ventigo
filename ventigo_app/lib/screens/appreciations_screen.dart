@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../config/theme.dart';
 import '../models/appreciation.dart';
+import '../services/api_client.dart';
 import '../state/auth_provider.dart';
 import '../widgets/orb_background.dart';
 
@@ -61,6 +62,28 @@ class _AppreciationsScreenState extends ConsumerState<AppreciationsScreen> {
     if (_loading || !_hasMore) return;
     _offset += _pageSize;
     _load();
+  }
+
+  Future<void> _shareToBoard(Appreciation a) async {
+    final token = ref.read(authProvider).token;
+    if (token == null) return;
+    final text = '💛 Appreciation from ${a.fromUsername}: "${a.message}"';
+    try {
+      await ref.read(apiClientProvider).createPost(token, text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Shared to Community!')),
+        );
+      }
+    } on AuthException {
+      // ignore
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not share: $e')),
+        );
+      }
+    }
   }
 
   String _formatDate(int ts) {
@@ -147,7 +170,11 @@ class _AppreciationsScreenState extends ConsumerState<AppreciationsScreen> {
             );
           }
           final a = _items[index];
-          return _AppreciationTile(appreciation: a, formatDate: _formatDate);
+          return _AppreciationTile(
+            appreciation: a,
+            formatDate: _formatDate,
+            onShare: _isOwnProfile ? () => _shareToBoard(a) : null,
+          );
         },
       ),
     );
@@ -157,8 +184,9 @@ class _AppreciationsScreenState extends ConsumerState<AppreciationsScreen> {
 class _AppreciationTile extends StatelessWidget {
   final Appreciation appreciation;
   final String Function(int) formatDate;
+  final VoidCallback? onShare;
 
-  const _AppreciationTile({required this.appreciation, required this.formatDate});
+  const _AppreciationTile({required this.appreciation, required this.formatDate, this.onShare});
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +235,28 @@ class _AppreciationTile extends StatelessWidget {
             Text(
               appreciation.message,
               style: AppTypography.body(fontSize: 13),
+            ),
+          ],
+          if (onShare != null) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: onShare,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.lavender.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.lavender.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.share_outlined, size: 14, color: AppColors.lavender),
+                    const SizedBox(width: 6),
+                    Text('Share to Community', style: AppTypography.ui(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.lavender)),
+                  ],
+                ),
+              ),
             ),
           ],
         ],
