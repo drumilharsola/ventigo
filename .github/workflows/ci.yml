@@ -113,10 +113,12 @@ jobs:
               if not block: continue
               sf = re.search(r'SF:(.*)', block)
               if not sf: continue
-              path = sf.group(1).strip()
-              # make path relative to workspace
+              path = sf.group(1).strip().replace('\\\\', '/')
+              # make path relative to workspace root
               if '/lib/' in path:
                   path = 'ventigo_app/lib/' + path.split('/lib/', 1)[1]
+              elif path.startswith('lib/'):
+                  path = 'ventigo_app/' + path
               out.append(f'  <file path=\"{path}\">')
               for m in re.finditer(r'DA:(\d+),(\d+)', block):
                   line, hits = m.group(1), m.group(2)
