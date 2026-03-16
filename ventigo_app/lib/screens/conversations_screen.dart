@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,10 +23,12 @@ import '../config/routes.dart' show kPathVerify;
 
 // -- Helpers --
 
-int _convRoomTs(RoomSummary r) =>
+@visibleForTesting
+int convRoomTs(RoomSummary r) =>
     int.tryParse(r.startedAt.isNotEmpty ? r.startedAt : r.matchedAt) ?? 0;
 
-class _PeerGroup {
+@visibleForTesting
+class PeerGroup {
   final String peerSessionId;
   final String peerUsername;
   final int peerAvatarId;
@@ -33,7 +36,7 @@ class _PeerGroup {
   bool get hasActive => rooms.any((r) => r.status == 'active');
   RoomSummary get latest => rooms.first;
 
-  _PeerGroup({
+  PeerGroup({
     required this.peerSessionId,
     required this.peerUsername,
     required this.peerAvatarId,
@@ -41,18 +44,19 @@ class _PeerGroup {
   });
 }
 
-List<_PeerGroup> _groupByPeer(List<RoomSummary> rooms) {
+@visibleForTesting
+List<PeerGroup> groupByPeer(List<RoomSummary> rooms) {
   final map = <String, List<RoomSummary>>{};
   for (final r in rooms) {
     final key = r.peerSessionId.isNotEmpty ? r.peerSessionId : r.peerUsername;
     (map[key] ??= []).add(r);
   }
   for (final list in map.values) {
-    list.sort((a, b) => _convRoomTs(b).compareTo(_convRoomTs(a)));
+    list.sort((a, b) => convRoomTs(b).compareTo(convRoomTs(a)));
   }
   final groups = map.entries.map((e) {
     final latest = e.value.first;
-    return _PeerGroup(
+    return PeerGroup(
       peerSessionId: latest.peerSessionId,
       peerUsername: latest.peerUsername,
       peerAvatarId: latest.peerAvatarId,
@@ -62,7 +66,7 @@ List<_PeerGroup> _groupByPeer(List<RoomSummary> rooms) {
 
   groups.sort((a, b) {
     if (a.hasActive != b.hasActive) return a.hasActive ? -1 : 1;
-    return _convRoomTs(b.latest).compareTo(_convRoomTs(a.latest));
+    return convRoomTs(b.latest).compareTo(convRoomTs(a.latest));
   });
   return groups;
 }
@@ -414,7 +418,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
   // -- Venter Tab --
 
   Widget _venterTab(List<RoomSummary> rooms) {
-    final groups = _groupByPeer(rooms);
+    final groups = groupByPeer(rooms);
     final wait = ref.watch(pendingWaitProvider);
 
     return Stack(
@@ -634,7 +638,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
   // -- Listener Tab --
 
   Widget _listenerTab(List<RoomSummary> rooms) {
-    final groups = _groupByPeer(rooms);
+    final groups = groupByPeer(rooms);
     final auth = ref.watch(authProvider);
     final eligible = _appreciationCount >= 15;
 
@@ -826,7 +830,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
 // -- Peer conversation tile --
 
 class _PeerTile extends StatelessWidget {
-  final _PeerGroup group;
+  final PeerGroup group;
   final String roleBadge;
   final VoidCallback onTap;
 

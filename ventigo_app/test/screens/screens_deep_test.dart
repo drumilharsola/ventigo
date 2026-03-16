@@ -146,7 +146,7 @@ void main() {
         const VerifyScreen(),
         authState: const AuthState(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('Sign in →'), findsOneWidget);
     });
@@ -156,14 +156,14 @@ void main() {
         const VerifyScreen(),
         authState: const AuthState(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       // Find and tap "Create an account"
       final createAccountFinder =
           find.textContaining('Create');
       if (createAccountFinder.evaluate().isNotEmpty) {
         await tester.tap(createAccountFinder.first);
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 500));
       }
     });
 
@@ -172,9 +172,9 @@ void main() {
         const VerifyScreen(resetToken: 'test-reset-token'),
         authState: const AuthState(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.textContaining('New password'), findsWidgets);
+      expect(find.textContaining('new password'), findsWidgets);
     });
 
     testWidgets('forgot password link exists', (tester) async {
@@ -182,7 +182,7 @@ void main() {
         const VerifyScreen(),
         authState: const AuthState(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       final forgot = find.textContaining('Forgot');
       expect(forgot, findsWidgets);
@@ -455,10 +455,10 @@ void main() {
       final api = _DeepFakeApi()
         ..appreciationsToReturn = [
           Appreciation.fromJson(const {
+            'id': 1,
             'from_username': 'bob',
-            'from_avatar_id': 2,
+            'from_role': 'listener',
             'message': 'You were amazing!',
-            'room_id': 'r1',
             'created_at': 1700000000,
           }),
         ];

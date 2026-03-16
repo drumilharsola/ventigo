@@ -5,6 +5,7 @@ import 'package:ventigo_app/services/api_client.dart';
 import 'package:ventigo_app/state/auth_provider.dart';
 import 'package:ventigo_app/state/board_provider.dart';
 import 'package:ventigo_app/state/pending_wait_provider.dart';
+import 'package:ventigo_app/state/chat_provider.dart';
 import 'package:ventigo_app/models/user_profile.dart';
 import 'package:ventigo_app/models/room_summary.dart';
 import 'package:ventigo_app/models/room_messages.dart';
@@ -232,6 +233,22 @@ class InertPendingWaitNotifier extends PendingWaitNotifier {
   void cancel() {
     state = const PendingWaitState();
   }
+}
+
+/// Inert ChatNotifier — no WebSocket, allows setting state for tests.
+class InertChatNotifier extends ChatNotifier {
+  InertChatNotifier(super.ref, {required super.roomId, ChatState? initial})
+      : super() {
+    if (initial != null) state = initial;
+  }
+
+  @override
+  Future<void> initialize() async {
+    // Do nothing — don't connect to WebSocket.
+  }
+
+  /// Set state directly from tests.
+  void setTestState(ChatState s) => state = s;
 }
 
 /// Standard logged-in auth state for testing.

@@ -10,11 +10,13 @@ import '../state/auth_provider.dart';
 import '../widgets/warm_card.dart';
 import '../utils/time_helpers.dart';
 import '../utils/content_filter.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 const _postMaxChars = 400;
 const _refreshInterval = Duration(seconds: 30);
 
-String _timeLeft(num expiresAt) {
+@visibleForTesting
+String postTimeLeft(num expiresAt) {
   final secs =
       (expiresAt - DateTime.now().millisecondsSinceEpoch / 1000).floor().clamp(0, 999999);
   final h = secs ~/ 3600;
@@ -296,7 +298,7 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
           const SizedBox(height: 10),
           Text(text, style: AppTypography.body(fontSize: 14, color: AppColors.ink), maxLines: 15, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 8),
-          Text(_timeLeft(expiresAt),
+          Text(postTimeLeft(expiresAt),
               style: AppTypography.body(fontSize: 12, color: AppColors.mist)),
           const SizedBox(height: 10),
           // Kudos & Comment row

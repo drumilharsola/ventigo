@@ -251,5 +251,17 @@ void main() {
     test('safetyThankYou', () {
       expect(Brand.safetyThankYou, contains('Ventigo'));
     });
+
+    test('heroCta', () {
+      expect(Brand.heroCta, contains('Ventigo'));
+    });
+
+    test('heroCtaShort', () {
+      expect(Brand.heroCtaShort, contains('Ventigo'));
+    });
+
+    test('onboardingTitle', () {
+      expect(Brand.onboardingTitle, contains('Ventigo'));
+    });
   });
 }

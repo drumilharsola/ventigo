@@ -7,8 +7,10 @@ import '../config/theme.dart';
 import '../models/room_summary.dart';
 import '../services/avatars.dart';
 import '../state/auth_provider.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
-int _historyRoomTs(RoomSummary r) =>
+@visibleForTesting
+int historyRoomTs(RoomSummary r) =>
     int.tryParse(r.startedAt.isNotEmpty ? r.startedAt : r.matchedAt) ?? 0;
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -189,7 +191,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Widget _buildChatList() {
     final sorted = List<RoomSummary>.from(_rooms)
-      ..sort((a, b) => _historyRoomTs(b).compareTo(_historyRoomTs(a)));
+      ..sort((a, b) => historyRoomTs(b).compareTo(historyRoomTs(a)));
     final active = sorted.where((r) => r.status == 'active').toList();
     final ended = sorted.where((r) => r.status != 'active').toList();
 
