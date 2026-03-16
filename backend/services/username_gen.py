@@ -3,7 +3,7 @@ Username generator - Adjective + Animal format.
 e.g. SilentFox, BravePanda, WildOrca
 """
 
-import random
+import secrets
 
 ADJECTIVES = [
     "Silent", "Brave", "Wild", "Swift", "Calm",
@@ -33,8 +33,8 @@ ANIMALS = [
 
 
 def generate_username() -> str:
-    adjective = random.choice(ADJECTIVES)
-    animal = random.choice(ANIMALS)
+    adjective = secrets.choice(ADJECTIVES)
+    animal = secrets.choice(ANIMALS)
     return f"{adjective}{animal}"
 
 
@@ -53,5 +53,5 @@ async def generate_unique_username(redis=None) -> str:
                 return username
     # Fallback: append a random number if all checked are taken
     username = generate_username()
-    suffix = random.randint(10, 99)
+    suffix = secrets.randbelow(90) + 10
     return f"{username}{suffix}"

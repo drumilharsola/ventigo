@@ -445,16 +445,20 @@ class ChatNotifier extends StateNotifier<ChatState> {
     if (!exists) _appendMarker(event);
   }
 
+  bool _isDuplicateMessage(List<TranscriptItem> list, TranscriptMessage item) {
+    return list.any((e) {
+      if (e is! TranscriptMessage) return false;
+      if (item.clientId != null && e.clientId != null && item.clientId == e.clientId) return true;
+      return e.from == item.from && e.text == item.text && e.ts == item.ts;
+    });
+  }
+
   List<TranscriptItem> _merge(List<TranscriptItem> existing, List<TranscriptItem> incoming) {
     final merged = [...existing];
     for (final item in incoming) {
       bool exists = false;
       if (item is TranscriptMessage) {
-        exists = merged.any((e) {
-          if (e is! TranscriptMessage) return false;
-          if (item.clientId != null && e.clientId != null && item.clientId == e.clientId) return true;
-          return e.from == item.from && e.text == item.text && e.ts == item.ts;
-        });
+        exists = _isDuplicateMessage(merged, item);
       } else if (item is TranscriptMarker) {
         exists = merged.any((e) => e is TranscriptMarker && e.roomId == item.roomId && e.event == item.event && e.ts == item.ts);
       }

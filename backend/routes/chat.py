@@ -177,7 +177,7 @@ async def _ws_send_ticks(redis, room_id: str, session_id: str, peer_id: str) -> 
                 await asyncio.sleep(5)
                 continue
 
-            started_at_raw = room_now.get("started_at") or ""
+            started_at_raw = room_now.get("started_at")
             if not started_at_raw:
                 await asyncio.sleep(1)
                 continue
@@ -198,7 +198,7 @@ async def _ws_send_ticks(redis, room_id: str, session_id: str, peer_id: str) -> 
 
             await asyncio.sleep(5)
         except (RedisError, OSError, AsyncTimeoutError) as exc:
-            logger.error(f"Redis unavailable in tick loop for room {room_id}: {exc}")
+            logger.error("Redis unavailable in tick loop: %s", type(exc).__name__)
             break
 
 

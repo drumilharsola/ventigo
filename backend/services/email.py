@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def _parse_sender(email_from: str) -> dict:
     """Parse 'Name <email>' or plain 'email' into Brevo sender dict."""
-    match = re.match(r'^(.+?)\s*<(.+?)>$', email_from.strip())
+    match = re.match(r'^([^<]+)<([^>]+)>$', email_from.strip())
     if match:
         return {"name": match.group(1).strip(), "email": match.group(2).strip()}
     return {"name": "Ventigo", "email": email_from.strip()}
