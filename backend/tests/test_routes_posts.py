@@ -42,7 +42,9 @@ async def test_get_posts_filters_expired(mock_redis):
 
     class FakePipe:
         def zrem(self, *a): return self
-        async def execute(self): return []
+        def scard(self, *a): return self
+        def llen(self, *a): return self
+        async def execute(self): return [0, 0]
     mock_redis.pipeline = MagicMock(return_value=FakePipe())
     async def _get_redis(): return mock_redis
     from routes.posts import get_posts
