@@ -10,12 +10,6 @@ workflows:
       flutter: stable
       groups:
         - ventigo_secrets
-      vars:
-        API_BASE_URL: $API_BASE_URL
-        SENTRY_DSN: $SENTRY_DSN
-        ONESIGNAL_APP_ID: $ONESIGNAL_APP_ID
-        POSTHOG_API_KEY: $POSTHOG_API_KEY
-        POSTHOG_HOST: $POSTHOG_HOST
     scripts:
       - name: Get dependencies
         script: flutter pub get
@@ -23,12 +17,13 @@ workflows:
         script: flutter test
       - name: Build APK
         script: |
+          echo "API_BASE_URL=$API_BASE_URL"
           flutter build apk --release \
-            --dart-define=API_BASE_URL=$API_BASE_URL \
-            --dart-define=SENTRY_DSN=$SENTRY_DSN \
-            --dart-define=ONESIGNAL_APP_ID=$ONESIGNAL_APP_ID \
-            --dart-define=POSTHOG_API_KEY=$POSTHOG_API_KEY \
-            --dart-define=POSTHOG_HOST=$POSTHOG_HOST \
+            --dart-define="API_BASE_URL=$API_BASE_URL" \
+            --dart-define="SENTRY_DSN=$SENTRY_DSN" \
+            --dart-define="ONESIGNAL_APP_ID=$ONESIGNAL_APP_ID" \
+            --dart-define="POSTHOG_API_KEY=$POSTHOG_API_KEY" \
+            --dart-define="POSTHOG_HOST=$POSTHOG_HOST" \
             --dart-define=APP_ENV=production
     artifacts:
       - build/**/outputs/**/*.apk
@@ -53,12 +48,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ventigo.app
-      vars:
-        API_BASE_URL: $API_BASE_URL
-        SENTRY_DSN: $SENTRY_DSN
-        ONESIGNAL_APP_ID: $ONESIGNAL_APP_ID
-        POSTHOG_API_KEY: $POSTHOG_API_KEY
-        POSTHOG_HOST: $POSTHOG_HOST
     scripts:
       - name: Get dependencies
         script: flutter pub get
@@ -69,11 +58,11 @@ workflows:
       - name: Build IPA
         script: |
           flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist \
-            --dart-define=API_BASE_URL=$API_BASE_URL \
-            --dart-define=SENTRY_DSN=$SENTRY_DSN \
-            --dart-define=ONESIGNAL_APP_ID=$ONESIGNAL_APP_ID \
-            --dart-define=POSTHOG_API_KEY=$POSTHOG_API_KEY \
-            --dart-define=POSTHOG_HOST=$POSTHOG_HOST \
+            --dart-define="API_BASE_URL=$API_BASE_URL" \
+            --dart-define="SENTRY_DSN=$SENTRY_DSN" \
+            --dart-define="ONESIGNAL_APP_ID=$ONESIGNAL_APP_ID" \
+            --dart-define="POSTHOG_API_KEY=$POSTHOG_API_KEY" \
+            --dart-define="POSTHOG_HOST=$POSTHOG_HOST" \
             --dart-define=APP_ENV=production
     artifacts:
       - build/ios/ipa/*.ipa
@@ -95,21 +84,16 @@ workflows:
       flutter: stable
       groups:
         - ventigo_secrets
-      vars:
-        API_BASE_URL: $API_BASE_URL
-        SENTRY_DSN: $SENTRY_DSN
-        POSTHOG_API_KEY: $POSTHOG_API_KEY
-        POSTHOG_HOST: $POSTHOG_HOST
     scripts:
       - name: Get dependencies
         script: flutter pub get
       - name: Build web
         script: |
           flutter build web --release \
-            --dart-define=API_BASE_URL=$API_BASE_URL \
-            --dart-define=SENTRY_DSN=$SENTRY_DSN \
-            --dart-define=POSTHOG_API_KEY=$POSTHOG_API_KEY \
-            --dart-define=POSTHOG_HOST=$POSTHOG_HOST \
+            --dart-define="API_BASE_URL=$API_BASE_URL" \
+            --dart-define="SENTRY_DSN=$SENTRY_DSN" \
+            --dart-define="POSTHOG_API_KEY=$POSTHOG_API_KEY" \
+            --dart-define="POSTHOG_HOST=$POSTHOG_HOST" \
             --dart-define=APP_ENV=production
     artifacts:
       - build/web/**
