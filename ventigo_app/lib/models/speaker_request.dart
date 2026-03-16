@@ -4,6 +4,7 @@ class SpeakerRequest {
   final String username;
   final String avatarId;
   final String postedAt;
+  final String topic;
 
   const SpeakerRequest({
     required this.requestId,
@@ -11,6 +12,7 @@ class SpeakerRequest {
     required this.username,
     required this.avatarId,
     required this.postedAt,
+    this.topic = '',
   });
 
   factory SpeakerRequest.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class SpeakerRequest {
       username: json['username'] as String? ?? '',
       avatarId: (json['avatar_id'] ?? 0).toString(),
       postedAt: json['posted_at'] as String? ?? '',
+      topic: json['topic'] as String? ?? '',
     );
   }
 }

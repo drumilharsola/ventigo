@@ -155,9 +155,11 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
-  Future<SpeakResponse> postSpeak(String token) async {
+  Future<SpeakResponse> postSpeak(String token, {String topic = ''}) async {
     try {
-      final res = await _dio.post('/board/speak', options: Options(headers: _authHeader(token)));
+      final res = await _dio.post('/board/speak',
+          data: {'topic': topic},
+          options: Options(headers: _authHeader(token)));
       return SpeakResponse.fromJson(res.data);
     } catch (e) { _rethrow(e); }
   }

@@ -37,16 +37,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _verificationSending = false;
   String _email = '';
 
-  // SOP — anonymous-safe mood & intent tags instead of free-text bio
-  final List<String> _selectedTags = [];
-  static const _moodTags = [
-    '😌 Feeling calm', '😔 Going through it', '🌱 Healing', '💪 Getting stronger',
-    '🫂 Here to listen', '🧠 Working on myself', '✨ Hopeful', '😶 Just existing',
-  ];
-  static const _whyTags = [
-    'To vent safely', 'To support others', 'To feel less alone',
-    'To process emotions', 'Curiosity', 'Self-growth',
-  ];
+
 
   bool get _isSetup => !ref.read(authProvider).hasProfile;
 
@@ -385,9 +376,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (_memberSince.isNotEmpty) Center(child: Text('Member since ${_formatMemberSince(_memberSince)}', style: AppTypography.label(color: AppColors.slate))),
           const SizedBox(height: 20),
 
-          // SOP / Statement of Purpose (bio)
-          _sopSection(),
-
           const SizedBox(height: 24),
 
           // Quick actions
@@ -413,17 +401,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               selected: currentAvatarId,
               onSelect: (id) => setState(() => _editAvatarId = id),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Checkbox(
-                  value: _rerollName,
-                  onChanged: (v) => setState(() => _rerollName = v ?? false),
-                  activeColor: AppColors.accent,
-                ),
-                Text('Re-roll username', style: AppTypography.ui(fontSize: 13)),
-              ],
-            ),
             if (_saveError != null) ...[
               const SizedBox(height: 8),
               Text(_saveError!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
@@ -432,8 +409,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             FlowButton(label: 'Save changes', onPressed: _handleSave, loading: _saving, expand: true),
             const SizedBox(height: 8),
             FlowButton(label: 'Cancel', variant: FlowButtonVariant.ghost, onPressed: () => setState(() { _editing = false; _editAvatarId = null; _rerollName = false; }), expand: true),
-          ] else ...[
-            Center(child: FlowButton(label: 'Edit profile', variant: FlowButtonVariant.ghost, onPressed: () => setState(() => _editing = true))),
           ],
 
           const SizedBox(height: 24),
@@ -454,72 +429,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const SizedBox(height: 16),
         ],
-      ),
-    );
-  }
-
-  Widget _sopSection() {
-    return WarmCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('🎭', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 8),
-              Text('My Vibe', style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text('Pick what resonates — stays anonymous', style: AppTypography.body(fontSize: 11, color: AppColors.mist)),
-          const SizedBox(height: 12),
-          Text('HOW I\'M FEELING', style: AppTypography.label(fontSize: 10)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _moodTags.map((tag) => _tagChip(tag)).toList(),
-          ),
-          const SizedBox(height: 14),
-          Text('WHY I\'M HERE', style: AppTypography.label(fontSize: 10)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _whyTags.map((tag) => _tagChip(tag)).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tagChip(String tag) {
-    final selected = _selectedTags.contains(tag);
-    return GestureDetector(
-      onTap: () => setState(() {
-        if (selected) {
-          _selectedTags.remove(tag);
-        } else {
-          _selectedTags.add(tag);
-        }
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.accent.withValues(alpha: 0.12) : AppColors.snow,
-          borderRadius: AppRadii.fullAll,
-          border: Border.all(color: selected ? AppColors.accent : AppColors.border),
-        ),
-        child: Text(
-          tag,
-          style: AppTypography.ui(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected ? AppColors.accent : AppColors.slate,
-          ),
-        ),
       ),
     );
   }
@@ -588,9 +497,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Navigator.of(context).pop();
                 _showChangeEmailSheet();
               }),
-              _settingsItem(Icons.person_outline_rounded, 'Change Username', () {
+              _settingsItem(Icons.person_outline_rounded, 'Re-roll Username', () async {
                 Navigator.of(context).pop();
-                setState(() { _editing = true; _rerollName = true; });
+                setState(() { _saving = true; _saveError = null; });
+                try {
+                  final token = ref.read(authProvider).token!;
+                  final res = await ref.read(apiClientProvider).updateProfile(token, rerollUsername: true);
+                  await ref.read(authProvider.notifier).setProfile(res.username, res.avatarId);
+                } catch (e) {
+                  setState(() => _saveError = e.toString());
+                } finally {
+                  if (mounted) setState(() => _saving = false);
+                }
               }),
 
               const SizedBox(height: 12),

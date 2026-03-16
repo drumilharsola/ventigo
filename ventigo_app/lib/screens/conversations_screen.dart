@@ -86,6 +86,20 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
   bool _ventLoading = false;
   String _error = '';
   int _appreciationCount = 0;
+  String? _selectedTopic;
+
+  static const _ventTopics = [
+    '😔 Feeling low',
+    '😰 Anxiety',
+    '💔 Heartbreak',
+    '😤 Anger / Frustration',
+    '🏠 Family issues',
+    '📚 Academic stress',
+    '💼 Work pressure',
+    '🤝 Friendship drama',
+    '🫠 Burnout',
+    '🌀 Just need to talk',
+  ];
 
   // Board WS (for listener tab)
   WebSocketChannel? _ws;
@@ -192,6 +206,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
             username: msg['username'] as String? ?? '',
             avatarId: (msg['avatar_id'] ?? 0).toString(),
             postedAt: msg['posted_at'] as String? ?? '',
+            topic: msg['topic'] as String? ?? '',
           ),
         ];
       });
@@ -250,7 +265,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     final wait = ref.read(pendingWaitProvider);
     // Already waiting - just expand the sheet
     if (wait.isWaiting) {
-      _venterSheetCtrl.animateTo(0.5,
+      _venterSheetCtrl.animateTo(0.7,
           duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
       return;
     }
@@ -262,10 +277,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
       _ventLoading = true;
     });
     try {
-      final res = await ref.read(apiClientProvider).postSpeak(token);
+      final res = await ref.read(apiClientProvider).postSpeak(token, topic: _selectedTopic ?? '');
       ref.read(pendingWaitProvider.notifier).startWaiting(res.requestId);
       if (mounted) {
-        _venterSheetCtrl.animateTo(0.5,
+        _venterSheetCtrl.animateTo(0.7,
             duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
       }
     } on AuthException {
@@ -434,9 +449,9 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
           controller: _venterSheetCtrl,
           initialChildSize: 0.12,
           minChildSize: 0.12,
-          maxChildSize: 0.55,
+          maxChildSize: 0.7,
           snap: true,
-          snapSizes: const [0.12, 0.55],
+          snapSizes: const [0.12, 0.7],
           builder: (sheetCtx, scrollCtrl) {
             return Container(
               decoration: BoxDecoration(
@@ -455,7 +470,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                         onDoubleTap: () => _toggleSheet(
                           _venterSheetCtrl,
                           collapsed: 0.12,
-                          expanded: 0.55,
+                          expanded: 0.7,
                         ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -477,8 +492,39 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: !wait.isWaiting
-                          // Vent button
-                          ? GestureDetector(
+                          // Topic picker + Vent button
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('What do you want to talk about?',
+                                    style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: _ventTopics.map((t) {
+                                    final sel = _selectedTopic == t;
+                                    return GestureDetector(
+                                      onTap: () => setState(() => _selectedTopic = sel ? null : t),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 180),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: sel ? AppColors.accent.withValues(alpha: 0.12) : AppColors.snow,
+                                          borderRadius: AppRadii.fullAll,
+                                          border: Border.all(color: sel ? AppColors.accent : AppColors.border),
+                                        ),
+                                        child: Text(t, style: AppTypography.ui(
+                                          fontSize: 12,
+                                          fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+                                          color: sel ? AppColors.accent : AppColors.slate,
+                                        )),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 14),
+                                GestureDetector(
                               onTap: _ventLoading ? null : _handleVent,
                               child: Container(
                                 width: double.infinity,
@@ -520,6 +566,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                                   ],
                                 ),
                               ),
+                            ),
+                              ],
                             )
                           // Waiting state
                           : Container(
@@ -739,6 +787,12 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                       children: [
                         Text(req.username,
                             style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                        if (req.topic.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(req.topic,
+                                style: AppTypography.body(fontSize: 12, color: AppColors.accent)),
+                          ),
                         Text(timeAgo(req.postedAt),
                             style: AppTypography.micro(fontSize: 11, color: AppColors.slate)),
                       ],

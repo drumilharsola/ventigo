@@ -17,6 +17,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from redis.exceptions import RedisError
 
+from pydantic import BaseModel, Field
+
 from middleware.jwt_auth import require_auth
 from services.speaker_board import (
     post_request,
@@ -38,9 +40,13 @@ router = APIRouter(prefix="/board", tags=["board"])
 
 # -- REST endpoints ------------------------------------------------------------
 
+class SpeakBody(BaseModel):
+    topic: str = Field(default="", max_length=60)
+
+
 @router.post("/speak", responses={400: {"description": "Profile not set up"},
                                    409: {"description": "Already in matchmaking queue"}})
-async def speak(session: Annotated[dict, Depends(require_auth)]):
+async def speak(session: Annotated[dict, Depends(require_auth)], body: SpeakBody = SpeakBody()):
     """Post a speaker request to the public board."""
     session_id = session["sub"]
     profile = await get_profile(session_id)
@@ -53,6 +59,7 @@ async def speak(session: Annotated[dict, Depends(require_auth)]):
         session_id=session_id,
         username=profile["username"],
         avatar_id=profile.get("avatar_id", "0"),
+        topic=body.topic.strip(),
     )
     return {"request_id": request_id, "status": "posted"}
 

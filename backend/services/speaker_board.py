@@ -20,7 +20,7 @@ SPEAK_BOARD_KEY = "speak:board"
 BOARD_UPDATES_CHANNEL = "board:updates"
 
 
-async def post_request(session_id: str, username: str, avatar_id: str = "0") -> str:
+async def post_request(session_id: str, username: str, avatar_id: str = "0", topic: str = "") -> str:
     """Create a speaker request. Returns request_id."""
     redis = await get_redis()
     avatar_value = int(avatar_id)
@@ -40,6 +40,7 @@ async def post_request(session_id: str, username: str, avatar_id: str = "0") -> 
         "username": username,
         "avatar_id": avatar_id,
         "posted_at": str(now),
+        "topic": topic,
     }
     await hset_with_ttl(f"speak:req:{request_id}", req_fields, SPEAK_TTL)
 
@@ -57,6 +58,7 @@ async def post_request(session_id: str, username: str, avatar_id: str = "0") -> 
         "username": username,
         "avatar_id": avatar_id,
         "posted_at": now,
+        "topic": topic,
     }))
 
     return request_id
