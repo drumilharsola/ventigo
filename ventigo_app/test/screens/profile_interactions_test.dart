@@ -259,9 +259,7 @@ void main() {
       await tester.tap(find.text('Change Password'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Current password'), findsOneWidget);
-      expect(find.text('New password'), findsOneWidget);
-      expect(find.text('Update Password'), findsOneWidget);
+      expect(find.text('Change password is coming soon'), findsOneWidget);
     });
 
     testWidgets('settings -> Change Email opens sheet', (tester) async {
@@ -276,8 +274,7 @@ void main() {
       await tester.tap(find.text('Change Email'));
       await tester.pumpAndSettle();
 
-      expect(find.text('New email address'), findsOneWidget);
-      expect(find.text('Update Email'), findsOneWidget);
+      expect(find.text('Change email is coming soon'), findsOneWidget);
     });
 
     testWidgets('settings -> Re-roll Username calls updateProfile', (tester) async {

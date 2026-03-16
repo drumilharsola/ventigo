@@ -25,6 +25,11 @@ class _PostsApi extends FakeApiClient {
 
   @override
   Future<void> deletePost(String token, String postId) async {}
+
+  @override
+  Future<Map<String, dynamic>> toggleKudos(String token, String postId) async {
+    return {'count': 1, 'given': true};
+  }
 }
 
 Widget _buildPosts({_PostsApi? api}) {
