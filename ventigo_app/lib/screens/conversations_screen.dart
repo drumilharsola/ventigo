@@ -1,18 +1,15 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import '../config/env.dart';
 import '../config/theme.dart';
 import '../models/room_summary.dart';
 import '../models/speaker_request.dart';
 import '../services/api_client.dart';
 import '../services/avatars.dart';
+import '../services/board_ws_service.dart';
 import '../state/auth_provider.dart';
 import '../state/pending_wait_provider.dart';
 import '../widgets/flow_button.dart';
@@ -106,9 +103,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
   ];
 
   // Board WS (for listener tab)
-  WebSocketChannel? _ws;
-  StreamSubscription? _wsSub;
-  Timer? _reconnectTimer;
+  final BoardWsService _boardWs = BoardWsService();
+  StreamSubscription? _boardWsSub;
 
   // Venter bottom sheet controller
   final DraggableScrollableController _venterSheetCtrl = DraggableScrollableController();
@@ -121,7 +117,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncRooms();
       _syncBoard();
-      _connectBoardWs();
+      _boardWsSub = _boardWs.events.listen(_onBoardEvent);
+      _boardWs.connect(() => _token ?? '');
       _refreshAppreciationCount();
       _roomSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         _syncRooms();
@@ -151,9 +148,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
   void dispose() {
     _tabCtrl.dispose();
     _roomSyncTimer?.cancel();
-    _reconnectTimer?.cancel();
-    _wsSub?.cancel();
-    _ws?.sink.close();
+    _boardWsSub?.cancel();
+    _boardWs.dispose();
     _venterSheetCtrl.dispose();
     _listenerSheetCtrl.dispose();
     super.dispose();
@@ -180,68 +176,22 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
     } catch (_) {}
   }
 
-  void _handleBoardWsEvent(Map<String, dynamic> msg) {
-    final event = msg['event'] as String?;
-
-    if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
-      _ws?.sink.close();
-      ref.read(authProvider.notifier).clear();
-      if (mounted) context.go(kPathVerify);
-      return;
+  void _onBoardEvent(BoardWsEvent event) {
+    switch (event) {
+      case AuthErrorEvent():
+        ref.read(authProvider.notifier).clear();
+        if (mounted) context.go(kPathVerify);
+      case BoardStateEvent(:final requests):
+        setState(() => _board = _filterOwn(requests));
+      case NewRequestEvent(:final request):
+        if (request.sessionId == _sessionId) return;
+        if (_board.any((r) => r.requestId == request.requestId)) return;
+        setState(() => _board = [..._board, request]);
+      case RemovedRequestEvent(:final requestId):
+        setState(() => _board = _board.where((r) => r.requestId != requestId).toList());
+      case MatchedEvent(:final roomId):
+        if (mounted) context.push('/chat?room_id=${Uri.encodeComponent(roomId)}');
     }
-    if (event == 'board_state') {
-      final list = (msg['requests'] as List?)
-              ?.map((e) => SpeakerRequest.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
-      setState(() => _board = _filterOwn(list));
-      return;
-    }
-    if (event == 'new_request') {
-      if (msg['session_id'] == _sessionId) return;
-      final id = msg['request_id'] as String;
-      if (_board.any((r) => r.requestId == id)) return;
-      setState(() {
-        _board = [
-          ..._board,
-          SpeakerRequest(
-            requestId: id,
-            sessionId: '',
-            username: msg['username'] as String? ?? '',
-            avatarId: (msg['avatar_id'] ?? 0).toString(),
-            postedAt: msg['posted_at'] as String? ?? '',
-            topic: msg['topic'] as String? ?? '',
-          ),
-        ];
-      });
-      return;
-    }
-    if (event == 'removed_request') {
-      setState(() => _board = _board.where((r) => r.requestId != msg['request_id']).toList());
-      return;
-    }
-    if (event == 'matched') {
-      _ws?.sink.close();
-      if (mounted) context.push('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
-    }
-  }
-
-  void _connectBoardWs() {
-    final token = _token;
-    if (token == null) return;
-    _wsSub?.cancel();
-    _ws?.sink.close();
-
-    final uri = Uri.parse(Env.boardWsUrl(token));
-    _ws = WebSocketChannel.connect(uri);
-
-    _wsSub = _ws!.stream.listen(
-      (raw) => _handleBoardWsEvent(jsonDecode(raw as String) as Map<String, dynamic>),
-      onDone: () {
-        _reconnectTimer?.cancel();
-        _reconnectTimer = Timer(const Duration(seconds: 3), _connectBoardWs);
-      },
-    );
   }
 
   List<SpeakerRequest> _filterOwn(List<SpeakerRequest> list) {
@@ -513,21 +463,25 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
 
   Widget _buildTopicChip(String topic) {
     final sel = _selectedTopic == topic;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTopic = sel ? null : topic),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: sel ? AppColors.accent.withValues(alpha: 0.12) : AppColors.snow,
-          borderRadius: AppRadii.fullAll,
-          border: Border.all(color: sel ? AppColors.accent : AppColors.border),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _selectedTopic = sel ? null : topic),
+        borderRadius: AppRadii.fullAll,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: sel ? AppColors.accent.withValues(alpha: 0.12) : AppColors.snow,
+            borderRadius: AppRadii.fullAll,
+            border: Border.all(color: sel ? AppColors.accent : AppColors.border),
+          ),
+          child: Text(topic, style: AppTypography.ui(
+            fontSize: 12,
+            fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+            color: sel ? AppColors.accent : AppColors.slate,
+          )),
         ),
-        child: Text(topic, style: AppTypography.ui(
-          fontSize: 12,
-          fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
-          color: sel ? AppColors.accent : AppColors.slate,
-        )),
       ),
     );
   }
@@ -545,9 +499,12 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
           children: _ventTopics.map((t) => _buildTopicChip(t)).toList(),
         ),
         const SizedBox(height: 14),
-        GestureDetector(
-          onTap: _ventLoading ? null : _handleVent,
-          child: Container(
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _ventLoading ? null : _handleVent,
+            borderRadius: AppRadii.lgAll,
+            child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -586,6 +543,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                   Icon(Icons.arrow_forward_rounded, color: Colors.white70),
               ],
             ),
+          ),
           ),
         ),
       ],
@@ -911,17 +869,7 @@ class _PeerTile extends StatelessWidget {
     );
   }
 
-  DateTime _parseTs(String ts) {
-    final epoch = int.tryParse(ts) ?? 0;
-    return DateTime.fromMillisecondsSinceEpoch(epoch * 1000);
-  }
+  DateTime _parseTs(String ts) => parseTs(ts);
 
-  String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final day = DateTime(dt.year, dt.month, dt.day);
-    if (day == today) return 'Today';
-    if (day == today.subtract(const Duration(days: 1))) return 'Yesterday';
-    return DateFormat('MMM d').format(dt);
-  }
+  String _formatDate(DateTime dt) => formatDateShort(dt);
 }

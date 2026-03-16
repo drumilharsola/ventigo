@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/theme.dart';
 import '../widgets/orb_background.dart';
 import '../widgets/warm_card.dart';
@@ -220,35 +221,50 @@ class _HelplineCard extends StatelessWidget {
     required this.color,
   });
 
+  Future<void> _dial() async {
+    final dialNumber = number.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri(scheme: 'tel', path: dialNumber);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return WarmCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withValues(alpha: 0.25)),
-            ),
-            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _dial,
+        child: WarmCard(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color.withValues(alpha: 0.25)),
+                ),
+                child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                    const SizedBox(height: 2),
+                    Text(number, style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+                    Text(desc, style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
+                  ],
+                ),
+              ),
+              Icon(Icons.phone_rounded, size: 20, color: color),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
-                const SizedBox(height: 2),
-                Text(number, style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
-                Text(desc, style: AppTypography.body(fontSize: 11, color: AppColors.slate)),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -9,7 +9,7 @@ class PrivacyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.snow,
-      appBar: AppBar(title: Text('Privacy Policy', style: AppTypography.title(fontSize: 22))),
+      appBar: AppBar(title: Semantics(header: true, child: Text('Privacy Policy', style: AppTypography.title(fontSize: 22)))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(

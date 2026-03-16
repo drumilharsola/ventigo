@@ -109,7 +109,10 @@ class _FlowButtonState extends State<FlowButton> with SingleTickerProviderStateM
         fontSize = 12;
     }
 
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: GestureDetector(
       onTapDown: enabled ? (_) => _scaleCtrl.forward() : null,
       onTapUp: enabled ? (_) => _scaleCtrl.reverse() : null,
       onTapCancel: enabled ? () => _scaleCtrl.reverse() : null,
@@ -165,6 +168,7 @@ class _FlowButtonState extends State<FlowButton> with SingleTickerProviderStateM
               ),
             ),
           ),
+        ),
         ),
       ),
     );

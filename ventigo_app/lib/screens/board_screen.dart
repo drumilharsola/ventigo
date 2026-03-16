@@ -1,15 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import '../config/env.dart';
 import '../config/theme.dart';
 import '../models/speaker_request.dart';
 import '../services/api_client.dart';
 import '../services/avatars.dart';
+import '../services/board_ws_service.dart';
 import '../state/auth_provider.dart';
 import '../widgets/flow_button.dart';
 import '../widgets/safety_dialog.dart';
@@ -28,24 +26,23 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   String _error = '';
   bool _refreshing = false;
 
-  WebSocketChannel? _ws;
-  StreamSubscription? _wsSub;
-  Timer? _reconnectTimer;
+  final BoardWsService _boardWs = BoardWsService();
+  StreamSubscription? _boardWsSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncBoard();
-      _connectWs();
+      _boardWsSub = _boardWs.events.listen(_onBoardEvent);
+      _boardWs.connect(() => _token ?? '');
     });
   }
 
   @override
   void dispose() {
-    _reconnectTimer?.cancel();
-    _wsSub?.cancel();
-    _ws?.sink.close();
+    _boardWsSub?.cancel();
+    _boardWs.dispose();
     super.dispose();
   }
 
@@ -67,58 +64,22 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     }
   }
 
-  void _handleBoardWsEvent(Map<String, dynamic> msg) {
-    final event = msg['event'] as String?;
-
-    if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
-      _ws?.sink.close();
-      ref.read(authProvider.notifier).clear();
-      if (mounted) context.go('/verify');
-      return;
+  void _onBoardEvent(BoardWsEvent event) {
+    switch (event) {
+      case AuthErrorEvent():
+        ref.read(authProvider.notifier).clear();
+        if (mounted) context.go('/verify');
+      case BoardStateEvent(:final requests):
+        setState(() => _board = _filterOwn(requests));
+      case NewRequestEvent(:final request):
+        if (request.sessionId == _sessionId) return;
+        if (_board.any((r) => r.requestId == request.requestId)) return;
+        setState(() => _board = [..._board, request]);
+      case RemovedRequestEvent(:final requestId):
+        setState(() => _board = _board.where((r) => r.requestId != requestId).toList());
+      case MatchedEvent(:final roomId):
+        if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(roomId)}');
     }
-    if (event == 'board_state') {
-      final list = (msg['requests'] as List?)?.map((e) => SpeakerRequest.fromJson(e as Map<String, dynamic>)).toList() ?? [];
-      setState(() => _board = _filterOwn(list));
-      return;
-    }
-    if (event == 'new_request') {
-      if (msg['session_id'] == _sessionId) return;
-      final id = msg['request_id'] as String;
-      if (_board.any((r) => r.requestId == id)) return;
-      setState(() {
-        _board = [
-          ..._board,
-          SpeakerRequest(requestId: id, sessionId: '', username: msg['username'] as String? ?? '', avatarId: (msg['avatar_id'] ?? 0).toString(), postedAt: msg['posted_at'] as String? ?? ''),
-        ];
-      });
-      return;
-    }
-    if (event == 'removed_request') {
-      setState(() => _board = _board.where((r) => r.requestId != msg['request_id']).toList());
-      return;
-    }
-    if (event == 'matched') {
-      _ws?.sink.close();
-      if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
-    }
-  }
-
-  void _connectWs() {
-    final token = _token;
-    if (token == null) return;
-    _wsSub?.cancel();
-    _ws?.sink.close();
-
-    final uri = Uri.parse(Env.boardWsUrl(token));
-    _ws = WebSocketChannel.connect(uri);
-
-    _wsSub = _ws!.stream.listen(
-      (raw) => _handleBoardWsEvent(jsonDecode(raw as String) as Map<String, dynamic>),
-      onDone: () {
-        _reconnectTimer?.cancel();
-        _reconnectTimer = Timer(const Duration(seconds: 3), _connectWs);
-      },
-    );
   }
 
   List<SpeakerRequest> _filterOwn(List<SpeakerRequest> list) {
@@ -186,7 +147,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/chats'),
         ),
-        title: Text('People who need a listener', style: AppTypography.title(fontSize: 18)),
+        title: Semantics(header: true, child: Text('People who need a listener', style: AppTypography.title(fontSize: 22))),
         actions: [
           IconButton(
             icon: _refreshing ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.refresh_rounded),

@@ -1,12 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
 import '../config/theme.dart';
 
 import '../services/avatars.dart';
 import '../state/auth_provider.dart';
+import '../utils/time_helpers.dart';
 import '../widgets/flow_button.dart';
 import '../widgets/orb_background.dart';
 import '../widgets/warm_card.dart';
@@ -253,20 +255,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         // DOB
         Text('DATE OF BIRTH', style: AppTypography.label()),
         const SizedBox(height: 10),
-        GestureDetector(
-          onTap: _pickDate,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: AppRadii.mdAll,
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Text(
-              _dob != null
-                  ? '${_dob!.day}/${_dob!.month}/${_dob!.year}'
-                  : 'Tap to select',
-              style: AppTypography.ui(color: _dob != null ? AppColors.ink : AppColors.slate),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _pickDate,
+            borderRadius: AppRadii.mdAll,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: AppRadii.mdAll,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Text(
+                _dob != null
+                    ? '${_dob!.day}/${_dob!.month}/${_dob!.year}'
+                    : 'Tap to select',
+                style: AppTypography.ui(color: _dob != null ? AppColors.ink : AppColors.slate),
+              ),
             ),
           ),
         ),
@@ -332,40 +338,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
           // Avatar (tap to edit)
           Center(
-            child: GestureDetector(
-              onTap: () => setState(() => _editing = true),
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadii.full),
-                    child: CachedNetworkImage(
-                      imageUrl: avatarUrl(currentAvatarId, size: 100),
-                      width: 88,
-                      height: 88,
-                      placeholder: (_, __) => Container(
-                        width: 88, height: 88, color: AppColors.pale,
-                        child: Icon(Icons.person, size: 48, color: AppColors.fog),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        width: 88, height: 88,
-                        decoration: BoxDecoration(color: AppColors.pale, borderRadius: BorderRadius.circular(AppRadii.full)),
-                        child: Icon(Icons.person, size: 48, color: AppColors.fog),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() => _editing = true),
+                customBorder: const CircleBorder(),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadii.full),
+                      child: CachedNetworkImage(
+                        imageUrl: avatarUrl(currentAvatarId, size: 100),
+                        width: 88,
+                        height: 88,
+                        placeholder: (_, __) => Container(
+                          width: 88, height: 88, color: AppColors.pale,
+                          child: Icon(Icons.person, size: 48, color: AppColors.fog),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          width: 88, height: 88,
+                          decoration: BoxDecoration(color: AppColors.pale, borderRadius: BorderRadius.circular(AppRadii.full)),
+                          child: Icon(Icons.person, size: 48, color: AppColors.fog),
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    bottom: 0, right: 0,
-                    child: Container(
-                      width: 28, height: 28,
-                      decoration: BoxDecoration(
-                        color: AppColors.accent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.snow, width: 2),
+                    Positioned(
+                      bottom: 0, right: 0,
+                      child: Container(
+                        width: 28, height: 28,
+                        decoration: BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.snow, width: 2),
+                        ),
+                        child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
                       ),
-                      child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -389,7 +399,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             icon: Icons.emoji_events_outlined,
             label: 'Achievements',
             subtitle: 'Coming soon',
-            onTap: () {},
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Achievements coming soon!'), behavior: SnackBarBehavior.floating),
+              );
+            },
           ),
 
           const SizedBox(height: 24),
@@ -434,30 +448,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _quickActionTile({required IconData icon, required String label, String? subtitle, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: AppRadii.mdAll,
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: AppColors.slate),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                  if (subtitle != null) Text(subtitle, style: AppTypography.body(fontSize: 11, color: AppColors.mist)),
-                ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadii.mdAll,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: AppRadii.mdAll,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: AppColors.slate),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                    if (subtitle != null) Text(subtitle, style: AppTypography.body(fontSize: 11, color: AppColors.mist)),
+                  ],
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.slate),
-          ],
+              Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.slate),
+            ],
+          ),
         ),
       ),
     );
@@ -491,11 +509,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               // Settings items
               _settingsItem(Icons.lock_outline_rounded, 'Change Password', () {
                 Navigator.of(context).pop();
-                _showChangePasswordSheet();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Change password is coming soon'), behavior: SnackBarBehavior.floating),
+                );
               }),
               _settingsItem(Icons.email_outlined, 'Change Email', () {
                 Navigator.of(context).pop();
-                _showChangeEmailSheet();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Change email is coming soon'), behavior: SnackBarBehavior.floating),
+                );
               }),
               _settingsItem(Icons.person_outline_rounded, 'Re-roll Username', () async {
                 Navigator.of(context).pop();
@@ -518,6 +540,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _settingsItem(Icons.block_outlined, 'Blocked Users', () {
                 Navigator.of(context).pop();
                 context.push('/blocked-users');
+              }),
+              _settingsItem(Icons.download_outlined, 'Export My Data', () {
+                Navigator.of(context).pop();
+                _handleExportData();
               }),
 
               const SizedBox(height: 12),
@@ -542,107 +568,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _settingsItem(IconData icon, String label, VoidCallback onTap, {Color? color}) {
     final c = color ?? AppColors.ink;
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          children: [
-            Icon(icon, size: 22, color: c),
-            const SizedBox(width: 14),
-            Expanded(child: Text(label, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w500, color: c))),
-            Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.mist),
-          ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: c),
+              const SizedBox(width: 14),
+              Expanded(child: Text(label, style: AppTypography.ui(fontSize: 15, fontWeight: FontWeight.w500, color: c))),
+              Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.mist),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _showChangePasswordSheet() {
-    final currentCtrl = TextEditingController();
-    final newCtrl = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheetState) {
-        return Container(
-          decoration: BoxDecoration(color: AppColors.snow, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
-          padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 20),
-              Text('Change Password', style: AppTypography.title(fontSize: 18)),
-              const SizedBox(height: 16),
-              TextField(
-                controller: currentCtrl,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Current password',
-                  border: OutlineInputBorder(borderRadius: AppRadii.mdAll),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: newCtrl,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'New password',
-                  border: OutlineInputBorder(borderRadius: AppRadii.mdAll),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FlowButton(label: 'Update Password', onPressed: () => Navigator.of(ctx).pop(), expand: true),
-            ],
-          ),
-        );
-      }),
-    );
-  }
+  String _formatMemberSince(String raw) => formatTimestamp(raw);
 
-  void _showChangeEmailSheet() {
-    final emailCtrl = TextEditingController(text: _email);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheetState) {
-        return Container(
-          decoration: BoxDecoration(color: AppColors.snow, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
-          padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 20),
-              Text('Change Email', style: AppTypography.title(fontSize: 18)),
-              const SizedBox(height: 16),
-              TextField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'New email address',
-                  border: OutlineInputBorder(borderRadius: AppRadii.mdAll),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FlowButton(label: 'Update Email', onPressed: () => Navigator.of(ctx).pop(), expand: true),
-            ],
-          ),
+  Future<void> _handleExportData() async {
+    final token = ref.read(authProvider).token;
+    if (token == null) return;
+    setState(() => _saving = true);
+    try {
+      final data = await ref.read(apiClientProvider).exportData(token);
+      final json = const JsonEncoder.withIndent('  ').convert(data);
+      await Clipboard.setData(ClipboardData(text: json));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data copied to clipboard'), behavior: SnackBarBehavior.floating),
         );
-      }),
-    );
-  }
-
-  String _formatMemberSince(String raw) {
-    final ts = int.tryParse(raw) ?? double.tryParse(raw)?.toInt();
-    if (ts != null && ts > 1000000000) {
-      final dt = DateTime.fromMillisecondsSinceEpoch(ts * 1000);
-      return DateFormat.yMMMd().format(dt);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e'), behavior: SnackBarBehavior.floating),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    return raw;
   }
 
   Widget _emailRow() {
@@ -671,11 +639,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             if (!verified) ...[
               const SizedBox(width: 10),
-              GestureDetector(
-                onTap: _verificationSending ? null : _handleSendVerification,
-                child: Text(
-                  _verificationSending ? 'Sending…' : 'Verify now →',
-                  style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.accent),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _verificationSending ? null : _handleSendVerification,
+                  child: Text(
+                    _verificationSending ? 'Sending…' : 'Verify now →',
+                    style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.accent),
+                  ),
                 ),
               ),
             ],
@@ -706,26 +677,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         itemBuilder: (_, i) {
           final a = avatars[i];
           final isSelected = a.id == selected;
-          return GestureDetector(
-            onTap: () => onSelect(a.id),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? AppColors.accent : Colors.transparent,
-                  width: 2,
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onSelect(a.id),
+              customBorder: const CircleBorder(),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? AppColors.accent : Colors.transparent,
+                    width: 2,
+                  ),
                 ),
-              ),
-              padding: const EdgeInsets.all(2),
-              child: ClipOval(
-                child: CachedNetworkImage(
-                  imageUrl: avatarUrl(a, size: 56),
-                  width: 48,
-                  height: 48,
-                  errorWidget: (_, __, ___) => Container(
-                    width: 48, height: 48, color: AppColors.pale,
-                    child: Icon(Icons.person, size: 24, color: AppColors.fog),
+                padding: const EdgeInsets.all(2),
+                child: ClipOval(
+                  child: CachedNetworkImage(
+                    imageUrl: avatarUrl(a, size: 56),
+                    width: 48,
+                    height: 48,
+                    errorWidget: (_, __, ___) => Container(
+                      width: 48, height: 48, color: AppColors.pale,
+                      child: Icon(Icons.person, size: 24, color: AppColors.fog),
+                    ),
                   ),
                 ),
               ),

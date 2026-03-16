@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-
 import '../config/theme.dart';
 import '../models/appreciation.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
+import '../utils/time_helpers.dart';
 import '../widgets/orb_background.dart';
+import '../widgets/skeleton.dart';
 
 class AppreciationsScreen extends ConsumerStatefulWidget {
   final String? username;
@@ -86,14 +86,7 @@ class _AppreciationsScreenState extends ConsumerState<AppreciationsScreen> {
     }
   }
 
-  String _formatDate(int ts) {
-    if (ts > 1000000000) {
-      return DateFormat.yMMMd().add_jm().format(
-        DateTime.fromMillisecondsSinceEpoch(ts * 1000).toLocal(),
-      );
-    }
-    return ts.toString();
-  }
+  String _formatDate(int ts) => formatFullDateTime(ts);
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +111,7 @@ class _AppreciationsScreenState extends ConsumerState<AppreciationsScreen> {
                       ),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text(title, style: AppTypography.title(fontSize: 18), overflow: TextOverflow.ellipsis),
+                        child: Text(title, style: AppTypography.title(fontSize: 22), overflow: TextOverflow.ellipsis),
                       ),
                     ],
                   ),
@@ -135,7 +128,15 @@ class _AppreciationsScreenState extends ConsumerState<AppreciationsScreen> {
 
   Widget _buildBody() {
     if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return SkeletonShimmer(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          children: List.generate(4, (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: SkeletonCard(),
+          )),
+        ),
+      );
     }
     if (_error != null && _items.isEmpty) {
       return Center(
@@ -239,22 +240,26 @@ class _AppreciationTile extends StatelessWidget {
           ],
           if (onShare != null) ...[
             const SizedBox(height: 10),
-            GestureDetector(
-              onTap: onShare,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.lavender.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.lavender.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.share_outlined, size: 14, color: AppColors.lavender),
-                    const SizedBox(width: 6),
-                    Text('Share to Community', style: AppTypography.ui(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.lavender)),
-                  ],
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onShare,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.lavender.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.lavender.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.share_outlined, size: 14, color: AppColors.lavender),
+                      const SizedBox(width: 6),
+                      Text('Share to Community', style: AppTypography.ui(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.lavender)),
+                    ],
+                  ),
                 ),
               ),
             ),

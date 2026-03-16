@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../models/room_summary.dart';
 import '../services/avatars.dart';
 import '../state/auth_provider.dart';
+import '../state/connections_provider.dart';
+import '../utils/time_helpers.dart';
+import '../widgets/skeleton.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 @visibleForTesting
@@ -23,8 +25,6 @@ class HistoryScreen extends ConsumerStatefulWidget {
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   List<RoomSummary> _rooms = [];
-  List<Map<String, dynamic>> _connections = [];
-  List<Map<String, dynamic>> _pendingRequests = [];
   bool _loading = true;
   String _tab = 'chat'; // chat | connections
 
@@ -40,17 +40,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (token == null) return;
     try {
       final rooms = await ref.read(apiClientProvider).getChatRooms(token);
-      Map<String, dynamic>? conns;
-      try {
-        conns = await ref.read(apiClientProvider).getConnections(token);
-      } catch (_) {}
+      ref.read(connectionsProvider.notifier).load();
       if (mounted) {
         setState(() {
           _rooms = rooms;
-          if (conns != null) {
-            _connections = (conns['connections'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-            _pendingRequests = (conns['pending_requests'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          }
           _loading = false;
         });
       }
@@ -59,21 +52,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }
   }
 
-  DateTime _parseTs(String ts) {
-    final epoch = int.tryParse(ts) ?? 0;
-    return DateTime.fromMillisecondsSinceEpoch(epoch * 1000);
-  }
+  DateTime _parseTs(String ts) => parseTs(ts);
 
-  String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final day = DateTime(dt.year, dt.month, dt.day);
-    if (day == today) return 'Today';
-    if (day == today.subtract(const Duration(days: 1))) return 'Yesterday';
-    return DateFormat('MMM d, yyyy').format(dt);
-  }
+  String _formatDate(DateTime dt) => formatDate(dt);
 
-  String _formatTime(DateTime dt) => DateFormat('h:mm a').format(dt);
+  String _formatTime(DateTime dt) => formatTime(dt);
 
   Widget _buildPendingRequestTile(Map<String, dynamic> req) {
     final peerUsername = req['peer_username'] as String? ?? 'Anonymous';
@@ -85,10 +68,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       subtitle: Text('Wants to connect', style: AppTypography.body(fontSize: 12, color: AppColors.slate)),
       trailing: FilledButton(
         onPressed: () async {
-          final token = ref.read(authProvider).token;
-          if (token == null) return;
-          await ref.read(apiClientProvider).acceptConnectionRequest(token, peerSessionId);
-          _load();
+          await ref.read(connectionsProvider.notifier).accept(peerSessionId);
         },
         style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
         child: Text('Accept', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white)),
@@ -108,10 +88,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         children: [
           FilledButton(
             onPressed: () async {
-              final token = ref.read(authProvider).token;
-              if (token == null) return;
-              final roomId = await ref.read(apiClientProvider).directChat(token, peerSessionId);
-              if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(roomId)}');
+              final roomId = await ref.read(connectionsProvider.notifier).startChat(peerSessionId);
+              if (roomId != null && mounted) context.go('/chat?room_id=${Uri.encodeComponent(roomId)}');
             },
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             child: Text('Chat', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white)),
@@ -120,10 +98,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           IconButton(
             icon: Icon(Icons.close_rounded, size: 18, color: AppColors.danger),
             onPressed: () async {
-              final token = ref.read(authProvider).token;
-              if (token == null) return;
-              await ref.read(apiClientProvider).removeConnection(token, peerSessionId);
-              _load();
+              await ref.read(connectionsProvider.notifier).remove(peerSessionId);
             },
           ),
         ],
@@ -132,7 +107,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Widget _buildConnectionsTab() {
-    if (_connections.isEmpty && _pendingRequests.isEmpty) {
+    final conns = ref.watch(connectionsProvider);
+    if (conns.connections.isEmpty && conns.pendingRequests.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(40),
@@ -150,27 +126,29 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        if (_pendingRequests.isNotEmpty) ...[
+        if (conns.pendingRequests.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Text('PENDING REQUESTS', style: AppTypography.label(color: AppColors.accent)),
           ),
-          ..._pendingRequests.map(_buildPendingRequestTile),
+          ...conns.pendingRequests.map(_buildPendingRequestTile),
           const Divider(height: 24, indent: 20, endIndent: 20),
         ],
-        if (_connections.isNotEmpty) ...[
+        if (conns.connections.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Text('CONNECTED', style: AppTypography.label(color: AppColors.slate)),
           ),
-          ..._connections.map(_buildConnectedUserTile),
+          ...conns.connections.map(_buildConnectedUserTile),
         ],
       ],
     );
   }
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return SkeletonShimmer(
+      child: ListView(children: List.generate(5, (_) => const SkeletonListTile())),
+    );
     if (_tab == 'connections') return _buildConnectionsTab();
     if (_rooms.isEmpty) {
       return Center(
@@ -227,7 +205,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.go('/chats'),
         ),
-        title: Text(_tab == 'connections' ? 'Connections' : 'Conversations', style: AppTypography.title(fontSize: 20)),
+        title: Semantics(header: true, child: Text(_tab == 'connections' ? 'Connections' : 'Conversations', style: AppTypography.title(fontSize: 22))),
         actions: [
           TextButton(
             onPressed: () => setState(() => _tab = _tab == 'chat' ? 'connections' : 'chat'),

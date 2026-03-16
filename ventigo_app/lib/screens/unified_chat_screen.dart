@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../models/chat_message.dart';
 import '../models/room_summary.dart';
@@ -158,16 +157,8 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
-  String _formatDateTime(num ts) {
-    final d = DateTime.fromMillisecondsSinceEpoch((ts * 1000).toInt());
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final day = DateTime(d.year, d.month, d.day);
-    final time = DateFormat('h:mm a').format(d);
-    if (day == today) return 'Today at $time';
-    if (day == today.subtract(const Duration(days: 1))) return 'Yesterday at $time';
-    return '${DateFormat('MMM d').format(d)} at $time';
-  }
+  String _formatDateTime(num ts) =>
+      formatDateTimeAt(DateTime.fromMillisecondsSinceEpoch((ts * 1000).toInt()));
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -307,33 +298,36 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
               icon: Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.ink),
               onPressed: () => _goBack(),
             ),
-            GestureDetector(
-              onTap: () => setState(() => _showPeerProfile = true),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: avatarUrl(peerAvatar, size: 72),
-                      width: 36,
-                      height: 36,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(widget.peerUsername,
-                          style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                      Text(
-                        isLive
-                            ? (liveChat.connected ? 'Live · anonymous' : 'Connecting…')
-                            : '${_peerRooms.length} ${_peerRooms.length == 1 ? "session" : "sessions"}',
-                        style: AppTypography.body(fontSize: 11, color: isLive ? AppColors.success : AppColors.slate),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() => _showPeerProfile = true),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipOval(
+                      child: CachedNetworkImage(
+                        imageUrl: avatarUrl(peerAvatar, size: 72),
+                        width: 36,
+                        height: 36,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.peerUsername,
+                            style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                        Text(
+                          isLive
+                              ? (liveChat.connected ? 'Live · anonymous' : 'Connecting…')
+                              : '${_peerRooms.length} ${_peerRooms.length == 1 ? "session" : "sessions"}',
+                          style: AppTypography.body(fontSize: 11, color: isLive ? AppColors.success : AppColors.slate),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const Spacer(),
@@ -660,9 +654,12 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
                         ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => setState(() => _replyTo = null),
-                      child: Icon(Icons.close_rounded, size: 18, color: AppColors.slate),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => setState(() => _replyTo = null),
+                        child: Icon(Icons.close_rounded, size: 18, color: AppColors.slate),
+                      ),
                     ),
                   ],
                 ),
@@ -699,20 +696,24 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () {
-                    final text = _inputCtrl.text.trim();
-                    if (text.isNotEmpty && !disabled) {
-                      notifier.sendMessage(text, replyTo: _replyTo);
-                      _inputCtrl.clear();
-                      setState(() => _replyTo = null);
-                    }
-                  },
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
-                    child: Icon(Icons.arrow_upward_rounded, size: 20, color: AppColors.white),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      final text = _inputCtrl.text.trim();
+                      if (text.isNotEmpty && !disabled) {
+                        notifier.sendMessage(text, replyTo: _replyTo);
+                        _inputCtrl.clear();
+                        setState(() => _replyTo = null);
+                      }
+                    },
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
+                      child: Icon(Icons.arrow_upward_rounded, size: 20, color: AppColors.white),
+                    ),
                   ),
                 ),
               ],

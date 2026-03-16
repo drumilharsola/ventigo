@@ -349,6 +349,39 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
+  Future<Map<String, dynamic>> toggleKudos(String token, String postId) async {
+    try {
+      final res = await _dio.post('/posts/${Uri.encodeComponent(postId)}/kudos',
+          options: Options(headers: _authHeader(token)));
+      return res.data as Map<String, dynamic>;
+    } catch (e) { _rethrow(e); }
+  }
+
+  Future<Map<String, dynamic>> getKudos(String token, String postId) async {
+    try {
+      final res = await _dio.get('/posts/${Uri.encodeComponent(postId)}/kudos',
+          options: Options(headers: _authHeader(token)));
+      return res.data as Map<String, dynamic>;
+    } catch (e) { _rethrow(e); }
+  }
+
+  Future<List<Map<String, dynamic>>> getComments(String postId) async {
+    try {
+      final res = await _dio.get('/posts/${Uri.encodeComponent(postId)}/comments');
+      final list = res.data['comments'] as List;
+      return list.cast<Map<String, dynamic>>();
+    } catch (e) { _rethrow(e); }
+  }
+
+  Future<Map<String, dynamic>> addComment(String token, String postId, String text) async {
+    try {
+      final res = await _dio.post('/posts/${Uri.encodeComponent(postId)}/comments',
+          data: {'text': text},
+          options: Options(headers: _authHeader(token)));
+      return res.data['comment'] as Map<String, dynamic>;
+    } catch (e) { _rethrow(e); }
+  }
+
   // -------------------------- GDPR --------------------------
 
   Future<Map<String, dynamic>> exportData(String token) async {

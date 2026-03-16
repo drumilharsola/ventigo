@@ -48,7 +48,9 @@ class _BreathingCircleState extends State<BreathingCircle>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    return Semantics(
+      excludeSemantics: true,
+      child: AnimatedBuilder(
       animation: _ctrl,
       builder: (_, __) {
         return Column(
@@ -91,6 +93,7 @@ class _BreathingCircleState extends State<BreathingCircle>
           ],
         );
       },
+    ),
     );
   }
 }

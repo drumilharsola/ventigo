@@ -100,28 +100,32 @@ class _SessionEndModalState extends State<SessionEndModal> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: _moods.map((m) {
         final selected = _selectedMood == m.$3;
-        return GestureDetector(
-          onTap: () {
-            setState(() => _selectedMood = m.$3);
-            widget.onFeedback?.call(m.$3);
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: selected ? AppColors.accentDim : Colors.transparent,
-              border: Border.all(
-                color: selected ? AppColors.accent : Colors.transparent,
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              setState(() => _selectedMood = m.$3);
+              widget.onFeedback?.call(m.$3);
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: selected ? AppColors.accentDim : Colors.transparent,
+                border: Border.all(
+                  color: selected ? AppColors.accent : Colors.transparent,
+                ),
               ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(m.$1, style: const TextStyle(fontSize: 24)),
-                const SizedBox(height: 4),
-                Text(m.$2, style: AppTypography.micro(fontSize: 10, color: AppColors.slate)),
-              ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(m.$1, style: const TextStyle(fontSize: 24)),
+                  const SizedBox(height: 4),
+                  Text(m.$2, style: AppTypography.micro(fontSize: 10, color: AppColors.slate)),
+                ],
+              ),
             ),
           ),
         );

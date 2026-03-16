@@ -20,7 +20,10 @@ class CharacterAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ringColor = role?.primary ?? AppColors.accent;
-    return Container(
+    return Semantics(
+      label: 'Avatar',
+      excludeSemantics: true,
+      child: Container(
       padding: const EdgeInsets.all(2.5),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -46,6 +49,7 @@ class CharacterAvatar extends StatelessWidget {
               shape: BoxShape.circle,
             ),
           ),
+        ),
         ),
       ),
     );

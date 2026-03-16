@@ -1,16 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import '../config/env.dart';
 import '../config/theme.dart';
 import '../models/speaker_request.dart';
 import '../models/room_summary.dart';
 import '../services/api_client.dart';
 import '../services/avatars.dart';
+import '../services/board_ws_service.dart';
 import '../state/auth_provider.dart';
 import '../state/pending_wait_provider.dart';
 import '../widgets/flow_logo.dart';
@@ -68,9 +66,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   bool _resendLoading = false;
   bool _resendDone = false;
 
-  WebSocketChannel? _ws;
-  StreamSubscription? _wsSub;
-  Timer? _reconnectTimer;
+  final BoardWsService _boardWs = BoardWsService();
+  StreamSubscription? _boardWsSub;
   Timer? _roomSyncTimer;
 
   @override
@@ -79,7 +76,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncBoard();
       _syncRooms();
-      _connectWs();
+      _boardWsSub = _boardWs.events.listen(_onBoardEvent);
+      _boardWs.connect(() => _token ?? '');
       _refreshEmailVerified();
       _roomSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         _syncRooms();
@@ -99,10 +97,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
   @override
   void dispose() {
-    _reconnectTimer?.cancel();
+    _boardWsSub?.cancel();
+    _boardWs.dispose();
     _roomSyncTimer?.cancel();
-    _wsSub?.cancel();
-    _ws?.sink.close();
     super.dispose();
   }
 
@@ -132,60 +129,22 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     } catch (_) {}
   }
 
-  void _handleBoardWsEvent(Map<String, dynamic> msg) {
-    final event = msg['event'] as String?;
-
-    if (event == 'error' && (msg['detail'] == 'token_invalid' || msg['detail'] == 'session_replaced')) {
-      _ws?.sink.close();
-      ref.read(authProvider.notifier).clear();
-      if (mounted) context.go('/verify');
-      return;
+  void _onBoardEvent(BoardWsEvent event) {
+    switch (event) {
+      case AuthErrorEvent():
+        ref.read(authProvider.notifier).clear();
+        if (mounted) context.go('/verify');
+      case BoardStateEvent(:final requests):
+        setState(() => _board = _filterOwn(requests));
+      case NewRequestEvent(:final request):
+        if (request.sessionId == _sessionId) return;
+        if (_board.any((r) => r.requestId == request.requestId)) return;
+        setState(() => _board = [..._board, request]);
+      case RemovedRequestEvent(:final requestId):
+        setState(() => _board = _board.where((r) => r.requestId != requestId).toList());
+      case MatchedEvent(:final roomId):
+        if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(roomId)}');
     }
-    if (event == 'board_state') {
-      final list = (msg['requests'] as List?)?.map((e) => SpeakerRequest.fromJson(e as Map<String, dynamic>)).toList() ?? [];
-      setState(() {
-        _board = _filterOwn(list);
-      });
-      return;
-    }
-    if (event == 'new_request') {
-      if (msg['session_id'] == _sessionId) return;
-      final id = msg['request_id'] as String;
-      if (_board.any((r) => r.requestId == id)) return;
-      setState(() {
-        _board = [
-          ..._board,
-          SpeakerRequest(requestId: id, sessionId: '', username: msg['username'] as String? ?? '', avatarId: (msg['avatar_id'] ?? 0).toString(), postedAt: msg['posted_at'] as String? ?? ''),
-        ];
-      });
-      return;
-    }
-    if (event == 'removed_request') {
-      setState(() => _board = _board.where((r) => r.requestId != msg['request_id']).toList());
-      return;
-    }
-    if (event == 'matched') {
-      _ws?.sink.close();
-      if (mounted) context.go('/chat?room_id=${Uri.encodeComponent(msg['room_id'] as String)}');
-    }
-  }
-
-  void _connectWs() {
-    final token = _token;
-    if (token == null) return;
-    _wsSub?.cancel();
-    _ws?.sink.close();
-
-    final uri = Uri.parse(Env.boardWsUrl(token));
-    _ws = WebSocketChannel.connect(uri);
-
-    _wsSub = _ws!.stream.listen(
-      (raw) => _handleBoardWsEvent(jsonDecode(raw as String) as Map<String, dynamic>),
-      onDone: () {
-        _reconnectTimer?.cancel();
-        _reconnectTimer = Timer(const Duration(seconds: 3), _connectWs);
-      },
-    );
   }
 
   List<SpeakerRequest> _filterOwn(List<SpeakerRequest> list) {
@@ -204,7 +163,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     try {
       final res = await ref.read(apiClientProvider).postSpeak(token);
       ref.read(pendingWaitProvider.notifier).startWaiting(res.requestId);
-      _ws?.sink.close();
+      _boardWs.close();
       if (mounted) context.go('/waiting?request_id=${Uri.encodeComponent(res.requestId)}');
     } on AuthException {
       ref.read(authProvider.notifier).clear();
@@ -216,7 +175,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
 
   void _handleSignOut() {
-    _ws?.sink.close();
+    _boardWs.close();
     ref.read(authProvider.notifier).clear();
     context.go('/');
   }
@@ -245,14 +204,17 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                 elevation: 0,
                 title: const FlowLogo(dark: true),
                 actions: [
-                  GestureDetector(
-                    onTap: () => context.go('/profile'),
-                    child: Row(
-                      children: [
-                        ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(auth.avatarId ?? 0, size: 56), width: 28, height: 28)),
-                        const SizedBox(width: 6),
-                        Text(auth.username ?? '', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.charcoal)),
-                      ],
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => context.go('/profile'),
+                      child: Row(
+                        children: [
+                          ClipOval(child: CachedNetworkImage(imageUrl: avatarUrl(auth.avatarId ?? 0, size: 56), width: 28, height: 28)),
+                          const SizedBox(width: 6),
+                          Text(auth.username ?? '', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.charcoal)),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -367,88 +329,104 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   Widget _ventCard() {
-    return GestureDetector(
-      onTap: _ventLoading ? null : _handleVent,
-      child: AnimatedOpacity(
-        opacity: _ventLoading ? 0.7 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [AppColors.venterPrimary, AppColors.accentHover], begin: Alignment.topLeft, end: Alignment.bottomRight),
-            borderRadius: AppRadii.lgAll,
-            boxShadow: [BoxShadow(color: AppColors.venterPrimary.withValues(alpha: 0.3), blurRadius: 28, offset: const Offset(0, 6))],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                const Text('🎤', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 8),
-                const Pill(text: 'I need to vent', variant: PillVariant.accent),
-              ]),
-              const SizedBox(height: 14),
-              Text(_ventLoading ? 'Finding your space…' : 'Let it out.', style: AppTypography.title(fontSize: 18, color: Colors.white)),
-              const SizedBox(height: 6),
-              Text('Open a private conversation and wait for one good listener to show up.', style: AppTypography.body(fontSize: 13, color: Colors.white70)),
-              if (_board.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF4ade80), shape: BoxShape.circle)),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${_board.length} listener${_board.length != 1 ? "s" : ""} available now',
-                      style: AppTypography.micro(fontSize: 12, color: Colors.white60),
-                    ),
-                  ],
-                ),
+    return Semantics(
+      button: true,
+      label: 'Start venting',
+      child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _ventLoading ? null : _handleVent,
+        borderRadius: AppRadii.lgAll,
+        child: AnimatedOpacity(
+          opacity: _ventLoading ? 0.7 : 1.0,
+          duration: const Duration(milliseconds: 150),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [AppColors.venterPrimary, AppColors.accentHover], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: AppRadii.lgAll,
+              boxShadow: [BoxShadow(color: AppColors.venterPrimary.withValues(alpha: 0.3), blurRadius: 28, offset: const Offset(0, 6))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Text('🎤', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  const Pill(text: 'I need to vent', variant: PillVariant.accent),
+                ]),
+                const SizedBox(height: 14),
+                Text(_ventLoading ? 'Finding your space…' : 'Let it out.', style: AppTypography.title(fontSize: 18, color: Colors.white)),
+                const SizedBox(height: 6),
+                Text('Open a private conversation and wait for one good listener to show up.', style: AppTypography.body(fontSize: 13, color: Colors.white70)),
+                if (_board.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF4ade80), shape: BoxShape.circle)),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${_board.length} listener${_board.length != 1 ? "s" : ""} available now',
+                        style: AppTypography.micro(fontSize: 12, color: Colors.white60),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
+      ),
       ),
     );
   }
 
   Widget _listenCard(AuthState auth) {
-    return GestureDetector(
-      onTap: auth.emailVerified != true ? null : () => context.go('/community'),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: AppRadii.lgAll,
-          border: Border.all(color: Colors.black.withValues(alpha: 0.07), width: 1.5),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Text('🤝', style: TextStyle(fontSize: 22)),
-            ),
-            const SizedBox(width: 16),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('I want to listen', style: AppTypography.title(fontSize: 18, color: AppColors.ink)),
-                const SizedBox(height: 4),
-                Text(
-                  _board.isNotEmpty
-                      ? '${_board.length} ${_board.length == 1 ? "person" : "people"} waiting to be heard'
-                      : 'See who needs a listener',
-                  style: AppTypography.body(fontSize: 13, color: AppColors.slate),
+    return Semantics(
+      button: true,
+      label: 'Go to listener board',
+      child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: auth.emailVerified != true ? null : () => context.go('/community'),
+        borderRadius: AppRadii.lgAll,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadii.lgAll,
+            border: Border.all(color: Colors.black.withValues(alpha: 0.07), width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                if (auth.emailVerified != true)
-                  Text('Verify email to unlock', style: AppTypography.micro(fontSize: 11, color: AppColors.danger)),
-              ],
-            )),
-            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.slate),
-          ],
+                child: const Text('🤝', style: TextStyle(fontSize: 22)),
+              ),
+              const SizedBox(width: 16),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('I want to listen', style: AppTypography.title(fontSize: 18, color: AppColors.ink)),
+                  const SizedBox(height: 4),
+                  Text(
+                    _board.isNotEmpty
+                        ? '${_board.length} ${_board.length == 1 ? "person" : "people"} waiting to be heard'
+                        : 'See who needs a listener',
+                    style: AppTypography.body(fontSize: 13, color: AppColors.slate),
+                  ),
+                  if (auth.emailVerified != true)
+                    Text('Verify email to unlock', style: AppTypography.micro(fontSize: 11, color: AppColors.danger)),
+                ],
+              )),
+              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.slate),
+            ],
+          ),
+          ),
         ),
       ),
     );
@@ -456,50 +434,58 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
   Widget _chatHistoryCard(List<_GroupedRoom> grouped) {
     final activeCount = grouped.where((g) => g.latest.status == 'active').length;
-    return GestureDetector(
-      onTap: () => context.go('/history'),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: AppRadii.lgAll,
-          border: Border.all(color: Colors.black.withValues(alpha: 0.07), width: 1.5),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.lavender.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Text('💬', style: TextStyle(fontSize: 22)),
-            ),
-            const SizedBox(width: 16),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Conversations', style: AppTypography.title(fontSize: 18, color: AppColors.ink)),
-                const SizedBox(height: 4),
-                Text(
-                  grouped.isEmpty
-                      ? 'No conversations yet'
-                      : activeCount > 0
-                          ? '$activeCount active · ${grouped.length} total'
-                          : '${grouped.length} past ${grouped.length == 1 ? "chat" : "chats"}',
-                  style: AppTypography.body(fontSize: 13, color: AppColors.slate),
-                ),
-              ],
-            )),
-            if (activeCount > 0)
+    return Semantics(
+      button: true,
+      label: 'View conversation history',
+      child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.go('/history'),
+        borderRadius: AppRadii.lgAll,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadii.lgAll,
+            border: Border.all(color: Colors.black.withValues(alpha: 0.07), width: 1.5),
+          ),
+          child: Row(
+            children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(12)),
-                child: Text('$activeCount', style: AppTypography.ui(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.lavender.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text('💬', style: TextStyle(fontSize: 22)),
               ),
-            const SizedBox(width: 8),
-            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.slate),
-          ],
+              const SizedBox(width: 16),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Conversations', style: AppTypography.title(fontSize: 18, color: AppColors.ink)),
+                  const SizedBox(height: 4),
+                  Text(
+                    grouped.isEmpty
+                        ? 'No conversations yet'
+                        : activeCount > 0
+                            ? '$activeCount active · ${grouped.length} total'
+                            : '${grouped.length} past ${grouped.length == 1 ? "chat" : "chats"}',
+                    style: AppTypography.body(fontSize: 13, color: AppColors.slate),
+                  ),
+                ],
+              )),
+              if (activeCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(12)),
+                  child: Text('$activeCount', style: AppTypography.ui(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.slate),
+            ],
+          ),
+          ),
         ),
       ),
     );

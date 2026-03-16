@@ -33,7 +33,9 @@ class _FlowLogoState extends State<FlowLogo> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     final textColor = widget.dark ? AppColors.ink : AppColors.white;
 
-    return GestureDetector(
+    return Semantics(
+      label: 'App logo',
+      child: GestureDetector(
       onTap: widget.onTap,
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -81,7 +83,8 @@ class _FlowLogoState extends State<FlowLogo> with SingleTickerProviderStateMixin
               ),
             ],
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

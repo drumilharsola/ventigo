@@ -130,24 +130,17 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
     try {
       final api = ref.read(apiClientProvider);
       final auth = ref.read(authProvider.notifier);
-      debugPrint('[LOGIN] calling api.login...');
       final res = await api.login(_emailCtrl.text.trim().toLowerCase(), _passCtrl.text);
-      debugPrint('[LOGIN] got response: token=${res.token.substring(0, 8)}... hasProfile=${res.hasProfile} emailVerified=${res.emailVerified}');
       await auth.setAuth(res.token, res.sessionId);
       await auth.setEmailVerified(res.emailVerified);
       if (res.hasProfile) {
-        debugPrint('[LOGIN] has profile, calling getMe...');
         final me = await api.getMe(res.token);
-        debugPrint('[LOGIN] got me: ${me.username}');
         await auth.setProfile(me.username, me.avatarId);
-        debugPrint('[LOGIN] navigating to /home, mounted=$mounted');
         if (mounted) context.go('/home');
       } else {
-        debugPrint('[LOGIN] no profile, navigating to /profile, mounted=$mounted');
         if (mounted) context.go('/profile');
       }
     } catch (e) {
-      debugPrint('[LOGIN] ERROR: $e');
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -460,9 +453,12 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         ),
         const SizedBox(height: 12),
         Center(
-          child: GestureDetector(
-            onTap: () => _switchMode(_Mode.forgotPassword),
-            child: Text('Forgot password?', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accent)),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _switchMode(_Mode.forgotPassword),
+              child: Text('Forgot password?', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accent)),
+            ),
           ),
         ),
         const SizedBox(height: 18),
@@ -471,9 +467,12 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('No account? ', style: AppTypography.ui(fontSize: 13, color: AppColors.slate)),
-              GestureDetector(
-                onTap: () => _switchMode(_Mode.register),
-                child: Text('Create one →', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _switchMode(_Mode.register),
+                  child: Text('Create one →', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                ),
               ),
             ],
           ),
@@ -546,9 +545,12 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Already have an account? ', style: AppTypography.ui(fontSize: 13, color: AppColors.slate)),
-              GestureDetector(
-                onTap: () => _switchMode(_Mode.login),
-                child: Text(_kSignInLabel, style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _switchMode(_Mode.login),
+                  child: Text(_kSignInLabel, style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                ),
               ),
             ],
           ),
@@ -649,9 +651,12 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         ],
         const SizedBox(height: 18),
         Center(
-          child: GestureDetector(
-            onTap: () => _switchMode(_Mode.login),
-            child: Text('← Back to sign in', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _switchMode(_Mode.login),
+              child: Text('← Back to sign in', style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink)),
+            ),
           ),
         ),
       ],

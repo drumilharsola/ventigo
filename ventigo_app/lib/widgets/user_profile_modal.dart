@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
 import '../config/theme.dart';
 
 import '../services/avatars.dart';
 import '../models/user_profile.dart';
 import '../state/auth_provider.dart';
+import '../utils/time_helpers.dart';
 import '../widgets/flow_button.dart';
 
 /// Peer profile modal - maps UserProfileModal.tsx.
@@ -227,11 +227,5 @@ class _UserProfileModalState extends ConsumerState<UserProfileModal> {
     );
   }
 
-  String _formatTs(String raw) {
-    final ts = int.tryParse(raw) ?? double.tryParse(raw)?.toInt();
-    if (ts != null && ts > 1000000000) {
-      return DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch(ts * 1000));
-    }
-    return raw;
-  }
+  String _formatTs(String raw) => formatTimestamp(raw);
 }

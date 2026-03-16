@@ -37,38 +37,44 @@ class BottomNavBar extends StatelessWidget {
               final item = _items[i];
               final selected = i == currentIndex;
               return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onTap(i),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.accentDim
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            item.icon,
-                            size: 22,
-                            color: selected ? AppColors.accent : AppColors.slate,
-                          ),
+                child: Semantics(
+                  label: '${item.label} tab',
+                  selected: selected,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => onTap(i),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? AppColors.accentDim
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                item.icon,
+                                size: 22,
+                                color: selected ? AppColors.accent : AppColors.slate,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item.label,
+                              style: AppTypography.micro(
+                                fontSize: 10,
+                                color: selected ? AppColors.accent : AppColors.slate,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.label,
-                          style: AppTypography.micro(
-                            fontSize: 10,
-                            color: selected ? AppColors.accent : AppColors.slate,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

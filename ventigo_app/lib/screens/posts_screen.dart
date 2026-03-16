@@ -8,6 +8,7 @@ import '../services/api_client.dart';
 import '../services/avatars.dart';
 import '../state/auth_provider.dart';
 import '../widgets/warm_card.dart';
+import '../widgets/skeleton.dart';
 import '../utils/time_helpers.dart';
 import '../utils/content_filter.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -39,10 +40,10 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
   String? _error;
   Timer? _refreshTimer;
 
-  // Local kudos & comments tracking (until backend support is added)
+  // Kudos & comments — backed by API
   final Map<String, int> _kudosCounts = {};
   final Set<String> _kudosGiven = {};
-  final Map<String, List<Map<String, String>>> _comments = {};
+  final Map<String, List<Map<String, dynamic>>> _comments = {};
 
   String? get _token => ref.read(authProvider).token;
   String? get _sessionId => ref.read(authProvider).sessionId;
@@ -63,12 +64,34 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
   Future<void> _loadPosts() async {
     try {
       final posts = await ref.read(apiClientProvider).getPosts();
-      if (mounted && (posts.length != _posts.length || _loading)) setState(() { _posts = posts; _loading = false; _error = null; });
+      if (mounted && (posts.length != _posts.length || _loading)) {
+        setState(() { _posts = posts; _loading = false; _error = null; });
+        _loadAllKudos(posts);
+      }
     } on AuthException {
       ref.read(authProvider.notifier).clear();
       if (mounted) context.go('/verify');
     } catch (e) {
       if (mounted) setState(() { _loading = false; _error = 'Could not load posts.'; });
+    }
+  }
+
+  Future<void> _loadAllKudos(List<Map<String, dynamic>> posts) async {
+    final token = _token;
+    if (token == null) return;
+    final api = ref.read(apiClientProvider);
+    for (final post in posts) {
+      final postId = post['post_id'] as String? ?? '';
+      if (postId.isEmpty) continue;
+      try {
+        final data = await api.getKudos(token, postId);
+        if (mounted) {
+          setState(() {
+            _kudosCounts[postId] = (data['count'] as num?)?.toInt() ?? 0;
+            if (data['given'] == true) _kudosGiven.add(postId);
+          });
+        }
+      } catch (_) {}
     }
   }
 
@@ -256,7 +279,9 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
     final hasKudos = _kudosGiven.contains(postId);
     final commentCount = _comments[postId]?.length ?? 0;
 
-    return WarmCard(
+    return Semantics(
+      label: 'Post by $username',
+      child: WarmCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,55 +329,95 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
           // Kudos & Comment row
           Row(
             children: [
-              GestureDetector(
-                onTap: () => setState(() {
-                  if (hasKudos) {
-                    _kudosGiven.remove(postId);
-                    _kudosCounts[postId] = (kudos - 1).clamp(0, 999999);
-                  } else {
-                    _kudosGiven.add(postId);
-                    _kudosCounts[postId] = kudos + 1;
-                  }
-                }),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: hasKudos ? AppColors.peach.withValues(alpha: 0.15) : Colors.transparent,
-                    borderRadius: AppRadii.fullAll,
-                    border: Border.all(color: hasKudos ? AppColors.peach.withValues(alpha: 0.4) : AppColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(hasKudos ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 16,
-                          color: hasKudos ? AppColors.peach : AppColors.slate),
-                      if (kudos > 0) ...[
-                        const SizedBox(width: 4),
-                        Text('$kudos', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600,
-                            color: hasKudos ? AppColors.peach : AppColors.slate)),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () async {
+                    // Optimistic update
+                    final wasGiven = hasKudos;
+                    setState(() {
+                      if (wasGiven) {
+                        _kudosGiven.remove(postId);
+                        _kudosCounts[postId] = (kudos - 1).clamp(0, 999999);
+                      } else {
+                        _kudosGiven.add(postId);
+                        _kudosCounts[postId] = kudos + 1;
+                      }
+                    });
+                    final token = _token;
+                    if (token == null) return;
+                    try {
+                      final data = await ref.read(apiClientProvider).toggleKudos(token, postId);
+                      if (mounted) {
+                        setState(() {
+                          _kudosCounts[postId] = (data['count'] as num?)?.toInt() ?? _kudosCounts[postId]!;
+                          if (data['given'] == true) {
+                            _kudosGiven.add(postId);
+                          } else {
+                            _kudosGiven.remove(postId);
+                          }
+                        });
+                      }
+                    } catch (_) {
+                      // Rollback
+                      if (mounted) {
+                        setState(() {
+                          if (wasGiven) {
+                            _kudosGiven.add(postId);
+                            _kudosCounts[postId] = kudos;
+                          } else {
+                            _kudosGiven.remove(postId);
+                            _kudosCounts[postId] = kudos;
+                          }
+                        });
+                      }
+                    }
+                  },
+                  borderRadius: AppRadii.fullAll,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: hasKudos ? AppColors.peach.withValues(alpha: 0.15) : Colors.transparent,
+                      borderRadius: AppRadii.fullAll,
+                      border: Border.all(color: hasKudos ? AppColors.peach.withValues(alpha: 0.4) : AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(hasKudos ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 16,
+                            color: hasKudos ? AppColors.peach : AppColors.slate),
+                        if (kudos > 0) ...[
+                          const SizedBox(width: 4),
+                          Text('$kudos', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600,
+                              color: hasKudos ? AppColors.peach : AppColors.slate)),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () => _showCommentsSheet(postId, username),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    borderRadius: AppRadii.fullAll,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.chat_bubble_outline_rounded, size: 16, color: AppColors.slate),
-                      if (commentCount > 0) ...[
-                        const SizedBox(width: 4),
-                        Text('$commentCount', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.slate)),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _showCommentsSheet(postId, username),
+                  borderRadius: AppRadii.fullAll,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      borderRadius: AppRadii.fullAll,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.chat_bubble_outline_rounded, size: 16, color: AppColors.slate),
+                        if (commentCount > 0) ...[
+                          const SizedBox(width: 4),
+                          Text('$commentCount', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.slate)),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -360,11 +425,21 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
   void _showCommentsSheet(String postId, String postUsername) {
     final commentCtrl = TextEditingController();
+    bool loadingComments = true;
+    // Load comments from API when sheet opens
+    ref.read(apiClientProvider).getComments(postId).then((comments) {
+      if (mounted) {
+        setState(() => _comments[postId] = comments);
+        // Trigger sheet rebuild through StatefulBuilder
+      }
+    }).catchError((_) {}).whenComplete(() => loadingComments = false);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -407,9 +482,9 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(c['username'] ?? 'anon', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                            Text((c['username'] ?? 'anon').toString(), style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink)),
                             const SizedBox(height: 4),
-                            Text(c['text'] ?? '', style: AppTypography.body(fontSize: 13, color: AppColors.charcoal)),
+                            Text((c['text'] ?? '').toString(), style: AppTypography.body(fontSize: 13, color: AppColors.charcoal)),
                           ],
                         ),
                       );
@@ -437,29 +512,42 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      final text = commentCtrl.text.trim();
-                      if (text.isEmpty) return;
-                      final violation = ContentFilter.validate(text);
-                      if (violation != null) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(violation)));
-                        return;
-                      }
-                      final username = ref.read(authProvider).username ?? 'anon';
-                      setSheetState(() {
-                        _comments.putIfAbsent(postId, () => []);
-                        _comments[postId]!.add({'username': username, 'text': text});
-                        commentCtrl.clear();
-                      });
-                      // Also update the main screen state
-                      setState(() {});
-                    },
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
-                      child: const Icon(Icons.send_rounded, size: 18, color: Colors.white),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        final text = commentCtrl.text.trim();
+                        if (text.isEmpty) return;
+                        final violation = ContentFilter.validate(text);
+                        if (violation != null) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(violation)));
+                          return;
+                        }
+                        final token = _token;
+                        if (token == null) return;
+                        try {
+                          final comment = await ref.read(apiClientProvider).addComment(token, postId, text);
+                          setSheetState(() {
+                            _comments.putIfAbsent(postId, () => []);
+                            _comments[postId]!.add(comment);
+                            commentCtrl.clear();
+                          });
+                          setState(() {});
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('Could not post comment: $e')),
+                            );
+                          }
+                        }
+                      },
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
+                        child: const Icon(Icons.send_rounded, size: 18, color: Colors.white),
+                      ),
                     ),
                   ),
                 ],
@@ -473,7 +561,15 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
 
   Widget _buildPostsList() {
     if (_loading) {
-      return Center(child: CircularProgressIndicator(color: AppColors.accent));
+      return SkeletonShimmer(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: List.generate(4, (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: SkeletonCard(),
+          )),
+        ),
+      );
     }
     if (_error != null && _posts.isEmpty) {
       return ListView(
@@ -517,8 +613,8 @@ class _PostsScreenState extends ConsumerState<PostsScreen> {
     return Scaffold(
       backgroundColor: AppColors.snow,
       appBar: AppBar(
-        title: Text('Community',
-            style: AppTypography.title(fontSize: 20, color: AppColors.ink)),
+        title: Semantics(header: true, child: Text('Community',
+            style: AppTypography.title(fontSize: 20, color: AppColors.ink))),
         automaticallyImplyLeading: false,
         backgroundColor: AppColors.snow,
         elevation: 0,

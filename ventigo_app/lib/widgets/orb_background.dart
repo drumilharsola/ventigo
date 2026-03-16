@@ -8,7 +8,9 @@ class OrbBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final background = dark ? AppColors.darkSurface : AppColors.snow;
-    return Stack(
+    return Semantics(
+      excludeSemantics: true,
+      child: Stack(
       fit: StackFit.expand,
       children: [
         DecoratedBox(
@@ -71,7 +73,8 @@ class OrbBackground extends StatelessWidget {
             child: _Sticker(width: 118, height: 36, color: AppColors.plum.withValues(alpha: dark ? 0.32 : 0.18)),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }

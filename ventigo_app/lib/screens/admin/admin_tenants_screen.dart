@@ -8,7 +8,7 @@ class AdminTenantsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.snow,
-      appBar: AppBar(title: Text('Tenants', style: AppTypography.title(fontSize: 22))),
+      appBar: AppBar(title: Semantics(header: true, child: Text('Tenants', style: AppTypography.title(fontSize: 22)))),
       body: Center(child: Text('Tenants', style: AppTypography.body())),
     );
   }

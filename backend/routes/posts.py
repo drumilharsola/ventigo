@@ -1,8 +1,12 @@
 """
 Posts routes:
-  GET  /posts          - get all active posts (newest first, max 50)
-  POST /posts          - create a post (auth required, 400 char max)
-  DELETE /posts/{id}   - delete own post
+  GET  /posts              - get all active posts (newest first, max 50)
+  POST /posts              - create a post (auth required, 400 char max)
+  DELETE /posts/{id}       - delete own post
+  POST /posts/{id}/kudos   - toggle kudos on a post
+  GET  /posts/{id}/kudos   - get kudos count and whether current user gave kudos
+  POST /posts/{id}/comments - add a comment to a post
+  GET  /posts/{id}/comments - get comments for a post
 """
 
 import time
@@ -21,9 +25,11 @@ router = APIRouter(prefix="/posts", tags=["posts"])
 
 POSTS_FEED_KEY = "posts:feed"
 POST_MAX_CHARS = 400
+COMMENT_MAX_CHARS = 200
 POST_TTL_SECONDS = 24 * 3600  # 24 hours
 MAX_POSTS_SHOWN = 50
 MAX_POSTS_PER_USER_PER_HOUR = 3
+MAX_COMMENTS_PER_POST = 50
 
 
 class CreatePostRequest(BaseModel):
@@ -65,6 +71,17 @@ async def get_posts():
         for entry in expired_entries:
             pipe.zrem(POSTS_FEED_KEY, entry)
         await pipe.execute()
+
+    # Enrich posts with kudos/comment counts via pipeline
+    if posts:
+        pipe = redis.pipeline(transaction=False)
+        for p in posts:
+            pipe.scard(f"post:{p['post_id']}:kudos")
+            pipe.llen(f"post:{p['post_id']}:comments")
+        counts = await pipe.execute()
+        for i, p in enumerate(posts):
+            p["kudos_count"] = counts[i * 2]
+            p["comment_count"] = counts[i * 2 + 1]
 
     return {"posts": posts}
 
@@ -138,3 +155,117 @@ async def delete_post(post_id: str, payload: Annotated[dict, Depends(require_aut
             continue
 
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
+
+# ── Helpers ──
+
+async def _find_post_raw(redis, post_id: str):
+    """Find a post JSON blob in the sorted set by post_id. Returns (raw_bytes, parsed_dict) or raises 404."""
+    all_posts_raw = await redis.zrange(POSTS_FEED_KEY, 0, -1)
+    for raw in all_posts_raw:
+        try:
+            post = json.loads(raw)
+            if post["post_id"] == post_id:
+                now = int(time.time())
+                if post.get("expires_at", 0) <= now:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post expired")
+                return raw, post
+        except (json.JSONDecodeError, KeyError):
+            continue
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
+
+# ── Kudos ──
+
+@router.post("/{post_id}/kudos")
+async def toggle_kudos(post_id: str, payload: Annotated[dict, Depends(require_auth)]):
+    session_id = payload["sub"]
+    redis = await get_redis()
+    await _find_post_raw(redis, post_id)  # validate post exists
+
+    kudos_key = f"post:{post_id}:kudos"
+    is_member = await redis.sismember(kudos_key, session_id)
+
+    if is_member:
+        await redis.srem(kudos_key, session_id)
+        given = False
+    else:
+        await redis.sadd(kudos_key, session_id)
+        await redis.expire(kudos_key, POST_TTL_SECONDS + 3600)
+        given = True
+
+    count = await redis.scard(kudos_key)
+    return {"kudos_count": count, "given": given}
+
+
+@router.get("/{post_id}/kudos")
+async def get_kudos(post_id: str, payload: Annotated[dict, Depends(require_auth)]):
+    session_id = payload["sub"]
+    redis = await get_redis()
+    kudos_key = f"post:{post_id}:kudos"
+    count = await redis.scard(kudos_key)
+    given = await redis.sismember(kudos_key, session_id)
+    return {"kudos_count": count, "given": bool(given)}
+
+
+# ── Comments ──
+
+class CreateCommentRequest(BaseModel):
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Comment cannot be empty")
+        if len(v) > COMMENT_MAX_CHARS:
+            raise ValueError(f"Comment must be under {COMMENT_MAX_CHARS} characters")
+        return v
+
+
+@router.post("/{post_id}/comments", status_code=status.HTTP_201_CREATED)
+async def add_comment(post_id: str, body: CreateCommentRequest, payload: Annotated[dict, Depends(require_auth)]):
+    session_id = payload["sub"]
+    redis = await get_redis()
+    await _find_post_raw(redis, post_id)  # validate post exists
+
+    # Moderation check
+    flagged, reason = await check_content(body.text)
+    if flagged:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Comment contains inappropriate content: {reason}"
+        )
+
+    profile = await get_profile(session_id)
+    comment = {
+        "comment_id": str(uuid.uuid4()),
+        "post_id": post_id,
+        "text": body.text,
+        "username": profile.get("username", "Anonymous") if profile else "Anonymous",
+        "avatar_id": int(profile.get("avatar_id", 0)) if profile else 0,
+        "session_id": session_id,
+        "created_at": int(time.time()),
+    }
+
+    comments_key = f"post:{post_id}:comments"
+    await redis.rpush(comments_key, json.dumps(comment))
+    await redis.ltrim(comments_key, -MAX_COMMENTS_PER_POST, -1)
+    await redis.expire(comments_key, POST_TTL_SECONDS + 3600)
+
+    return {"comment": comment}
+
+
+@router.get("/{post_id}/comments")
+async def get_comments(post_id: str):
+    redis = await get_redis()
+    comments_key = f"post:{post_id}:comments"
+    raw_list = await redis.lrange(comments_key, 0, -1)
+    comments = []
+    for raw in raw_list:
+        try:
+            comments.append(json.loads(raw))
+        except (json.JSONDecodeError, KeyError):
+            continue
+    return {"comments": comments}

@@ -18,6 +18,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _speakCount = 0;
   int _listenCount = 0;
   int _appreciationCount = 0;
+  bool _statsLoaded = false;
   late final String _quote = quoteOfTheDay();
 
   @override
@@ -36,9 +37,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _speakCount = me.speakCount;
           _listenCount = me.listenCount;
           _appreciationCount = me.appreciationCount;
+          _statsLoaded = true;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _statsLoaded = true);
+    }
   }
 
   @override
@@ -78,7 +82,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       const FlowLogo(dark: true),
                       IconButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Notifications coming soon'), behavior: SnackBarBehavior.floating),
+                          );
+                        },
                         icon: Icon(Icons.notifications_none_rounded, color: AppColors.ink, size: 24),
                       ),
                     ],
@@ -86,8 +94,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 // ── Scrollable body ──
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: RefreshIndicator(
+                    onRefresh: _loadStats,
+                    color: AppColors.accent,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -170,66 +182,74 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: GestureDetector(
-                          onTap: () => context.go('/chats'),
-                          child: Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: AppColors.venterLight,
-                              borderRadius: AppRadii.lgAll,
-                              border: Border.all(color: AppColors.venterBorder),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('\ud83c\udf99', style: TextStyle(fontSize: 28)),
-                                const SizedBox(height: 12),
-                                Text('Need to vent?', style: AppTypography.title(fontSize: 16, color: AppColors.ink)),
-                                const SizedBox(height: 4),
-                                Text('15-min anonymous session', style: AppTypography.body(fontSize: 12, color: AppColors.graphite)),
-                                const SizedBox(height: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.peach,
-                                    borderRadius: AppRadii.fullAll,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => context.go('/chats'),
+                            borderRadius: AppRadii.lgAll,
+                            child: Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: AppColors.venterLight,
+                                borderRadius: AppRadii.lgAll,
+                                border: Border.all(color: AppColors.venterBorder),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('\ud83c\udf99', style: TextStyle(fontSize: 28)),
+                                  const SizedBox(height: 12),
+                                  Text('Need to vent?', style: AppTypography.title(fontSize: 16, color: AppColors.ink)),
+                                  const SizedBox(height: 4),
+                                  Text('15-min anonymous session', style: AppTypography.body(fontSize: 12, color: AppColors.graphite)),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.peach,
+                                      borderRadius: AppRadii.fullAll,
+                                    ),
+                                    child: Text('Start \u2192', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white)),
                                   ),
-                                  child: Text('Start \u2192', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white)),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: GestureDetector(
-                          onTap: () => context.go('/chats'),
-                          child: Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: AppColors.listenerLight,
-                              borderRadius: AppRadii.lgAll,
-                              border: Border.all(color: AppColors.listenerBorder),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('\ud83e\udd0d', style: TextStyle(fontSize: 28)),
-                                const SizedBox(height: 12),
-                                Text('Hold space', style: AppTypography.title(fontSize: 16, color: AppColors.ink)),
-                                const SizedBox(height: 4),
-                                Text("Be someone's listener today", style: AppTypography.body(fontSize: 12, color: AppColors.graphite)),
-                                const SizedBox(height: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.lavender,
-                                    borderRadius: AppRadii.fullAll,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => context.go('/chats'),
+                            borderRadius: AppRadii.lgAll,
+                            child: Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: AppColors.listenerLight,
+                                borderRadius: AppRadii.lgAll,
+                                border: Border.all(color: AppColors.listenerBorder),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('\ud83e\udd0d', style: TextStyle(fontSize: 28)),
+                                  const SizedBox(height: 12),
+                                  Text('Hold space', style: AppTypography.title(fontSize: 16, color: AppColors.ink)),
+                                  const SizedBox(height: 4),
+                                  Text("Be someone's listener today", style: AppTypography.body(fontSize: 12, color: AppColors.graphite)),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.lavender,
+                                      borderRadius: AppRadii.fullAll,
+                                    ),
+                                    child: Text('Browse \u2192', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white)),
                                   ),
-                                  child: Text('Browse \u2192', style: AppTypography.ui(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white)),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -307,6 +327,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
+        ),
         ],
       ),
           ),

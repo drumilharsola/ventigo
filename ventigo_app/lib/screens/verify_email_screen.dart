@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../config/theme.dart';
 import '../state/auth_provider.dart';
+import '../widgets/flow_button.dart';
 
 class VerifyEmailScreen extends ConsumerStatefulWidget {
   final String status; // 'success' | 'error' | '' (from backend redirect)
@@ -37,7 +39,12 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 const SizedBox(height: 16),
                 Text('Email verified!', style: AppTypography.title()),
                 const SizedBox(height: 8),
-                Text('You can close this page.', style: AppTypography.body()),
+                Text('Your email has been successfully verified.', style: AppTypography.body()),
+                const SizedBox(height: 24),
+                FlowButton(
+                  label: 'Go to Home',
+                  onPressed: () => context.go('/home'),
+                ),
               ] else ...[
                 Icon(Icons.error_rounded, color: AppColors.danger, size: 64),
                 const SizedBox(height: 16),
@@ -45,6 +52,12 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 const SizedBox(height: 8),
                 Text('The link may have expired. Please request a new one.',
                     style: AppTypography.body(), textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                FlowButton(
+                  label: 'Go to Home',
+                  variant: FlowButtonVariant.ghost,
+                  onPressed: () => context.go('/home'),
+                ),
               ],
             ],
           ),

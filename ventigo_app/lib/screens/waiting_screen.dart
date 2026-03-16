@@ -170,7 +170,7 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen>
   }
 
   void _startPoll() {
-    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       if (_timedOut || !mounted) return;
       final status = await _syncRequest();
       if (status != _ReqStatus.matched && status != _ReqStatus.active) {

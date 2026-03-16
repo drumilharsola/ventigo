@@ -6,7 +6,9 @@ import '../config/theme.dart';
 import '../models/blocked_user.dart';
 import '../services/avatars.dart';
 import '../state/auth_provider.dart';
+import '../utils/time_helpers.dart';
 import '../widgets/flow_button.dart';
+import '../widgets/skeleton.dart';
 
 class BlockedUsersScreen extends ConsumerStatefulWidget {
   const BlockedUsersScreen({super.key});
@@ -77,8 +79,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
   String _formatBlockedAt(String raw) {
     final timestamp = int.tryParse(raw);
     if (timestamp == null || timestamp <= 0) return 'Recently';
-    final dt = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000).toLocal();
-    return '${dt.day}/${dt.month}/${dt.year}';
+    return formatDate(parseTs(raw));
   }
 
   Widget _buildBlockedUserTile(BlockedUser user) {
@@ -172,12 +173,20 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.snow,
-      appBar: AppBar(title: const Text('Blocked users')),
+      appBar: AppBar(title: Semantics(header: true, child: Text('Blocked users', style: AppTypography.title(fontSize: 22)))),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadBlockedUsers,
           child: _loading
-              ? Center(child: CircularProgressIndicator(color: AppColors.accent))
+              ? SkeletonShimmer(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: List.generate(3, (_) => const Padding(
+                      padding: EdgeInsets.only(bottom: 10),
+                      child: SkeletonListTile(),
+                    )),
+                  ),
+                )
               : _buildListContent(),
         ),
       ),

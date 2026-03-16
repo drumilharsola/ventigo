@@ -197,31 +197,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
             // Peer info
             if (chat.peerUsername != null) ...[
-              Expanded(child: GestureDetector(
-                onTap: () => setState(() => _showPeerProfile = true),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadii.full),
-                      child: CachedNetworkImage(imageUrl: avatarUrl(chat.peerAvatarId, size: 72), width: 36, height: 36),
-                    ),
-                    const SizedBox(width: 10),
-                    Flexible(child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(chat.peerUsername!, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink), overflow: TextOverflow.ellipsis),
-                        Text(
-                          chat.mode == 'readonly' ? 'Past conversation' : chat.connected ? 'Live · anonymous' : 'Connecting…',
-                          style: AppTypography.body(fontSize: 11, color: AppColors.slate),
-                        ),
+              Expanded(child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => setState(() => _showPeerProfile = true),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadii.full),
+                        child: CachedNetworkImage(imageUrl: avatarUrl(chat.peerAvatarId, size: 72), width: 36, height: 36),
+                      ),
+                      const SizedBox(width: 10),
+                      Flexible(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(chat.peerUsername!, style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink), overflow: TextOverflow.ellipsis),
+                          Text(
+                            chat.mode == 'readonly' ? 'Past conversation' : chat.connected ? 'Live · anonymous' : 'Connecting…',
+                            style: AppTypography.body(fontSize: 11, color: AppColors.slate),
+                          ),
+                        ],
+                      )),
+                      if (chat.peerLeft) ...[
+                        const SizedBox(width: 8),
+                        Text('left', style: AppTypography.body(fontSize: 11, color: AppColors.danger)),
                       ],
-                    )),
-                    if (chat.peerLeft) ...[
-                      const SizedBox(width: 8),
-                      Text('left', style: AppTypography.body(fontSize: 11, color: AppColors.danger)),
                     ],
-                  ],
+                  ),
                 ),
               )),
             ] else
@@ -483,15 +486,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final timeVisible = _visibleTimes.contains(msg.ts);
     final bubble = Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onTap: () => setState(() {
-          if (timeVisible) {
-            _visibleTimes.remove(msg.ts);
-          } else {
-            _visibleTimes.add(msg.ts);
-          }
-        }),
-        child: Column(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => setState(() {
+            if (timeVisible) {
+              _visibleTimes.remove(msg.ts);
+            } else {
+              _visibleTimes.add(msg.ts);
+            }
+          }),
+          child: Column(
           crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             if (!isMe && showLabel)
@@ -525,6 +530,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   : const SizedBox(height: 6),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -587,9 +593,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         Text(_replyTo!.text, style: AppTypography.body(fontSize: 12, color: AppColors.slate), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     )),
-                    GestureDetector(
-                      onTap: () => setState(() => _replyTo = null),
-                      child: Icon(Icons.close_rounded, size: 18, color: AppColors.slate),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => setState(() => _replyTo = null),
+                        child: Icon(Icons.close_rounded, size: 18, color: AppColors.slate),
+                      ),
                     ),
                   ],
                 ),
@@ -627,24 +636,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () {
-                    final text = _inputCtrl.text.trim();
-                    if (text.isNotEmpty && !disabled) {
-                      final filtered = ContentFilter.mask(text);
-                      notifier.sendMessage(filtered, replyTo: _replyTo);
-                      _inputCtrl.clear();
-                      setState(() => _replyTo = null);
-                    }
-                  },
-                  child: AnimatedOpacity(
-                    opacity: _inputCtrl.text.trim().isEmpty || disabled ? 0.35 : 1.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
-                      child: Icon(Icons.arrow_upward_rounded, size: 20, color: AppColors.white),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      final text = _inputCtrl.text.trim();
+                      if (text.isNotEmpty && !disabled) {
+                        final filtered = ContentFilter.mask(text);
+                        notifier.sendMessage(filtered, replyTo: _replyTo);
+                        _inputCtrl.clear();
+                        setState(() => _replyTo = null);
+                      }
+                    },
+                    customBorder: const CircleBorder(),
+                    child: AnimatedOpacity(
+                      opacity: _inputCtrl.text.trim().isEmpty || disabled ? 0.35 : 1.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
+                        child: Icon(Icons.arrow_upward_rounded, size: 20, color: AppColors.white),
+                      ),
                     ),
                   ),
                 ),
