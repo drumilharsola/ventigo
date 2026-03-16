@@ -11,6 +11,7 @@ import '../helpers/test_helpers.dart';
 class _PostsApi extends FakeApiClient {
   List<Map<String, dynamic>> posts = [];
   bool loadFail = false;
+  final Set<String> _kudosGiven = {};
 
   @override
   Future<List<Map<String, dynamic>>> getPosts() async {
@@ -28,7 +29,9 @@ class _PostsApi extends FakeApiClient {
 
   @override
   Future<Map<String, dynamic>> toggleKudos(String token, String postId) async {
-    return {'count': 1, 'given': true};
+    final given = !_kudosGiven.contains(postId);
+    if (given) { _kudosGiven.add(postId); } else { _kudosGiven.remove(postId); }
+    return {'count': given ? 1 : 0, 'given': given};
   }
 }
 
