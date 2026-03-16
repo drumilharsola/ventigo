@@ -8,6 +8,8 @@ workflows:
     working_directory: ventigo_app
     environment:
       flutter: stable
+      groups:
+        - ventigo_secrets
       vars:
         API_BASE_URL: $API_BASE_URL
         SENTRY_DSN: $SENTRY_DSN
@@ -46,6 +48,8 @@ workflows:
     working_directory: ventigo_app
     environment:
       flutter: stable
+      groups:
+        - ventigo_secrets
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ventigo.app
@@ -89,6 +93,8 @@ workflows:
     working_directory: ventigo_app
     environment:
       flutter: stable
+      groups:
+        - ventigo_secrets
       vars:
         API_BASE_URL: $API_BASE_URL
         SENTRY_DSN: $SENTRY_DSN
