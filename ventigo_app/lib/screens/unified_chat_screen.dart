@@ -118,6 +118,24 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     return transcript;
   }
 
+  void _applyLoadedData(List<RoomSummary> peerRooms, List<TranscriptItem> transcript, String? activeId) {
+    for (final room in peerRooms) {
+      if (room.hasAppreciated) _appreciatedRoomIds.add(room.roomId);
+    }
+    setState(() {
+      _peerRooms = peerRooms;
+      _unifiedTranscript = transcript;
+      _activeRoomId = activeId;
+      _loading = false;
+    });
+    if (activeId != null) ref.read(chatProvider(activeId));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+      }
+    });
+  }
+
   Future<void> _load() async {
     final token = ref.read(authProvider).token;
     if (token == null) return;
@@ -129,24 +147,7 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
       final activeId = active.isNotEmpty ? active.last.roomId : null;
       final transcript = await _loadAllTranscripts(token, peerRooms);
 
-      if (mounted) {
-        // Populate already-appreciated rooms from backend data
-        for (final room in peerRooms) {
-          if (room.hasAppreciated) _appreciatedRoomIds.add(room.roomId);
-        }
-        setState(() {
-          _peerRooms = peerRooms;
-          _unifiedTranscript = transcript;
-          _activeRoomId = activeId;
-          _loading = false;
-        });
-        if (activeId != null) ref.read(chatProvider(activeId));
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollCtrl.hasClients) {
-            _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
-          }
-        });
-      }
+      if (mounted) _applyLoadedData(peerRooms, transcript, activeId);
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -373,6 +374,36 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     );
   }
 
+  List<_ListEntry> _buildEntries(List<TranscriptItem> transcript, ChatState? liveChat) {
+    final items = <_ListEntry>[];
+    for (final item in transcript) {
+      items.add(_ListEntry.transcript(item));
+      if (item is TranscriptMarker && item.event == 'ended') {
+        items.add(_ListEntry.appreciation(item.roomId));
+      }
+    }
+    if (liveChat?.peerTyping == true) {
+      items.add(_ListEntry.typing());
+    }
+    return items;
+  }
+
+  Widget _buildEntryWidget(_ListEntry entry, AuthState auth, ChatState? liveChat) {
+    if (entry.isTyping) return TypingIndicator(username: widget.peerUsername);
+    if (entry.appreciationRoomId != null) return _buildInlineAppreciation(entry.appreciationRoomId!);
+
+    final item = entry.item!;
+    if (item is TranscriptMarker) return _buildMarker(item);
+    if (item is TranscriptMessage) {
+      final isMe = widget.peerUsername.isNotEmpty
+          ? item.from != widget.peerUsername
+          : item.from == auth.username;
+      final canReply = liveChat != null && liveChat.mode == 'live';
+      return _buildBubble(item, isMe, canReply: canReply);
+    }
+    return const SizedBox.shrink();
+  }
+
   Widget _buildMessageList(List<TranscriptItem> transcript, AuthState auth, ChatState? liveChat) {
     if (_loading) {
       return Center(child: CircularProgressIndicator(color: AppColors.accent));
@@ -384,46 +415,13 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
       );
     }
 
-    // Build flat list: transcript items + appreciation after each ended marker
-    final items = <_ListEntry>[];
-    for (final item in transcript) {
-      items.add(_ListEntry.transcript(item));
-      if (item is TranscriptMarker && item.event == 'ended') {
-        items.add(_ListEntry.appreciation(item.roomId));
-      }
-    }
-    if (liveChat?.peerTyping == true) {
-      items.add(_ListEntry.typing());
-    }
+    final items = _buildEntries(transcript, liveChat);
 
     return ListView.builder(
       controller: _scrollCtrl,
       padding: const EdgeInsets.all(20),
       itemCount: items.length,
-      itemBuilder: (_, i) {
-        final entry = items[i];
-
-        if (entry.isTyping) {
-          return TypingIndicator(username: widget.peerUsername);
-        }
-
-        if (entry.appreciationRoomId != null) {
-          return _buildInlineAppreciation(entry.appreciationRoomId!);
-        }
-
-        final item = entry.item!;
-        if (item is TranscriptMarker) {
-          return _buildMarker(item);
-        }
-        if (item is TranscriptMessage) {
-          final isMe = widget.peerUsername.isNotEmpty
-              ? item.from != widget.peerUsername
-              : item.from == auth.username;
-          final canReply = liveChat != null && liveChat.mode == 'live';
-          return _buildBubble(item, isMe, canReply: canReply);
-        }
-        return const SizedBox.shrink();
-      },
+      itemBuilder: (_, i) => _buildEntryWidget(items[i], auth, liveChat),
     );
   }
 

@@ -13,14 +13,14 @@ class ContentFilter {
     caseSensitive: false,
   );
 
-  // English offensive words (partial list — add as needed)
+  // English offensive words (partial list - add as needed)
   static const _enWords = <String>[
     'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'dick', 'pussy',
     'cunt', 'damn', 'hell', 'slut', 'whore', 'nigger', 'nigga',
     'faggot', 'retard', 'crap', 'piss',
   ];
 
-  // Hindi offensive words (transliterated — partial list)
+  // Hindi offensive words (transliterated - partial list)
   static const _hiWords = <String>[
     'madarchod', 'behenchod', 'chutiya', 'bhosdi', 'gaand', 'randi',
     'harami', 'lodu', 'bhosdike', 'lavde', 'gandu', 'chut', 'lund',

@@ -59,6 +59,10 @@ class FakePipeline:
         self._calls.append(("rpush", key, values))
         return self
 
+    def delete(self, *keys):
+        self._calls.append(("delete", keys))
+        return self
+
     async def execute(self):
         return [None] * len(self._calls)
 

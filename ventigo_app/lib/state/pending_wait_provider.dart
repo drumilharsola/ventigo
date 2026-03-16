@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/env.dart';
@@ -86,6 +87,10 @@ class PendingWaitNotifier extends StateNotifier<PendingWaitState> {
       },
     );
   }
+
+  /// Exposed for unit‑testing poll response processing.
+  @visibleForTesting
+  void processPollResponseForTest(dynamic req) => _processPollResponse(req);
 
   void _processPollResponse(dynamic req) {
     if (req.status == 'matched' && req.roomId != null) {

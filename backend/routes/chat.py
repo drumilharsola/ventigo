@@ -65,6 +65,7 @@ logger = logging.getLogger(__name__)
 
 MAX_MESSAGE_LENGTH = 1000
 ROOM_TICK_LOCK_TTL_SECONDS = 4
+_ACCESS_DENIED = "Access denied"
 
 
 def _peer_context(room: dict, session_id: str) -> tuple[str, str, int]:
@@ -137,6 +138,28 @@ async def _ws_validate_room(websocket: WebSocket, room_id: str, session_id: str)
     return room
 
 
+async def _broadcast_tick(redis, room_id, session_id, peer_id, remaining):
+    """Broadcast a tick event to both participants."""
+    tick = _room_event(room_id, {"type": "tick", "remaining": remaining})
+    await _publish(redis, session_id, tick)
+    await _publish(redis, peer_id, tick)
+
+
+async def _broadcast_ending_soon(redis, room_id, session_id, peer_id, remaining):
+    """Broadcast an ending_soon event to both participants."""
+    event = _room_event(room_id, {"type": "ending_soon", "remaining": remaining})
+    await _publish(redis, session_id, event)
+    await _publish(redis, peer_id, event)
+
+
+async def _broadcast_session_end(redis, room_id, session_id, peer_id):
+    """Broadcast session_end and close the room."""
+    event = _room_event(room_id, {"type": "session_end"})
+    await _publish(redis, session_id, event)
+    await _publish(redis, peer_id, event)
+    await close_room(room_id)
+
+
 async def _ws_send_ticks(redis, room_id: str, session_id: str, peer_id: str) -> None:
     """Emit countdown ticks every 5 seconds; fire session_end at T=0."""
     tick_lock_key = f"room:{room_id}:tick_lock"
@@ -163,21 +186,14 @@ async def _ws_send_ticks(redis, room_id: str, session_id: str, peer_id: str) -> 
             duration = int(room_now["duration"])
             remaining = max(0, duration - (int(time.time()) - started_at))
 
-            tick = _room_event(room_id, {"type": "tick", "remaining": remaining})
-            await _publish(redis, session_id, tick)
-            await _publish(redis, peer_id, tick)
+            await _broadcast_tick(redis, room_id, session_id, peer_id, remaining)
 
             if remaining <= 120 and not ending_soon_sent:
                 ending_soon_sent = True
-                ending_event = _room_event(room_id, {"type": "ending_soon", "remaining": remaining})
-                await _publish(redis, session_id, ending_event)
-                await _publish(redis, peer_id, ending_event)
+                await _broadcast_ending_soon(redis, room_id, session_id, peer_id, remaining)
 
             if remaining == 0:
-                end_event = _room_event(room_id, {"type": "session_end"})
-                await _publish(redis, session_id, end_event)
-                await _publish(redis, peer_id, end_event)
-                await close_room(room_id)
+                await _broadcast_session_end(redis, room_id, session_id, peer_id)
                 break
 
             await asyncio.sleep(5)
@@ -428,7 +444,7 @@ async def get_room_messages_endpoint(
 
     is_member = room.get("user_a") == session_id or room.get("user_b") == session_id
     if not is_member:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail=_ACCESS_DENIED)
 
     messages = await get_messages(room_id)
     reactions = await get_reactions(room_id)
@@ -472,7 +488,7 @@ async def post_feedback(
         raise HTTPException(status_code=404, detail="Room not found")
     is_member = room.get("user_a") == session_id or room.get("user_b") == session_id
     if not is_member:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail=_ACCESS_DENIED)
     await save_feedback(room_id, session_id, body.mood, body.text)
     return {"message": "ok"}
 
@@ -502,7 +518,7 @@ async def post_appreciation(
         raise HTTPException(status_code=404, detail="Room not found")
     is_member = room.get("user_a") == session_id or room.get("user_b") == session_id
     if not is_member:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail=_ACCESS_DENIED)
     if room.get("status") != "ended":
         raise HTTPException(status_code=400, detail="Appreciation can only be sent after the chat ends")
 

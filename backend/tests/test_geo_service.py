@@ -33,7 +33,8 @@ async def test_detect_country_private_10():
 @pytest.mark.asyncio
 async def test_detect_country_success():
     mock_response = MagicMock()
-    mock_response.json.return_value = {"status": "success", "countryCode": "IN"}
+    mock_response.status_code = 200
+    mock_response.text = "IN"
 
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(return_value=mock_response)
@@ -48,7 +49,8 @@ async def test_detect_country_success():
 @pytest.mark.asyncio
 async def test_detect_country_api_fail():
     mock_response = MagicMock()
-    mock_response.json.return_value = {"status": "fail"}
+    mock_response.status_code = 429
+    mock_response.text = "Rate limited"
 
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(return_value=mock_response)

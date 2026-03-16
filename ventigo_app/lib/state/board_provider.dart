@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/env.dart';
@@ -64,6 +65,10 @@ class BoardNotifier extends StateNotifier<BoardState> {
       },
     );
   }
+
+  /// Exposed for unit‑testing WS message handlers.
+  @visibleForTesting
+  void handleMessageForTest(Map<String, dynamic> msg) => _handleMessage(msg);
 
   void _handleMessage(Map<String, dynamic> msg) {
     final event = msg['event'] as String?;

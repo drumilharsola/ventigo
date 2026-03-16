@@ -1,4 +1,4 @@
-"""Tests for routes/chat.py — helper functions."""
+"""Tests for routes/chat.py - helper functions."""
 
 import pytest
 from routes.chat import _sanitize, _peer_context, _timer_status_payload, _room_event

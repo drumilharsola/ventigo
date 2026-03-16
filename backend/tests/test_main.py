@@ -1,4 +1,4 @@
-"""Tests for main.py — app-level health, error handlers, settings."""
+"""Tests for main.py - app-level health, error handlers, settings."""
 
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock

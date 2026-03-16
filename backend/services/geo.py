@@ -1,5 +1,5 @@
 """
-Geo-IP service - detect country from IP using ip-api.com (free, no key required for dev).
+Geo-IP service - detect country from IP using ipapi.co (free HTTPS, no key required).
 Falls back to "global" if detection fails.
 """
 
@@ -18,12 +18,13 @@ async def detect_country(ip: str) -> str:
 
     try:
         settings = get_settings()
-        url = f"{settings.GEO_API_URL}{ip}?fields=status,countryCode"
+        url = f"{settings.GEO_API_URL}{ip}/country_code/"
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get(url)
-            data = resp.json()
-            if data.get("status") == "success":
-                return data.get("countryCode", "global")
+            if resp.status_code == 200:
+                code = resp.text.strip()
+                if len(code) == 2 and code.isalpha():
+                    return code
     except Exception:
         pass
 

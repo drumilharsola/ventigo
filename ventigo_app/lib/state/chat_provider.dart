@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/env.dart';
@@ -263,74 +264,70 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
+  void _handleTypingStart(Map<String, dynamic> data) {
+    if (data['from'] != _username) {
+      state = state.copyWith(peerTyping: true, peerUsername: data['from'] as String?);
+    }
+  }
+
+  void _handleTypingStop(Map<String, dynamic> data) {
+    if (data['from'] != _username) state = state.copyWith(peerTyping: false);
+  }
+
+  void _handleTick(Map<String, dynamic> data) {
+    state = state.copyWith(timerStarted: true, remaining: (data['remaining'] as num).toInt());
+  }
+
+  void _handleSessionEnd() {
+    _appendMarker('ended');
+    state = state.copyWith(sessionEnded: true);
+  }
+
+  void _handlePeerLeft() {
+    _appendMarker('ended');
+    state = state.copyWith(peerLeft: true, canExtend: false, sessionEnded: true);
+  }
+
+  void _handleExtended(Map<String, dynamic> data) {
+    state = state.copyWith(
+      remaining: (data['remaining'] as num).toInt(),
+      canExtend: false,
+      sessionEnded: false,
+      continueWaiting: false,
+      endingSoon: false,
+    );
+  }
+
+  void _handleContinueAccepted(Map<String, dynamic> data) {
+    state = state.copyWith(continueWaiting: false);
+    _continueRoomId = data['room_id'] as String?;
+  }
+
+  /// Exposed for unit‑testing WS message handlers.
+  @visibleForTesting
+  void handleWsForTest(Map<String, dynamic> data) => _handleWs(data);
+
+  /// Exposed for unit‑testing room data application.
+  @visibleForTesting
+  void applyRoomDataForTest(RoomMessages data) => _applyRoomData(data);
+
   void _handleWs(Map<String, dynamic> data) {
     final type = data['type'] as String?;
-    final username = _username;
-
     switch (type) {
-      case 'history':
-        _handleHistoryWs(data, username);
-        break;
-
-      case 'message':
-        _handleMessageWs(data, username);
-        break;
-
-      case 'typing_start':
-        if (data['from'] != username) state = state.copyWith(peerTyping: true, peerUsername: data['from'] as String?);
-        break;
-
-      case 'typing_stop':
-        if (data['from'] != username) state = state.copyWith(peerTyping: false);
-        break;
-
-      case 'timer_status':
-        _handleTimerStatusWs(data);
-        break;
-
-      case 'tick':
-        state = state.copyWith(timerStarted: true, remaining: (data['remaining'] as num).toInt());
-        break;
-
-      case 'session_end':
-        _appendMarker('ended');
-        state = state.copyWith(sessionEnded: true);
-        break;
-
-      case 'peer_left':
-        _appendMarker('ended');
-        state = state.copyWith(peerLeft: true, canExtend: false, sessionEnded: true);
-        break;
-
-      case 'extended':
-        state = state.copyWith(
-          remaining: (data['remaining'] as num).toInt(),
-          canExtend: false,
-          sessionEnded: false,
-          continueWaiting: false,
-          endingSoon: false,
-        );
-        break;
-
-      case 'ending_soon':
-        state = state.copyWith(endingSoon: true);
-        break;
-
-      case 'continue_request':
-        break;
-
-      case 'continue_accepted':
-        state = state.copyWith(continueWaiting: false);
-        _continueRoomId = data['room_id'] as String?;
-        break;
-
-      case 'reaction':
-        _handleReactionWs(data);
-        break;
-
-      case 'error':
-        state = state.copyWith(connectionError: data['detail'] as String?);
-        break;
+      case 'history':        _handleHistoryWs(data, _username);
+      case 'message':        _handleMessageWs(data, _username);
+      case 'typing_start':   _handleTypingStart(data);
+      case 'typing_stop':    _handleTypingStop(data);
+      case 'timer_status':   _handleTimerStatusWs(data);
+      case 'tick':           _handleTick(data);
+      case 'session_end':    _handleSessionEnd();
+      case 'peer_left':      _handlePeerLeft();
+      case 'extended':       _handleExtended(data);
+      case 'ending_soon':    state = state.copyWith(endingSoon: true);
+      case 'continue_request': break;
+      case 'continue_accepted': _handleContinueAccepted(data);
+      case 'reaction':       _handleReactionWs(data);
+      case 'error':          state = state.copyWith(connectionError: data['detail'] as String?);
     }
   }
 

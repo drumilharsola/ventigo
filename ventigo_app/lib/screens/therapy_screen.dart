@@ -91,7 +91,7 @@ class TherapyScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'We\'re building a way for you to connect with licensed therapists directly in the app — via chat, call, or video. Stay tuned.',
+                              'We\'re building a way for you to connect with licensed therapists directly in the app - via chat, call, or video. Stay tuned.',
                               style: AppTypography.body(fontSize: 13, color: AppColors.white.withValues(alpha: 0.6)),
                             ),
                           ],

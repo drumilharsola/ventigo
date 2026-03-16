@@ -492,124 +492,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: !wait.isWaiting
-                          // Topic picker + Vent button
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('What do you want to talk about?',
-                                    style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: _ventTopics.map((t) {
-                                    final sel = _selectedTopic == t;
-                                    return GestureDetector(
-                                      onTap: () => setState(() => _selectedTopic = sel ? null : t),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 180),
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                        decoration: BoxDecoration(
-                                          color: sel ? AppColors.accent.withValues(alpha: 0.12) : AppColors.snow,
-                                          borderRadius: AppRadii.fullAll,
-                                          border: Border.all(color: sel ? AppColors.accent : AppColors.border),
-                                        ),
-                                        child: Text(t, style: AppTypography.ui(
-                                          fontSize: 12,
-                                          fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
-                                          color: sel ? AppColors.accent : AppColors.slate,
-                                        )),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                                const SizedBox(height: 14),
-                                GestureDetector(
-                              onTap: _ventLoading ? null : _handleVent,
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [AppColors.venterPrimary, AppColors.accentHover],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: AppRadii.lgAll,
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Text('🎤', style: TextStyle(fontSize: 22)),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _ventLoading ? 'Finding your space…' : 'I need to vent',
-                                            style: AppTypography.title(fontSize: 17, color: Colors.white),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text('Start an anonymous conversation',
-                                              style: AppTypography.body(fontSize: 12, color: Colors.white70)),
-                                        ],
-                                      ),
-                                    ),
-                                    if (_ventLoading)
-                                      const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-                                      )
-                                    else
-                                      Icon(Icons.arrow_forward_rounded, color: Colors.white70),
-                                  ],
-                                ),
-                              ),
-                            ),
-                              ],
-                            )
-                          // Waiting state
-                          : Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                              decoration: BoxDecoration(
-                                color: AppColors.ink,
-                                borderRadius: AppRadii.lgAll,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text('Finding someone to listen…',
-                                            style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                                      ),
-                                      TimerWidget(
-                                        remainingSeconds: wait.remaining,
-                                        onEnd: () => ref.read(pendingWaitProvider.notifier).cancel(),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  const BreathingCircle(size: 48),
-                                  const SizedBox(height: 8),
-                                  FlowButton(
-                                    label: 'Cancel',
-                                    variant: FlowButtonVariant.ghost,
-                                    size: FlowButtonSize.sm,
-                                    onPressed: () => ref.read(pendingWaitProvider.notifier).cancel(),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          ? _buildTopicAndVentButton()
+                          : _buildWaitingState(wait),
                     ),
                   ),
                 ],
@@ -618,6 +502,132 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
           },
         ),
       ],
+    );
+  }
+
+  // -- Extracted sheet widgets --
+
+  Widget _buildTopicChip(String topic) {
+    final sel = _selectedTopic == topic;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTopic = sel ? null : topic),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: sel ? AppColors.accent.withValues(alpha: 0.12) : AppColors.snow,
+          borderRadius: AppRadii.fullAll,
+          border: Border.all(color: sel ? AppColors.accent : AppColors.border),
+        ),
+        child: Text(topic, style: AppTypography.ui(
+          fontSize: 12,
+          fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+          color: sel ? AppColors.accent : AppColors.slate,
+        )),
+      ),
+    );
+  }
+
+  Widget _buildTopicAndVentButton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('What do you want to talk about?',
+            style: AppTypography.ui(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink)),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: _ventTopics.map((t) => _buildTopicChip(t)).toList(),
+        ),
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: _ventLoading ? null : _handleVent,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.venterPrimary, AppColors.accentHover],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: AppRadii.lgAll,
+            ),
+            child: Row(
+              children: [
+                const Text('🎤', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _ventLoading ? 'Finding your space…' : 'I need to vent',
+                        style: AppTypography.title(fontSize: 17, color: Colors.white),
+                      ),
+                      const SizedBox(height: 2),
+                      Text('Start an anonymous conversation',
+                          style: AppTypography.body(fontSize: 12, color: Colors.white70)),
+                    ],
+                  ),
+                ),
+                if (_ventLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                  )
+                else
+                  Icon(Icons.arrow_forward_rounded, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWaitingState(PendingWaitState wait) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.ink,
+        borderRadius: AppRadii.lgAll,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Finding someone to listen…',
+                    style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+              ),
+              TimerWidget(
+                remainingSeconds: wait.remaining,
+                onEnd: () => ref.read(pendingWaitProvider.notifier).cancel(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const BreathingCircle(size: 48),
+          const SizedBox(height: 8),
+          FlowButton(
+            label: 'Cancel',
+            variant: FlowButtonVariant.ghost,
+            size: FlowButtonSize.sm,
+            onPressed: () => ref.read(pendingWaitProvider.notifier).cancel(),
+          ),
+        ],
+      ),
     );
   }
 

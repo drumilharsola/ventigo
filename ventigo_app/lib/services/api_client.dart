@@ -22,8 +22,8 @@ class AuthException implements Exception {
 class ApiClient {
   late final Dio _dio;
 
-  ApiClient() {
-    _dio = Dio(BaseOptions(
+  ApiClient({Dio? dio}) {
+    _dio = dio ?? Dio(BaseOptions(
       baseUrl: Env.apiBaseUrl,
       connectTimeout: Env.requestTimeout,
       receiveTimeout: Env.requestTimeout,

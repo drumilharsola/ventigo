@@ -9,6 +9,7 @@ import '../widgets/orb_background.dart';
 import '../widgets/pill.dart';
 import '../widgets/flow_button.dart';
 import '../widgets/wellbeing_poster.dart';
+import '../config/routes.dart';
 import '../config/brand.dart';
 
 class LandingScreen extends ConsumerWidget {
@@ -57,7 +58,7 @@ class LandingScreen extends ConsumerWidget {
                                 FlowLogo(dark: true, onTap: () => context.go('/')),
                                 if (!authed)
                                   TextButton(
-                                    onPressed: () => context.go('/verify'),
+                                    onPressed: () => context.go(kPathVerify),
                                     child: Text('Sign in', style: AppTypography.ui(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
                                   ),
                               ],
@@ -106,13 +107,13 @@ class LandingScreen extends ConsumerWidget {
                                       label: 'I need to exhale',
                                       variant: FlowButtonVariant.venter,
                                       icon: Icons.mic_rounded,
-                                      onPressed: () => context.go(authed ? '/home' : '/verify'),
+                                      onPressed: () => context.go(authed ? kPathHome : kPathVerify),
                                     ),
                                     FlowButton(
                                       label: 'I can hold space',
                                       variant: FlowButtonVariant.listener,
                                       icon: Icons.favorite_outline_rounded,
-                                      onPressed: () => context.go(authed ? '/community' : '/verify'),
+                                      onPressed: () => context.go(authed ? kPathCommunity : kPathVerify),
                                     ),
                                   ],
                                 ),

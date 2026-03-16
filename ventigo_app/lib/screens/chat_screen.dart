@@ -458,6 +458,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Widget _replyPreview(TranscriptMessage msg, bool isMe) {
+    if (msg.replyText == null || msg.replyText!.isEmpty) return const SizedBox.shrink();
+    return Container(
+      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: (isMe ? AppColors.venterBubble : AppColors.listenerBubble).withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(msg.replyFrom ?? '', style: AppTypography.ui(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accent)),
+          Text(msg.replyText!, style: AppTypography.body(fontSize: 11, color: AppColors.slate), maxLines: 2, overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBubble(TranscriptMessage msg, bool isMe, {bool canReply = true, bool showLabel = true, String? peerDisplayName}) {
     final timeVisible = _visibleTimes.contains(msg.ts);
     final bubble = Align(
@@ -478,25 +499,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 padding: const EdgeInsets.only(left: 4, bottom: 4),
                 child: Text(peerDisplayName ?? msg.from, style: AppTypography.micro(fontSize: 11, color: AppColors.slate)),
               ),
-            // Reply preview
-            if (msg.replyText != null && msg.replyText!.isNotEmpty)
-              Container(
-                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
-                margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: (isMe ? AppColors.venterBubble : AppColors.listenerBubble).withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(msg.replyFrom ?? '', style: AppTypography.ui(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accent)),
-                    Text(msg.replyText!, style: AppTypography.body(fontSize: 11, color: AppColors.slate), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
+            _replyPreview(msg, isMe),
             Container(
               constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

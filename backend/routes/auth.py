@@ -39,6 +39,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _RESET_LINK_SENT = "If an account exists, a reset link has been sent."
+_USER_NOT_FOUND = "User not found"
 
 
 # --- Models -------------------------------------------------------------------
@@ -363,14 +364,14 @@ async def get_user_profile(username: str, payload: Annotated[dict, Depends(requi
         profile_row = result.scalar_one_or_none()
 
     if not profile_row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_USER_NOT_FOUND)
 
     session_id = profile_row.session_id
 
     # If the profile owner has blocked the requester, hide the profile entirely
     blocked = await get_blocked_set(session_id)
     if requester_session_id in blocked:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_USER_NOT_FOUND)
 
     return {
         "username": profile_row.username,
@@ -398,13 +399,13 @@ async def get_user_appreciations(
         profile_row = result.scalar_one_or_none()
 
     if not profile_row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_USER_NOT_FOUND)
 
     session_id = profile_row.session_id
 
     blocked = await get_blocked_set(session_id)
     if requester_session_id in blocked:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_USER_NOT_FOUND)
 
     limit = max(1, min(limit, 50))
     offset = max(0, offset)

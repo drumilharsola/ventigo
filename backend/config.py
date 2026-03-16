@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     HISTORY_TTL_HOURS: int = 1
     OTP_EXPIRE_MINUTES: int = 10
 
-    GEO_API_URL: str = "http://ip-api.com/json/"
+    GEO_API_URL: str = "https://ipapi.co/"
 
     WAIT_WINDOW_MINUTES: int = 10
 
