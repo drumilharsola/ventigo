@@ -5,6 +5,9 @@ class ChatMessage {
   final String text;
   final double ts;
   final String? clientId;
+  final String? replyTo;
+  final String? replyText;
+  final String? replyFrom;
 
   const ChatMessage({
     this.type = 'message',
@@ -13,6 +16,9 @@ class ChatMessage {
     required this.text,
     required this.ts,
     this.clientId,
+    this.replyTo,
+    this.replyText,
+    this.replyFrom,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -23,6 +29,9 @@ class ChatMessage {
       text: json['text'] as String,
       ts: (json['ts'] as num).toDouble(),
       clientId: json['client_id'] as String?,
+      replyTo: json['reply_to'] as String?,
+      replyText: json['reply_text'] as String?,
+      replyFrom: json['reply_from'] as String?,
     );
   }
 
@@ -30,6 +39,9 @@ class ChatMessage {
         'type': type,
         'text': text,
         if (clientId != null) 'client_id': clientId,
+        if (replyTo != null) 'reply_to': replyTo,
+        if (replyText != null) 'reply_text': replyText,
+        if (replyFrom != null) 'reply_from': replyFrom,
       };
 }
 

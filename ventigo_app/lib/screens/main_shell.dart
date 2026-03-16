@@ -25,6 +25,14 @@ class MainShellState extends State<MainShell> {
     _currentIndex = widget.initialIndex;
   }
 
+  @override
+  void didUpdateWidget(MainShell old) {
+    super.didUpdateWidget(old);
+    if (old.initialIndex != widget.initialIndex) {
+      setState(() => _currentIndex = widget.initialIndex);
+    }
+  }
+
   void switchTab(int index) {
     if (index >= 0 && index < 5) {
       setState(() => _currentIndex = index);

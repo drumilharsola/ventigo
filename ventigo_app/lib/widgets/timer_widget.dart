@@ -16,20 +16,28 @@ class TimerWidget extends StatefulWidget {
 class _TimerWidgetState extends State<TimerWidget> {
   late int _secs;
   Timer? _timer;
+  // Track the last server value to detect actual server updates vs rebuilds
+  int _lastServerValue = -1;
 
   @override
   void initState() {
     super.initState();
     _secs = widget.remainingSeconds;
+    _lastServerValue = widget.remainingSeconds;
     _startTick();
   }
 
   @override
   void didUpdateWidget(TimerWidget old) {
     super.didUpdateWidget(old);
-    // Only resync if the server value differs by more than 2s (avoids jitter)
-    if ((old.remainingSeconds - widget.remainingSeconds).abs() > 2) {
-      _secs = widget.remainingSeconds;
+    // Only resync if the SERVER actually sent a new value
+    // (i.e. the incoming remainingSeconds differs from the last known server value)
+    if (widget.remainingSeconds != _lastServerValue) {
+      _lastServerValue = widget.remainingSeconds;
+      // Resync: trust the server value, but allow small drift (1s) to avoid jitter
+      if ((_secs - widget.remainingSeconds).abs() > 1) {
+        _secs = widget.remainingSeconds;
+      }
     }
   }
 
@@ -52,15 +60,16 @@ class _TimerWidgetState extends State<TimerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final mins = (_secs ~/ 60).toString().padLeft(2, '0');
-    final sec = (_secs % 60).toString().padLeft(2, '0');
+    final display = _secs.clamp(0, 99 * 60 + 59);
+    final mins = (display ~/ 60).toString().padLeft(2, '0');
+    final sec = (display % 60).toString().padLeft(2, '0');
 
     final Color timerColor;
-    if (_secs <= 30) {
+    if (display <= 30) {
       timerColor = AppColors.danger;
-    } else if (_secs <= 120) {
+    } else if (display <= 120) {
       timerColor = const Color(0xFFE8B450); // orange
-    } else if (_secs <= 300) {
+    } else if (display <= 300) {
       timerColor = const Color(0xFFD4A844); // amber
     } else {
       timerColor = AppColors.accent;

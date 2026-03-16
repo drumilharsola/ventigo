@@ -18,6 +18,17 @@ void main() async {
     OneSignal.Debug.setLogLevel(OSLogLevel.warn);
     OneSignal.initialize(Env.onesignalAppId);
     OneSignal.Notifications.requestPermission(true);
+    // Notification click handler - navigate based on notification data
+    OneSignal.Notifications.addClickListener((event) {
+      final data = event.notification.additionalData;
+      if (data == null) return;
+      final type = data['type'] as String?;
+      // Navigation handled via GoRouter in the app - deep link based on type
+      // Community notifications (kudos, comments) → /community
+      // Appreciation → /me (profile)
+      // We don't send chat notifications per user's requirement
+      debugPrint('[OneSignal] Notification clicked: type=$type');
+    });
   }
 
   // -- PostHog (product analytics) ------------------------------------------

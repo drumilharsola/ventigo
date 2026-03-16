@@ -325,6 +325,19 @@ async def update_profile(
             )
             await db.commit()
 
+    # Update username in any active rooms so peers see the new name
+    if body.reroll_username and "username" in updates:
+        from services.session import get_active_room_ids_for_session, get_room
+        from db.redis_client import get_redis as _get_redis
+        redis = await _get_redis()
+        active_room_ids = await get_active_room_ids_for_session(session_id)
+        for rid in active_room_ids:
+            room = await get_room(rid)
+            if not room:
+                continue
+            field = "username_a" if room.get("user_a") == session_id else "username_b"
+            await redis.hset(f"room:{rid}", field, updates["username"])
+
     return {
         "username": profile.get("username"),
         "avatar_id": int(profile.get("avatar_id", 0)),
@@ -491,6 +504,121 @@ async def reset_password(request: Request, body: ResetPasswordRequest):
         await db.commit()
 
     return {"message": "Password has been reset. You can now sign in."}
+
+
+# --- Change Password (authenticated) -----------------------------------------
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def strong_password(cls, v: str) -> str:
+        return _validate_password(v)
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    payload: Annotated[dict, Depends(require_auth)],
+):
+    """Change password for the currently authenticated user."""
+    session_id = payload["sub"]
+
+    factory = get_session_factory()
+    async with factory() as db:
+        user = await db.get(User, session_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    if not _pwd_ctx.verify(body.current_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    if body.current_password == body.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from the current password",
+        )
+
+    pwd_hash = _pwd_ctx.hash(body.new_password)
+    async with factory() as db:
+        await db.execute(
+            update(User).where(User.session_id == session_id).values(password_hash=pwd_hash)
+        )
+        await db.commit()
+
+    return {"message": "Password changed successfully"}
+
+
+# --- Change Email (authenticated) --------------------------------------------
+
+class ChangeEmailRequest(BaseModel):
+    new_email: EmailStr
+    password: str
+
+
+@router.post("/change-email")
+async def change_email(
+    body: ChangeEmailRequest,
+    payload: Annotated[dict, Depends(require_auth)],
+):
+    """Change email for the currently authenticated user. Requires password confirmation."""
+    session_id = payload["sub"]
+    new_email = body.new_email.lower().strip()
+    new_email_hash = get_email_hash(new_email)
+
+    factory = get_session_factory()
+    async with factory() as db:
+        user = await db.get(User, session_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    if not _pwd_ctx.verify(body.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is incorrect",
+        )
+
+    # Check if new email already taken
+    async with factory() as db:
+        existing = await db.execute(select(User).where(User.email_hash == new_email_hash))
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An account with this email already exists",
+            )
+
+    # Update email
+    async with factory() as db:
+        await db.execute(
+            update(User).where(User.session_id == session_id).values(
+                email=new_email,
+                email_hash=new_email_hash,
+            )
+        )
+        await db.commit()
+
+    # Reset email verification status
+    async with factory() as db:
+        await db.execute(
+            update(Profile).where(Profile.session_id == session_id).values(email_verified=False)
+        )
+        await db.commit()
+
+    # Send verification email to new address
+    redis = await get_redis()
+    try:
+        await _send_verify_link(new_email, session_id, redis)
+    except Exception:
+        logger.warning("Failed to send verification email to new address %s", new_email)
+
+    return {"message": "Email changed. A verification link has been sent to your new email."}
 
 
 # --- GDPR / Account Management -----------------------------------------------

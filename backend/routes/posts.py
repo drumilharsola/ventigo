@@ -194,6 +194,21 @@ async def toggle_kudos(post_id: str, payload: Annotated[dict, Depends(require_au
         await redis.expire(kudos_key, POST_TTL_SECONDS + 3600)
         given = True
 
+        # Send push notification to post author (not to yourself)
+        _, post = await _find_post_raw(redis, post_id)
+        post_author = post.get("session_id", "")
+        if post_author and post_author != session_id:
+            profile = await get_profile(session_id)
+            liker_name = profile.get("username", "Someone") if profile else "Someone"
+            from services.push import send_push
+            import asyncio
+            _push_task = asyncio.create_task(send_push(
+                external_ids=[post_author],
+                heading="Your post got a kudos! 💛",
+                content=f"{liker_name} liked your post.",
+                data={"type": "kudos", "post_id": post_id},
+            ))
+
     count = await redis.scard(kudos_key)
     return {"kudos_count": count, "given": given}
 
@@ -253,6 +268,20 @@ async def add_comment(post_id: str, body: CreateCommentRequest, payload: Annotat
     await redis.rpush(comments_key, json.dumps(comment))
     await redis.ltrim(comments_key, -MAX_COMMENTS_PER_POST, -1)
     await redis.expire(comments_key, POST_TTL_SECONDS + 3600)
+
+    # Send push notification to post author (not to yourself)
+    _, post = await _find_post_raw(redis, post_id)
+    post_author = post.get("session_id", "")
+    if post_author and post_author != session_id:
+        commenter_name = profile.get("username", "Someone") if profile else "Someone"
+        from services.push import send_push
+        import asyncio
+        _push_task = asyncio.create_task(send_push(
+            external_ids=[post_author],
+            heading="New comment on your post 💬",
+            content=f"{commenter_name}: {body.text[:80]}",
+            data={"type": "comment", "post_id": post_id},
+        ))
 
     return {"comment": comment}
 

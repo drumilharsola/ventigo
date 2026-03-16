@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
+import '../config/env.dart';
 import '../services/auth_storage.dart';
 import '../services/api_client.dart';
 
@@ -64,6 +66,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         emailVerified: emailVerified,
         hasHydrated: true,
       );
+
+      // Re-tag OneSignal on app restart if already logged in
+      if (sessionId != null && Env.onesignalAppId.isNotEmpty) {
+        try {
+          OneSignal.login(sessionId);
+        } catch (_) {}
+      }
     } catch (_) {
       // If secure storage fails, proceed without persisted state
       state = const AuthState(hasHydrated: true);
@@ -73,6 +82,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> setAuth(String token, String sessionId) async {
     state = state.copyWith(token: token, sessionId: sessionId);
     await _storage.saveAuth(token, sessionId);
+    // Tag user in OneSignal for push notification targeting
+    if (Env.onesignalAppId.isNotEmpty) {
+      try {
+        OneSignal.login(sessionId);
+      } catch (_) {}
+    }
   }
 
   Future<void> setProfile(String username, int avatarId) async {
@@ -93,6 +108,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> clear() async {
     state = const AuthState(hasHydrated: true);
     await _storage.clear();
+    // Remove OneSignal external user ID on logout
+    if (Env.onesignalAppId.isNotEmpty) {
+      try {
+        OneSignal.logout();
+      } catch (_) {}
+    }
   }
 
   /// Sync email_verified from the server (user may have verified in browser).

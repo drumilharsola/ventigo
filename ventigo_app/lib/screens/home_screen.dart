@@ -83,9 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const FlowLogo(dark: true),
                       IconButton(
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Notifications coming soon'), behavior: SnackBarBehavior.floating),
-                          );
+                          context.go('/community');
                         },
                         icon: Icon(Icons.notifications_none_rounded, color: AppColors.ink, size: 24),
                       ),

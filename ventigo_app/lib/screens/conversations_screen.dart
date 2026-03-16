@@ -120,9 +120,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen>
       _boardWsSub = _boardWs.events.listen(_onBoardEvent);
       _boardWs.connect(() => _token ?? '');
       _refreshAppreciationCount();
-      _roomSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _roomSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
         _syncRooms();
-        _refreshAppreciationCount();
       });
       // Listen for match events
       ref.listenManual(pendingWaitProvider, (_, next) {

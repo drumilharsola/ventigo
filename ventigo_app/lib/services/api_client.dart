@@ -110,6 +110,22 @@ class ApiClient {
     } catch (e) { _rethrow(e); }
   }
 
+  Future<void> changePassword(String token, String currentPassword, String newPassword) async {
+    try {
+      await _dio.post('/auth/change-password',
+          data: {'current_password': currentPassword, 'new_password': newPassword},
+          options: Options(headers: _authHeader(token)));
+    } catch (e) { _rethrow(e); }
+  }
+
+  Future<void> changeEmail(String token, String newEmail, String password) async {
+    try {
+      await _dio.post('/auth/change-email',
+          data: {'new_email': newEmail, 'password': password},
+          options: Options(headers: _authHeader(token)));
+    } catch (e) { _rethrow(e); }
+  }
+
   Future<ProfileSetupResponse> setProfile(String token, {required String dob, required int avatarId}) async {
     try {
       final res = await _dio.post('/auth/profile',

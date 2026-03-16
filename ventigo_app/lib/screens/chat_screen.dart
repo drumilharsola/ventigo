@@ -42,6 +42,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final Set<num> _visibleTimes = {}; // track which msg timestamps are shown
 
   @override
+  void initState() {
+    super.initState();
+    // Re-initialize the chat provider each time the screen opens
+    // to ensure fresh WS connection and consistent behavior.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatProvider(widget.roomId).notifier).initialize();
+    });
+  }
+
+  @override
   void dispose() {
     _inputCtrl.dispose();
     _scrollCtrl.dispose();

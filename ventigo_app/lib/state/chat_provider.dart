@@ -126,11 +126,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
   // -- Lifecycle --
 
   Future<void> initialize() async {
+    // Close any previous connections (re-initialization case)
+    _close();
+    _disposed = false;
+    _continueRoomId = null;
+
     final token = _token;
     if (token == null || roomId.isEmpty) {
       state = state.copyWith(mode: 'expired');
       return;
     }
+
+    // Reset to checking state
+    state = const ChatState();
 
     try {
       final data = await _api.getRoomMessages(token, roomId);
@@ -155,6 +163,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
       text: m.text,
       ts: m.ts,
       clientId: m.clientId,
+      replyTo: m.replyTo,
+      replyText: m.replyText,
+      replyFrom: m.replyFrom,
     )).toList();
 
     // Add 'started' marker when timer has started (started_at is set)
@@ -469,14 +480,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   void _startSyncTimer() {
-    _syncTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+    // Only check room status every 30s as a fallback; real-time data comes via WS.
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
       if (_disposed || state.mode != 'live') return;
       try {
         final token = _token;
         if (token == null) return;
         final data = await _api.getRoomMessages(token, roomId);
-        _applyRoomData(data);
         if (data.status == 'ended') {
+          _applyRoomData(data);
           state = state.copyWith(mode: 'readonly');
           _close();
         }

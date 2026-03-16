@@ -259,7 +259,9 @@ void main() {
       await tester.tap(find.text('Change Password'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Change password is coming soon'), findsOneWidget);
+      // Now shows a bottom sheet with form fields instead of snackbar
+      expect(find.text('Current Password'), findsOneWidget);
+      expect(find.text('New Password (min 8 characters)'), findsOneWidget);
     });
 
     testWidgets('settings -> Change Email opens sheet', (tester) async {
@@ -274,7 +276,9 @@ void main() {
       await tester.tap(find.text('Change Email'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Change email is coming soon'), findsOneWidget);
+      // Now shows a bottom sheet with form fields instead of snackbar
+      expect(find.text('New Email'), findsOneWidget);
+      expect(find.text('Confirm Password'), findsOneWidget);
     });
 
     testWidgets('settings -> Re-roll Username calls updateProfile', (tester) async {

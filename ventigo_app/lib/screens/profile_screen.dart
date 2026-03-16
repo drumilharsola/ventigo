@@ -481,6 +481,215 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  void _showChangePasswordSheet() {
+    final currentPassCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+    bool loading = false;
+    String? error;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.snow,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).padding.bottom + 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 20),
+                Text('Change Password', style: AppTypography.title(fontSize: 20, color: AppColors.ink)),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: currentPassCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Current Password',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newPassCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'New Password (min 8 characters)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmPassCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm New Password',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: loading ? null : () async {
+                      if (newPassCtrl.text.length < 8) {
+                        setSheetState(() => error = 'Password must be at least 8 characters');
+                        return;
+                      }
+                      if (newPassCtrl.text != confirmPassCtrl.text) {
+                        setSheetState(() => error = 'Passwords do not match');
+                        return;
+                      }
+                      setSheetState(() { loading = true; error = null; });
+                      try {
+                        final token = ref.read(authProvider).token!;
+                        await ref.read(apiClientProvider).changePassword(token, currentPassCtrl.text, newPassCtrl.text);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Password changed successfully'), behavior: SnackBarBehavior.floating),
+                          );
+                        }
+                      } catch (e) {
+                        setSheetState(() { error = e.toString(); loading = false; });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.ink,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(loading ? 'Saving…' : 'Change Password',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text('Cancel', style: AppTypography.ui(fontSize: 15, color: AppColors.slate)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showChangeEmailSheet() {
+    final emailCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    bool loading = false;
+    String? error;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.snow,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).padding.bottom + 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.mist, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 20),
+                Text('Change Email', style: AppTypography.title(fontSize: 20, color: AppColors.ink)),
+                const SizedBox(height: 8),
+                Text('A verification link will be sent to your new email.',
+                    style: AppTypography.body(fontSize: 13, color: AppColors.slate)),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'New Email',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm Password',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: loading ? null : () async {
+                      if (!emailCtrl.text.contains('@')) {
+                        setSheetState(() => error = 'Please enter a valid email');
+                        return;
+                      }
+                      if (passCtrl.text.isEmpty) {
+                        setSheetState(() => error = 'Please enter your password');
+                        return;
+                      }
+                      setSheetState(() { loading = true; error = null; });
+                      try {
+                        final token = ref.read(authProvider).token!;
+                        await ref.read(apiClientProvider).changeEmail(token, emailCtrl.text.trim().toLowerCase(), passCtrl.text);
+                        await ref.read(authProvider.notifier).setEmailVerified(false);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (mounted) {
+                          setState(() { _email = emailCtrl.text.trim().toLowerCase(); _emailVerified = false; });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Email changed. Please verify your new email.'), behavior: SnackBarBehavior.floating),
+                          );
+                        }
+                      } catch (e) {
+                        setSheetState(() { error = e.toString(); loading = false; });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.ink,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(loading ? 'Saving…' : 'Change Email',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text('Cancel', style: AppTypography.ui(fontSize: 15, color: AppColors.slate)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showSettingsSheet() {
     showModalBottomSheet(
       context: context,
@@ -509,15 +718,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               // Settings items
               _settingsItem(Icons.lock_outline_rounded, 'Change Password', () {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Change password is coming soon'), behavior: SnackBarBehavior.floating),
-                );
+                _showChangePasswordSheet();
               }),
               _settingsItem(Icons.email_outlined, 'Change Email', () {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Change email is coming soon'), behavior: SnackBarBehavior.floating),
-                );
+                _showChangeEmailSheet();
               }),
               _settingsItem(Icons.person_outline_rounded, 'Re-roll Username', () async {
                 Navigator.of(context).pop();
@@ -540,10 +745,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _settingsItem(Icons.block_outlined, 'Blocked Users', () {
                 Navigator.of(context).pop();
                 context.push('/blocked-users');
-              }),
-              _settingsItem(Icons.download_outlined, 'Export My Data', () {
-                Navigator.of(context).pop();
-                _handleExportData();
               }),
 
               const SizedBox(height: 12),

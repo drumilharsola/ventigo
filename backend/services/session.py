@@ -101,13 +101,19 @@ async def get_profile(session_id: str) -> Optional[dict]:
 
 # --- Room ---------------------------------------------------------------------
 
-async def create_room(session_a: str, session_b: str) -> str:
+async def create_room(session_a: str, session_b: str, force_new: bool = False) -> str:
     redis = await get_redis()
     settings = get_settings()
 
-    existing_room_id = await find_active_room_between_sessions(session_a, session_b)
-    if existing_room_id:
-        return existing_room_id
+    if not force_new:
+        existing_room_id = await find_active_room_between_sessions(session_a, session_b)
+        if existing_room_id:
+            return existing_room_id
+    else:
+        # Close any existing active room between the two participants
+        existing_room_id = await find_active_room_between_sessions(session_a, session_b)
+        if existing_room_id:
+            await close_room(existing_room_id)
 
     room_id = str(uuid.uuid4())
     matched_at = int(time.time())

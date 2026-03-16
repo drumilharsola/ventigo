@@ -232,6 +232,16 @@ async def _handle_chat_message(redis, room_id, session_id, peer_id, username, da
     }
     if client_id:
         record["client_id"] = client_id
+    # Preserve reply context
+    reply_to = str(data.get("reply_to", "")).strip()
+    reply_text = str(data.get("reply_text", "")).strip()
+    reply_from = str(data.get("reply_from", "")).strip()
+    if reply_to:
+        record["reply_to"] = reply_to
+    if reply_text:
+        record["reply_text"] = reply_text[:200]
+    if reply_from:
+        record["reply_from"] = reply_from
     await append_message(room_id, record)
     room_now = await mark_room_message_started(room_id, session_id)
     event = _room_event(room_id, record)
@@ -418,14 +428,13 @@ async def _build_room_entry(rid: str, session_id: str, blocked_ids: set) -> dict
 async def list_chat_rooms(session: Annotated[dict, Depends(require_auth)]):
     """Return all rooms this session participated in, newest first, excluding blocked peers."""
     session_id = session["sub"]
-    redis = await get_redis()
     room_ids = await get_room_history(session_id)
     blocked_ids = await get_blocked_set(session_id)
-    rooms = []
-    for rid in room_ids:
-        entry = await _build_room_entry(rid, session_id, blocked_ids)
-        if entry:
-            rooms.append(entry)
+    # Build room entries concurrently for speed
+    import asyncio
+    tasks = [_build_room_entry(rid, session_id, blocked_ids) for rid in room_ids]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    rooms = [r for r in results if r is not None and not isinstance(r, BaseException)]
     return {"rooms": rooms}
 
 
@@ -548,6 +557,15 @@ async def post_appreciation(
         if "uq_appreciation_per_room" in str(exc):
             raise HTTPException(status_code=409, detail="You already sent an appreciation for this chat")
         raise
+
+    # Send push notification for appreciation
+    from services.push import send_push
+    _push_task = asyncio.create_task(send_push(
+        external_ids=[peer_session_id],
+        heading="You received an appreciation! 💛",
+        content=f"{from_username}: {text[:80]}",
+        data={"type": "appreciation", "room_id": room_id},
+    ))
 
     return result
 
